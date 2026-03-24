@@ -1,16 +1,151 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
+import HeroBanner from "@/components/marketplace/HeroBanner";
+import CategoryCard from "@/components/marketplace/CategoryCard";
+import ProductCard from "@/components/marketplace/ProductCard";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80";
+
+const DEFAULT_CATEGORIES = [
+  { name: "Electronics", slug: "electronics", image: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80" },
+  { name: "Fashion", slug: "fashion", image: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&q=80" },
+  { name: "Home & Garden", slug: "home-garden", image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80" },
+  { name: "Health & Beauty", slug: "health-beauty", image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80" },
+  { name: "Sports", slug: "sports", image: "https://images.unsplash.com/photo-1461896836934-ber39834eb0b?w=200&q=80" },
+  { name: "Phones", slug: "phones-tablets", image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&q=80" },
+];
+
+const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
+  id: `demo-${i}`,
+  name: ["Wireless Headphones", "Smart Watch Pro", "Running Shoes", "Organic Face Cream", "LED Desk Lamp", "Cotton T-Shirt", "Bluetooth Speaker", "Yoga Mat"][i],
+  price: [2499, 8999, 3499, 1299, 1899, 799, 4299, 1599][i],
+  compareAtPrice: [3999, 12999, null, 1999, null, 1299, 5999, null][i] as number | null,
+  image: [
+    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80",
+    "https://images.unsplash.com/photo-1546868871-af0de0ae72be?w=400&q=80",
+    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80",
+    "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&q=80",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80",
+    "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&q=80",
+    "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=400&q=80",
+  ][i],
+  vendorId: `vendor-${i % 3}`,
+  vendorName: ["TechHub Store", "Fashion Point", "Home Essentials"][i % 3],
+  slug: ["wireless-headphones", "smart-watch-pro", "running-shoes", "organic-face-cream", "led-desk-lamp", "cotton-tshirt", "bluetooth-speaker", "yoga-mat"][i],
+  rating: [4.5, 4.8, 4.2, 4.6, 4.0, 4.3, 4.7, 4.1][i],
+  reviewCount: [128, 56, 89, 234, 45, 167, 73, 92][i],
+}));
+
+const Index = () => {
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["featured-products"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("*, vendors(store_name), product_images(url)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      return data;
+    },
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("*")
+        .is("parent_id", null)
+        .limit(6);
+      return data;
+    },
+  });
+
+  const displayCategories = categories?.length ? categories.map((c: any) => ({
+    name: c.name,
+    slug: c.slug,
+    image: c.image_url || PLACEHOLDER_IMG,
+  })) : DEFAULT_CATEGORIES;
+
+  const displayProducts = products?.length ? products.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    price: Number(p.price),
+    compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
+    image: p.product_images?.[0]?.url || PLACEHOLDER_IMG,
+    vendorId: p.vendor_id,
+    vendorName: p.vendors?.store_name || "Unknown Seller",
+    slug: p.slug,
+    rating: 4.5,
+    reviewCount: 0,
+  })) : DEMO_PRODUCTS;
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <MarketplaceLayout>
+      <HeroBanner />
+
+      {/* Categories */}
+      <section className="container py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">Shop by Category</h2>
+        </div>
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
+          {displayCategories.map((cat) => (
+            <CategoryCard key={cat.slug} {...cat} />
+          ))}
+        </div>
+      </section>
+
+      {/* Featured Products */}
+      <section className="container py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">Featured Products</h2>
+          <Link to="/search">
+            <Button variant="ghost" size="sm" className="gap-1 text-primary">
+              View All <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {displayProducts.map((product) => (
+              <ProductCard key={product.id} {...product} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Sell banner */}
+      <section className="container py-8">
+        <div className="bg-marketplace-dark rounded-2xl p-8 md:p-12 text-center">
+          <h2 className="font-display text-2xl md:text-3xl font-bold text-primary-foreground mb-3">
+            Start Selling on ShopZone
+          </h2>
+          <p className="text-muted-foreground text-sm md:text-base mb-6 max-w-lg mx-auto">
+            Join thousands of vendors and reach millions of customers. Easy setup, powerful tools, and dedicated support.
+          </p>
+          <Link to="/vendor/register">
+            <Button size="lg" className="font-semibold">
+              Become a Seller
+            </Button>
+          </Link>
+        </div>
+      </section>
+    </MarketplaceLayout>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
