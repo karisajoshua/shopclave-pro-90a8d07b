@@ -22,14 +22,16 @@ const HeroBanner = () => (
             </Button>
           </Link>
           <Link to="/vendor/register">
-            <Button size="lg" variant="outline" className="font-semibold border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+            <Button
+              size="lg"
+              className="font-semibold bg-card text-primary hover:bg-card/90 shadow-lg"
+            >
               Start Selling
             </Button>
           </Link>
         </div>
       </div>
     </div>
-    {/* Decorative circles */}
     <div className="absolute right-0 top-0 w-72 h-72 bg-primary-foreground/5 rounded-full -translate-y-1/3 translate-x-1/4" />
     <div className="absolute right-20 bottom-0 w-48 h-48 bg-primary-foreground/5 rounded-full translate-y-1/3" />
   </section>

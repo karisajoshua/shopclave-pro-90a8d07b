@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, User, Menu, X, ChevronDown } from "lucide-react";
+import { ShoppingCart, Search, User, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
+import DesktopMegaMenu, { MobileMegaMenu } from "./MegaMenu";
+import barakazLogo from "@/assets/barakaz-logo.png";
 
 const Navbar = () => {
   const { user, signOut, userRoles } = useAuth();
@@ -26,8 +28,12 @@ const Navbar = () => {
       <nav className="bg-card shadow-sm border-b border-border">
         <div className="container flex items-center gap-4 h-16">
           {/* Logo */}
-          <Link to="/" className="font-display text-2xl font-extrabold text-primary shrink-0">
-            ShopZone
+          <Link to="/" className="shrink-0">
+            <img
+              src={barakazLogo}
+              alt="Barakaz"
+              className="h-9 w-auto mix-blend-multiply dark:mix-blend-normal dark:brightness-0 dark:invert"
+            />
           </Link>
 
           {/* Search - desktop */}
@@ -100,41 +106,28 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Categories bar - desktop */}
-        <div className="hidden md:block bg-primary">
-          <div className="container flex items-center gap-6 h-10 text-sm text-primary-foreground">
-            {["Electronics", "Fashion", "Home & Garden", "Health & Beauty", "Sports", "Phones & Tablets"].map((cat) => (
-              <Link
-                key={cat}
-                to={`/category/${cat.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-")}`}
-                className="hover:opacity-80 transition-opacity font-medium"
-              >
-                {cat}
-              </Link>
-            ))}
-          </div>
-        </div>
+        {/* Desktop Mega Menu */}
+        <DesktopMegaMenu />
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="md:hidden bg-card border-t border-border animate-slide-in">
+          <div className="md:hidden bg-card border-t border-border max-h-[80vh] overflow-y-auto animate-in slide-in-from-top-2 duration-200">
             <div className="p-4 space-y-3">
               <Input
                 placeholder="Search products..."
                 className="bg-secondary border-none"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
+                    setMobileOpen(false);
+                  }
+                }}
               />
-              {["Electronics", "Fashion", "Home & Garden", "Health & Beauty", "Sports", "Phones & Tablets"].map((cat) => (
-                <Link
-                  key={cat}
-                  to={`/category/${cat.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-")}`}
-                  className="block py-2 text-sm font-medium text-foreground"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {cat}
-                </Link>
-              ))}
+
+              <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
+
               <div className="border-t border-border pt-3 space-y-2">
                 {user ? (
                   <>

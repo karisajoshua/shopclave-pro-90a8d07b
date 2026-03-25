@@ -132,7 +132,7 @@ const Index = () => {
       <section className="container py-8">
         <div className="bg-marketplace-dark rounded-2xl p-8 md:p-12 text-center">
           <h2 className="font-display text-2xl md:text-3xl font-bold text-primary-foreground mb-3">
-            Start Selling on ShopZone
+            Start Selling on Barakaz
           </h2>
           <p className="text-muted-foreground text-sm md:text-base mb-6 max-w-lg mx-auto">
             Join thousands of vendors and reach millions of customers. Easy setup, powerful tools, and dedicated support.
