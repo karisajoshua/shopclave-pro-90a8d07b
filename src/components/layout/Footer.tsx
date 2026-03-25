@@ -1,12 +1,17 @@
 import { Link } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
+import barakazLogo from "@/assets/barakaz-logo.png";
 
 const Footer = () => (
   <footer className="bg-marketplace-dark text-secondary">
     <div className="container py-12">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
         <div>
-          <h3 className="font-display font-bold text-lg mb-4 text-primary-foreground">ShopZone</h3>
+          <img
+            src={barakazLogo}
+            alt="Barakaz"
+            className="h-8 w-auto mb-3 brightness-0 invert"
+          />
           <p className="text-sm text-muted-foreground leading-relaxed">
             Your trusted multivendor marketplace. Shop from thousands of sellers with fast delivery across Kenya.
           </p>
@@ -16,7 +21,7 @@ const Footer = () => (
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/" className="hover:text-primary transition-colors">Home</Link></li>
             <li><Link to="/search" className="hover:text-primary transition-colors">All Products</Link></li>
-            <li><Link to="/vendor/register" className="hover:text-primary transition-colors">Sell on ShopZone</Link></li>
+            <li><Link to="/vendor/register" className="hover:text-primary transition-colors">Sell on Barakaz</Link></li>
           </ul>
         </div>
         <div>
@@ -42,7 +47,7 @@ const Footer = () => (
         </div>
       </div>
       <div className="border-t border-muted-foreground/20 mt-8 pt-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} ShopZone. All rights reserved.
+        © {new Date().getFullYear()} Barakaz. All rights reserved.
       </div>
     </div>
   </footer>
