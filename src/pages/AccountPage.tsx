@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -11,10 +12,11 @@ const AccountPage = () => {
   const { user, userRoles, signOut } = useAuth();
   const navigate = useNavigate();
 
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
+  useEffect(() => {
+    if (!user) navigate("/auth");
+  }, [user, navigate]);
+
+  if (!user) return null;
 
   const { data: orders } = useQuery({
     queryKey: ["my-orders", user.id],
