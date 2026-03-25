@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +21,9 @@ const AddProductPage = () => {
     price: "",
     compareAtPrice: "",
     stock: "0",
+    categoryId: "",
+    status: "active",
+    imageUrl: "",
   });
 
   const { data: vendor } = useQuery({
@@ -31,7 +35,34 @@ const AddProductPage = () => {
     enabled: !!user,
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ["all-categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("categories").select("id, name, parent_id").order("name");
+      return data || [];
+    },
+  });
+
   if (!user) { navigate("/auth"); return null; }
+
+  // Build a flat list with indented names for subcategories
+  const categoryOptions = (() => {
+    if (!categories) return [];
+    const topLevel = categories.filter((c: any) => !c.parent_id);
+    const result: { id: string; label: string }[] = [];
+    topLevel.forEach((top: any) => {
+      result.push({ id: top.id, label: top.name });
+      const children = categories.filter((c: any) => c.parent_id === top.id);
+      children.forEach((child: any) => {
+        result.push({ id: child.id, label: `  └ ${child.name}` });
+        const grandchildren = categories.filter((c: any) => c.parent_id === child.id);
+        grandchildren.forEach((gc: any) => {
+          result.push({ id: gc.id, label: `    └ ${gc.name}` });
+        });
+      });
+    });
+    return result;
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +72,7 @@ const AddProductPage = () => {
     setLoading(true);
     try {
       const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-      const { error } = await supabase.from("products").insert({
+      const { data: product, error } = await supabase.from("products").insert({
         vendor_id: vendor.id,
         name: form.name.trim(),
         slug,
@@ -49,9 +80,20 @@ const AddProductPage = () => {
         price: parseFloat(form.price),
         compare_at_price: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
         stock: parseInt(form.stock) || 0,
-        status: "active",
-      });
+        category_id: form.categoryId || null,
+        status: form.status,
+      }).select().single();
       if (error) throw error;
+
+      // If image URL provided, insert it
+      if (form.imageUrl.trim() && product) {
+        await supabase.from("product_images").insert({
+          product_id: product.id,
+          url: form.imageUrl.trim(),
+          position: 0,
+        });
+      }
+
       toast.success("Product added!");
       navigate("/vendor/dashboard");
     } catch (err: any) {
@@ -74,6 +116,17 @@ const AddProductPage = () => {
             <Label>Description</Label>
             <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
           </div>
+          <div>
+            <Label>Category</Label>
+            <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
+              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+              <SelectContent>
+                {categoryOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Price (KSh) *</Label>
@@ -84,9 +137,25 @@ const AddProductPage = () => {
               <Input type="number" min="0" step="0.01" value={form.compareAtPrice} onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })} />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Stock Quantity</Label>
+              <Input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div>
-            <Label>Stock Quantity</Label>
-            <Input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+            <Label>Image URL</Label>
+            <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://example.com/image.jpg" />
           </div>
           <div className="flex gap-3">
             <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/vendor/dashboard")}>Cancel</Button>
