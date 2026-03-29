@@ -34,7 +34,7 @@ const AdminVendors = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-vendors-detail"] });
       toast.success("Vendor status updated");
     },
     onError: (err: any) => toast.error(err.message),
@@ -46,7 +46,7 @@ const AdminVendors = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-vendors-detail"] });
       toast.success("Commission rate updated");
     },
     onError: (err: any) => toast.error(err.message),
