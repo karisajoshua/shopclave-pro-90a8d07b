@@ -91,18 +91,6 @@ const Index = () => {
     <MarketplaceLayout>
       <HeroBanner />
 
-      {/* Categories */}
-      <section className="container py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">Shop by Category</h2>
-        </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
-          {displayCategories.map((cat) => (
-            <CategoryCard key={cat.slug} {...cat} />
-          ))}
-        </div>
-      </section>
-
       {/* Featured Products */}
       <section className="container py-8">
         <div className="flex items-center justify-between mb-6">
@@ -130,15 +118,15 @@ const Index = () => {
 
       {/* Sell banner */}
       <section className="container py-8">
-        <div className="bg-marketplace-dark rounded-2xl p-8 md:p-12 text-center">
+        <div className="bg-[hsl(var(--nav-dark))] rounded-2xl p-8 md:p-12 text-center">
           <h2 className="font-display text-2xl md:text-3xl font-bold text-primary-foreground mb-3">
             Start Selling on Barakaz
           </h2>
-          <p className="text-muted-foreground text-sm md:text-base mb-6 max-w-lg mx-auto">
+          <p className="text-primary-foreground/70 text-sm md:text-base mb-6 max-w-lg mx-auto">
             Join thousands of vendors and reach millions of customers. Easy setup, powerful tools, and dedicated support.
           </p>
           <Link to="/vendor/register">
-            <Button size="lg" className="font-semibold">
+            <Button size="lg" className="font-semibold bg-[hsl(var(--marketplace-orange))] hover:bg-[hsl(var(--marketplace-orange-hover))] text-primary-foreground">
               Become a Seller
             </Button>
           </Link>
