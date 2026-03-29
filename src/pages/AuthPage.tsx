@@ -51,7 +51,7 @@ const AuthPage = () => {
               {isLogin ? "Welcome Back" : "Create Account"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isLogin ? "Sign in to your ShopZone account" : "Join ShopZone marketplace today"}
+              {isLogin ? "Sign in to your Barakaz account" : "Join Barakaz marketplace today"}
             </p>
           </div>
 
