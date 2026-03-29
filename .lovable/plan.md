@@ -1,97 +1,89 @@
 
 
-## Plan: Enhanced Categories, Bulk Import Templates, and Admin Settings
-
-### Overview
-Three main areas: (1) Redesign admin categories page with CRUD, image upload, and seed automotive data, (2) Add Excel template download to bulk import, (3) Build a fully functional admin settings page with platform-wide controls.
+## Plan: Withdrawal System, Analytics Dashboard, Top Performers, Footer Update, and Navigation
 
 ### Database Changes
 
-**Migration 1 -- Platform settings table + Automotive categories seed:**
+**Create `withdrawal_requests` table:**
 ```sql
--- Platform settings table (key-value store for admin config)
-CREATE TABLE public.platform_settings (
-  key text PRIMARY KEY,
-  value jsonb NOT NULL DEFAULT '{}',
-  updated_at timestamptz NOT NULL DEFAULT now()
+CREATE TABLE public.withdrawal_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor_id uuid NOT NULL,
+  amount numeric NOT NULL,
+  payment_method text NOT NULL DEFAULT 'mpesa', -- mpesa, bank_transfer, paypal
+  payment_details jsonb DEFAULT '{}',
+  status text NOT NULL DEFAULT 'pending', -- pending, approved, completed, rejected
+  admin_notes text,
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz
 );
-ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
-
--- Everyone can read settings (needed for frontend to apply them)
-CREATE POLICY "Settings readable by everyone" ON public.platform_settings
-  FOR SELECT USING (true);
-
--- Only admins can modify
-CREATE POLICY "Admins can manage settings" ON public.platform_settings
-  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin')) 
-  WITH CHECK (has_role(auth.uid(), 'admin'));
-
--- Seed default settings
-INSERT INTO public.platform_settings (key, value) VALUES
-  ('default_commission_rate', '"10"'),
-  ('platform_name', '"Barakaz"'),
-  ('support_email', '"support@barakaz.com"'),
-  ('currency', '"KES"'),
-  ('min_order_amount', '"0"'),
-  ('free_shipping_threshold', '"5000"'),
-  ('vendor_auto_approve', '"false"'),
-  ('maintenance_mode', '"false"');
+ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
+-- Vendors can view own, insert own; Admins can view all, update all
+ALTER PUBLICATION supabase_realtime ADD TABLE public.withdrawal_requests;
 ```
 
-**Migration 2 -- Seed Automotive category + subcategories:**
-Insert top-level "Automotive" category and subcategories (Car Parts, Tires & Wheels, Car Electronics, Interior Accessories, Exterior Accessories, Oils & Fluids, Tools & Equipment, Motorcycle Parts) into the `categories` table with appropriate slugs and placeholder image URLs.
+RLS policies: vendors SELECT/INSERT where vendor matches their own vendor record; admins SELECT/UPDATE all.
 
-### 1. Admin Categories Page Redesign
+### Changes Summary
 
-Rewrite `src/pages/admin/AdminCategories.tsx`:
-- **Organized tree view** with category images (thumbnail), expand/collapse per top-level category
-- **Add Category dialog** with fields: name, slug (auto-generated), parent (dropdown for subcategory), image upload to `product-images` storage bucket
-- **Edit Category** inline or dialog -- update name, slug, image
-- **Delete Category** with confirmation dialog
-- Categories displayed in a clean card grid (top-level) with expandable subcategories underneath
-- Image upload uses Supabase Storage (`product-images` bucket, path: `categories/{slug}.webp`)
+**1. Vendor Earnings page rewrite** (`src/pages/vendor/VendorEarnings.tsx`):
+- Show gross revenue, platform fee, available balance (net earnings minus already-withdrawn/pending amounts)
+- Top performing products table (sorted by revenue)
+- Withdrawal request form: enter amount, choose payment method (M-Pesa, Bank Transfer, PayPal), enter payment details (phone/account number)
+- Withdrawal history table with status badges (pending/approved/completed/rejected)
 
-### 2. Bulk Import -- Excel + CSV Templates
+**2. Vendor Dashboard rewrite** (`src/pages/vendor/VendorDashboard.tsx`):
+- Add top selling products section (top 5 by quantity sold)
+- Add sales chart placeholder showing recent order activity
 
-Update `src/components/shared/BulkProductImport.tsx`:
-- Add **two download buttons**: "CSV Template" and "Excel Template"
-- Excel template generated client-side using `xlsx` library (SheetJS) -- creates a `.xlsx` file with headers and 2 sample rows, same data as CSV
-- Accept both `.csv` and `.xlsx` uploads -- detect file type by extension
-- For `.xlsx` files, parse using `xlsx` library (`XLSX.read` → convert first sheet to JSON)
-- Add `xlsx` package dependency
-- Update file input accept to `.csv,.xlsx,.xls`
+**3. Admin Dashboard rewrite** (`src/pages/admin/AdminDashboard.tsx`):
+- **Time frame selector**: buttons for Last 24h, 7 days, 30 days, 12 months, + custom date range
+- **Revenue chart**: bar/line chart using Recharts showing platform revenue over selected period
+- **Platform earnings card**: total revenue, total commission earned, total vendor payouts
+- **Top performing vendors**: table showing vendor name, total sales, commission paid, number of orders
+- **Top performing products**: table showing product name, vendor name, units sold, revenue generated
+- **Recent orders** (existing, keep)
 
-### 3. Fully Functional Admin Settings
+**4. Admin Withdrawals page** (`src/pages/admin/AdminWithdrawals.tsx`):
+- List all withdrawal requests with realtime subscription
+- Show vendor name, amount, payment method, status, date
+- Admin can approve/reject with notes
+- Mark as completed after transfer
 
-Rewrite `src/pages/admin/AdminSettings.tsx` with sections:
+**5. Admin Sidebar** (`src/components/admin/AdminSidebar.tsx`):
+- Add "Withdrawals" menu item with Wallet icon
+- Add "Back to Site" link at bottom pointing to `/`
 
-| Section | Settings |
-|---------|----------|
-| **General** | Platform name, support email, currency (dropdown) |
-| **Commerce** | Default commission rate (%), minimum order amount, free shipping threshold |
-| **Vendor Policy** | Auto-approve new vendors (toggle), maintenance mode (toggle) |
+**6. Vendor Sidebar** (`src/components/vendor/VendorSidebar.tsx`):
+- Add "Back to Site" link at bottom pointing to `/`
 
-- Each setting reads from / writes to `platform_settings` table
-- Form with save button per section (or single save all)
-- Use `useQuery` to load settings, `useMutation` to upsert
-- Toast on save success/failure
-- Settings are stored as key-value pairs so they're extensible
+**7. Admin Layout** (`src/components/admin/AdminLayout.tsx`):
+- Add "Back to Site" button in header
 
-### Files to Create/Modify
+**8. Footer** (`src/components/layout/Footer.tsx`):
+- Add "Powered by Texcortech Systems" text at the very bottom
+
+**9. Routes** (`src/App.tsx`):
+- Add `/admin/withdrawals` route
+
+### Files
 
 | File | Action |
 |------|--------|
-| Migration SQL | Create `platform_settings` table + seed automotive categories |
-| `src/pages/admin/AdminCategories.tsx` | Full rewrite -- tree view with CRUD + image upload |
-| `src/pages/admin/AdminSettings.tsx` | Full rewrite -- functional settings with all controls |
-| `src/components/shared/BulkProductImport.tsx` | Add Excel template support + xlsx parsing |
-| `src/pages/admin/AdminBulkImport.tsx` | No change needed |
-| `src/pages/vendor/VendorBulkImport.tsx` | No change needed |
+| Migration SQL | Create `withdrawal_requests` table + RLS |
+| `src/pages/admin/AdminDashboard.tsx` | Rewrite with analytics, time filters, top performers |
+| `src/pages/admin/AdminWithdrawals.tsx` | Create |
+| `src/pages/vendor/VendorEarnings.tsx` | Rewrite with withdrawal requests + top products |
+| `src/pages/vendor/VendorDashboard.tsx` | Add top products section |
+| `src/components/admin/AdminSidebar.tsx` | Add Withdrawals + Back to Site |
+| `src/components/vendor/VendorSidebar.tsx` | Add Back to Site |
+| `src/components/admin/AdminLayout.tsx` | Add Back to Site button in header |
+| `src/components/layout/Footer.tsx` | Add "Powered by Texcortech Systems" |
+| `src/App.tsx` | Add withdrawals route |
 
-### Technical Details
-- Category image upload uses existing `product-images` bucket with path prefix `categories/`
-- Excel generation uses `xlsx` (SheetJS) library -- lightweight, client-side only
-- Platform settings use JSONB values so we can store strings, numbers, booleans flexibly
-- `platform_settings` table uses `key` as primary key for simple upsert with `.upsert()`
-- Automotive subcategories seeded with Unsplash placeholder images
+### Technical Notes
+- Revenue charts use Recharts (already available via shadcn chart component)
+- Time frame filtering done client-side for simplicity, with date range passed to Supabase queries
+- Withdrawal amounts validated against available balance (net earnings - pending/completed withdrawals)
+- Realtime on `withdrawal_requests` so admin sees new requests instantly
 
