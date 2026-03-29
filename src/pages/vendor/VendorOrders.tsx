@@ -1,0 +1,117 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useOutletContext } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Truck } from "lucide-react";
+import { toast } from "sonner";
+
+const orderStatusFlow = ["pending", "processing", "shipped", "delivered"];
+
+const VendorOrders = () => {
+  const { vendor } = useOutletContext<{ vendor: any }>();
+  const queryClient = useQueryClient();
+
+  const { data: orderItems } = useQuery({
+    queryKey: ["vendor-orders", vendor?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("order_items").select("*, orders(status, created_at, shipping_address, total), products(name)").eq("vendor_id", vendor.id).order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!vendor,
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("order_items").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["vendor-orders"] }); toast.success("Status updated"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const statusColor = (s: string) => {
+    if (s === "delivered") return "bg-success/10 text-success";
+    if (s === "shipped") return "bg-primary/10 text-primary";
+    if (s === "processing") return "bg-warning/10 text-warning";
+    return "bg-muted text-muted-foreground";
+  };
+
+  if (!orderItems?.length) {
+    return (
+      <div className="text-center py-12 bg-card rounded-lg border border-border">
+        <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground">No orders yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">Orders ({orderItems.length})</h2>
+
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary">
+            <tr>
+              <th className="text-left p-3 font-medium">Product</th>
+              <th className="text-left p-3 font-medium">Qty</th>
+              <th className="text-left p-3 font-medium">Total</th>
+              <th className="text-left p-3 font-medium">Status</th>
+              <th className="text-left p-3 font-medium">Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orderItems.map((item: any) => {
+              const idx = orderStatusFlow.indexOf(item.status);
+              const next = idx < orderStatusFlow.length - 1 ? orderStatusFlow[idx + 1] : null;
+              return (
+                <tr key={item.id} className="border-t border-border">
+                  <td className="p-3 font-medium">{(item.products as any)?.name || "—"}</td>
+                  <td className="p-3">{item.quantity}</td>
+                  <td className="p-3">KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
+                  <td className="p-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(item.status)}`}>{item.status}</span></td>
+                  <td className="p-3">
+                    {next ? (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus.mutate({ id: item.id, status: next })}>
+                        Mark {next}
+                      </Button>
+                    ) : <span className="text-xs text-muted-foreground">Completed</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile */}
+      <div className="md:hidden space-y-3">
+        {orderItems.map((item: any) => {
+          const idx = orderStatusFlow.indexOf(item.status);
+          const next = idx < orderStatusFlow.length - 1 ? orderStatusFlow[idx + 1] : null;
+          return (
+            <div key={item.id} className="bg-card rounded-lg border border-border p-4 space-y-2">
+              <div className="flex justify-between items-start">
+                <p className="font-medium text-sm">{(item.products as any)?.name || "—"}</p>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(item.status)}`}>{item.status}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Qty: {item.quantity}</span>
+                <span>KSh {(Number(item.price) * item.quantity).toLocaleString()}</span>
+              </div>
+              {next && (
+                <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => updateStatus.mutate({ id: item.id, status: next })}>
+                  Mark as {next}
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export default VendorOrders;
