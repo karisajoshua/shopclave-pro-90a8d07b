@@ -52,7 +52,7 @@ const AdminDashboard = () => {
   const { data: withdrawals } = useQuery({
     queryKey: ["admin-withdrawals-dash"],
     queryFn: async () => {
-      const { data } = await supabase.from("withdrawal_requests").select("*").eq("status", "completed");
+      const { data } = await (supabase as any).from("withdrawal_requests").select("*").eq("status", "completed");
       return data || [];
     },
     enabled: !!user,

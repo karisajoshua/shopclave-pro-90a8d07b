@@ -29,7 +29,7 @@ const VendorEarnings = () => {
   const { data: withdrawals } = useQuery({
     queryKey: ["vendor-withdrawals", vendor?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("withdrawal_requests")
         .select("*")
         .eq("vendor_id", vendor.id)
@@ -69,7 +69,7 @@ const VendorEarnings = () => {
       if (paymentMethod === "mpesa") details.phone = paymentDetail;
       else if (paymentMethod === "bank_transfer") details.account = paymentDetail;
       else details.email = paymentDetail;
-      const { error } = await supabase.from("withdrawal_requests").insert({
+      const { error } = await (supabase as any).from("withdrawal_requests").insert({
         vendor_id: vendor.id,
         amount: amt,
         payment_method: paymentMethod,

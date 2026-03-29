@@ -27,6 +27,7 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminBulkImport from "./pages/admin/AdminBulkImport";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 
 // Vendor
 import VendorLayout from "./components/vendor/VendorLayout";
@@ -70,6 +71,7 @@ const App = () => (
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="categories" element={<AdminCategories />} />
                 <Route path="bulk-import" element={<AdminBulkImport />} />
+                <Route path="withdrawals" element={<AdminWithdrawals />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="settings" element={<AdminSettings />} />
               </Route>

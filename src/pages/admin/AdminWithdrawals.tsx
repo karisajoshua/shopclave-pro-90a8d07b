@@ -21,7 +21,7 @@ const AdminWithdrawals = () => {
   const { data: withdrawals, refetch } = useQuery({
     queryKey: ["admin-withdrawals"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("withdrawal_requests")
         .select("*, vendors(store_name, user_id)")
         .order("requested_at", { ascending: false });
@@ -45,7 +45,7 @@ const AdminWithdrawals = () => {
       const updates: any = { status };
       if (notes) updates.admin_notes = notes;
       if (status === "completed" || status === "rejected") updates.processed_at = new Date().toISOString();
-      const { error } = await supabase.from("withdrawal_requests").update(updates).eq("id", id);
+      const { error } = await (supabase as any).from("withdrawal_requests").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
