@@ -9,6 +9,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
@@ -24,13 +25,20 @@ export const RecoveryEmail = ({
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>Reset your Barakaz password</Preview>
     <Body style={main}>
       <Container style={container}>
+        <Img
+          src="https://fyfeyolecqnpriwjgzyo.supabase.co/storage/v1/object/public/email-assets/barakaz-logo.png"
+          alt="Barakaz"
+          width="140"
+          height="auto"
+          style={{ marginBottom: '24px' }}
+        />
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          We received a request to reset your Barakaz password. Click the button
+          below to choose a new password.
         </Text>
         <Button style={button} href={confirmationUrl}>
           Reset Password
@@ -46,26 +54,27 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
+const container = { padding: '30px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: 'hsl(220, 20%, 10%)',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: 'hsl(220, 10%, 46%)',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: 'hsl(13, 100%, 53%)',
   color: '#ffffff',
   fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  borderRadius: '0.5rem',
+  padding: '12px 24px',
   textDecoration: 'none',
+  fontWeight: 'bold' as const,
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
