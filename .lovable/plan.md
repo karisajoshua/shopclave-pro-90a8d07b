@@ -1,53 +1,42 @@
 
 
-## Product Variations System
+## Multi-Image & Video Support for Products
 
 ### Overview
-Add a product variants system so vendors can define options like Size, Color, Material etc. for their products, each variant combination having its own price, stock, and SKU.
+Replace the single image URL field with a multi-image uploader (using Supabase Storage) and add a video URL field for YouTube/Vimeo embeds, for both vendor and admin product management.
 
 ### Database Changes
 
-**New table: `product_variants`**
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | |
-| product_id | uuid (FK) | References products |
-| variant_options | jsonb | e.g. `{"Size": "42", "Color": "Red"}` |
-| price | numeric | Override price (nullable, falls back to product price) |
-| stock | integer | Stock for this specific variant |
-| sku | text | Optional SKU |
-| created_at | timestamptz | |
+**Add `video_url` column to `products` table:**
+```sql
+ALTER TABLE public.products ADD COLUMN video_url text;
+```
 
-**RLS policies:** Same pattern as products -- viewable by everyone, manageable by owning vendor and admins.
+No other schema changes needed — `product_images` table already supports multiple images per product with positioning.
 
-### UI Changes
+### File Changes
 
-**1. AddProductPage (vendor) -- Add variants section**
-- Toggle: "This product has variations"
-- When enabled, vendor can define option types (e.g. "Size", "Color") and their values (e.g. "S, M, L, XL")
-- Auto-generates variant rows from combinations
-- Each variant row shows the option values with editable price override and stock fields
-- The main product stock/price become defaults
+**1. `src/pages/vendor/AddProductPage.tsx`**
+- Replace single "Image URL" input with a multi-image upload section:
+  - File input that uploads to the `product-images` Supabase Storage bucket
+  - Show thumbnails with drag-reorder or position numbers and delete buttons
+  - Support uploading multiple files at once
+- Add a "Video URL" input field (YouTube or Vimeo link) below images
+- On submit: insert multiple rows into `product_images` table with position, save `video_url` on the product
 
-**2. ProductDetailPage (customer) -- Variant selection**
-- Show dropdowns/buttons for each option type (Size picker, Color swatches)
-- Update displayed price and stock based on selected variant
-- Pass selected variant info to cart
+**2. `src/pages/admin/AdminProducts.tsx`**
+- Add an "Edit" action button that opens a dialog/modal for the product
+- The modal includes the same multi-image uploader and video URL field
+- Admin can add/remove images and set/update the video URL
 
-**3. CartContext -- Support variant info**
-- Add optional `variantId` and `variantLabel` to `CartItem` interface
-- Cart deduplication uses `productId + variantId` combo
-
-**4. VendorProducts -- Show variant count**
-- Display variant count badge next to products that have variants
-
-**5. CheckoutPage / Order flow**
-- Store variant details in order_items (add `variant_id` and `variant_options` columns to `order_items`)
+**3. `src/pages/ProductDetailPage.tsx`**
+- Update the image gallery to be interactive: clicking thumbnails swaps the main image
+- If `product.video_url` exists, show a video embed (YouTube/Vimeo iframe) as the last item in the gallery or as a separate tab/section below images
+- Parse YouTube (`youtube.com/watch?v=` or `youtu.be/`) and Vimeo (`vimeo.com/`) URLs to generate proper embed URLs
 
 ### Implementation Order
-1. Create database migration (product_variants table + order_items columns)
-2. Update AddProductPage with variant builder UI
-3. Update ProductDetailPage with variant selectors
-4. Update CartContext to handle variants
-5. Update checkout/order flow to persist variant selections
+1. Database migration — add `video_url` column to products
+2. Update AddProductPage — multi-image upload to Storage + video URL field
+3. Update AdminProducts — add edit modal with image/video management
+4. Update ProductDetailPage — interactive gallery with video embed support
 
