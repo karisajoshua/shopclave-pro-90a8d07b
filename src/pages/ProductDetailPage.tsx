@@ -138,21 +138,12 @@ const ProductDetailPage = () => {
     <MarketplaceLayout>
       <div className="container py-8">
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Images */}
-          <div>
-            <div className="aspect-square rounded-lg overflow-hidden bg-secondary border border-border">
-              <img src={images[0]} alt={product.name} className="w-full h-full object-cover" />
-            </div>
-            {images.length > 1 && (
-              <div className="flex gap-2 mt-3">
-                {images.slice(0, 4).map((img: string, i: number) => (
-                  <div key={i} className="w-16 h-16 rounded-md overflow-hidden border border-border bg-secondary">
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Images & Video */}
+          <ProductGallery
+            images={images}
+            videoUrl={(product as any).video_url}
+            productName={product.name}
+          />
 
           {/* Details */}
           <div>
