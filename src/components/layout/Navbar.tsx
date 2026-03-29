@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "@/contexts/TranslationContext";
 import SidebarMenu from "./MegaMenu";
-import barakazLogo from "@/assets/barakaz-logo.png";
+import barakazLogo from "@/assets/barakaz-logo-color.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
