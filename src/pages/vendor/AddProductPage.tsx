@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, X, Layers } from "lucide-react";
+import { Plus, X, Layers, Upload, Trash2, Video } from "lucide-react";
 
 interface OptionType {
   name: string;
@@ -22,6 +22,13 @@ interface VariantRow {
   price: string;
   stock: string;
   sku: string;
+}
+
+interface ImageFile {
+  file?: File;
+  url: string;
+  preview: string;
+  uploading?: boolean;
 }
 
 function generateCombinations(optionTypes: OptionType[]): Record<string, string>[] {
@@ -51,6 +58,9 @@ const AddProductPage = () => {
   const [optionTypes, setOptionTypes] = useState<OptionType[]>([{ name: "", values: [] }]);
   const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [newValueInputs, setNewValueInputs] = useState<Record<number, string>>({});
+  const [images, setImages] = useState<ImageFile[]>([]);
+  const [videoUrl, setVideoUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -59,7 +69,6 @@ const AddProductPage = () => {
     stock: "0",
     categoryId: "",
     status: "active",
-    imageUrl: "",
   });
 
   const { data: categories } = useQuery({
@@ -87,6 +96,38 @@ const AddProductPage = () => {
     });
     return result;
   })();
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newImages: ImageFile[] = files.map(file => ({
+      file,
+      url: "",
+      preview: URL.createObjectURL(file),
+    }));
+    setImages(prev => [...prev, ...newImages]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const uploadImages = async (productId: string): Promise<string[]> => {
+    const urls: string[] = [];
+    for (const img of images) {
+      if (img.file) {
+        const ext = img.file.name.split(".").pop();
+        const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from("product-images").upload(path, img.file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+        urls.push(urlData.publicUrl);
+      } else if (img.url) {
+        urls.push(img.url);
+      }
+    }
+    return urls;
+  };
 
   const regenerateVariants = (opts: OptionType[]) => {
     const combos = generateCombinations(opts);
@@ -162,15 +203,22 @@ const AddProductPage = () => {
         stock: hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : parseInt(form.stock) || 0,
         category_id: form.categoryId || null,
         status: form.status,
+        video_url: videoUrl.trim() || null,
       }).select().single();
       if (error) throw error;
 
-      if (form.imageUrl.trim() && product) {
-        await supabase.from("product_images").insert({
+      // Upload images to storage and insert into product_images
+      if (images.length > 0 && product) {
+        const urls = await uploadImages(product.id);
+        const imageRows = urls.map((url, idx) => ({
           product_id: product.id,
-          url: form.imageUrl.trim(),
-          position: 0,
-        });
+          url,
+          position: idx,
+        }));
+        if (imageRows.length > 0) {
+          const { error: imgErr } = await supabase.from("product_images").insert(imageRows);
+          if (imgErr) throw imgErr;
+        }
       }
 
       if (hasVariants && variantRows.length > 0 && product) {
@@ -260,9 +308,54 @@ const AddProductPage = () => {
           </div>
         )}
 
+        {/* Multi-Image Upload */}
+        <div className="border-t border-border pt-4">
+          <Label className="text-base font-semibold mb-3 block">Product Images</Label>
+          <div className="flex flex-wrap gap-3 mb-3">
+            {images.map((img, idx) => (
+              <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-secondary group">
+                <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                <span className="absolute bottom-0.5 left-0.5 bg-background/80 text-[10px] px-1 rounded font-medium">{idx + 1}</span>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Upload className="h-5 w-5" />
+              <span className="text-[10px]">Upload</span>
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+          <p className="text-xs text-muted-foreground">Upload multiple images. First image will be the main product image.</p>
+        </div>
+
+        {/* Video URL */}
         <div>
-          <Label>Image URL</Label>
-          <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://example.com/image.jpg" />
+          <div className="flex items-center gap-2 mb-1">
+            <Video className="h-4 w-4 text-muted-foreground" />
+            <Label>Video URL (YouTube or Vimeo)</Label>
+          </div>
+          <Input
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+          />
         </div>
 
         {/* Variants Section */}

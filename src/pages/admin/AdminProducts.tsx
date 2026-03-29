@@ -3,20 +3,34 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Star, StarOff, Eye, EyeOff } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import barakazIcon from "@/assets/barakaz-icon.png";
+
+interface EditProduct {
+  id: string;
+  name: string;
+  video_url: string | null;
+  images: { id: string; url: string; position: number }[];
+}
 
 const AdminProducts = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [editProduct, setEditProduct] = useState<EditProduct | null>(null);
+  const [newFiles, setNewFiles] = useState<{ file: File; preview: string }[]>([]);
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*, vendors(store_name), product_images(url)").order("created_at", { ascending: false });
+      const { data } = await supabase.from("products").select("*, vendors(store_name), product_images(id, url, position)").order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!user,
@@ -33,6 +47,71 @@ const AdminProducts = () => {
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  const openEdit = (p: any) => {
+    setEditProduct({
+      id: p.id,
+      name: p.name,
+      video_url: p.video_url,
+      images: (p.product_images || []).sort((a: any, b: any) => a.position - b.position),
+    });
+    setEditVideoUrl(p.video_url || "");
+    setNewFiles([]);
+  };
+
+  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setNewFiles(prev => [...prev, ...files.map(f => ({ file: f, preview: URL.createObjectURL(f) }))]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeExistingImage = async (imageId: string) => {
+    if (!editProduct) return;
+    await supabase.from("product_images").delete().eq("id", imageId);
+    setEditProduct({
+      ...editProduct,
+      images: editProduct.images.filter(i => i.id !== imageId),
+    });
+  };
+
+  const removeNewFile = (idx: number) => {
+    setNewFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editProduct) return;
+    setSaving(true);
+    try {
+      // Update video_url
+      await supabase.from("products").update({ video_url: editVideoUrl.trim() || null }).eq("id", editProduct.id);
+
+      // Upload new files
+      if (newFiles.length > 0) {
+        const startPosition = editProduct.images.length;
+        for (let i = 0; i < newFiles.length; i++) {
+          const f = newFiles[i];
+          const ext = f.file.name.split(".").pop();
+          const path = `${editProduct.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error } = await supabase.storage.from("product-images").upload(path, f.file);
+          if (error) throw error;
+          const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+          await supabase.from("product_images").insert({
+            product_id: editProduct.id,
+            url: urlData.publicUrl,
+            position: startPosition + i,
+          });
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Product updated");
+      setEditProduct(null);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const filtered = products?.filter((p: any) =>
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -77,6 +156,9 @@ const AdminProducts = () => {
                 </td>
                 <td className="p-3">
                   <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-7" title="Edit images & video" onClick={() => openEdit(p)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button size="sm" variant="ghost" className="h-7" title={p.featured ? "Unfeature" : "Feature"}
                       onClick={() => updateProduct.mutate({ id: p.id, updates: { featured: !p.featured } })}>
                       {p.featured ? <Star className="h-4 w-4 text-warning fill-warning" /> : <StarOff className="h-4 w-4" />}
@@ -92,6 +174,82 @@ const AdminProducts = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editProduct} onOpenChange={(open) => !open && setEditProduct(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit: {editProduct?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="font-semibold mb-2 block">Images</Label>
+              <div className="flex flex-wrap gap-3 mb-3">
+                {editProduct?.images.map((img, idx) => (
+                  <div key={img.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-secondary group">
+                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeExistingImage(img.id)}
+                      className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <span className="absolute bottom-0.5 left-0.5 bg-background/80 text-[10px] px-1 rounded font-medium">{idx + 1}</span>
+                  </div>
+                ))}
+                {newFiles.map((f, idx) => (
+                  <div key={`new-${idx}`} className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-dashed border-primary/40 bg-secondary group">
+                    <img src={f.preview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeNewFile(idx)}
+                      className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span className="text-[10px]">Upload</span>
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleEditFileSelect}
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Video className="h-4 w-4 text-muted-foreground" />
+                <Label>Video URL (YouTube or Vimeo)</Label>
+              </div>
+              <Input
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setEditProduct(null)}>Cancel</Button>
+              <Button className="flex-1 font-semibold" disabled={saving} onClick={handleSaveEdit}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
