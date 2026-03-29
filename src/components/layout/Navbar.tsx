@@ -1,150 +1,149 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, User, Menu, X } from "lucide-react";
+import { ShoppingCart, Search, Menu, MapPin, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
-import DesktopMegaMenu, { MobileMegaMenu } from "./MegaMenu";
+import { useLocale } from "@/hooks/useLocale";
+import SidebarMenu from "./MegaMenu";
 import barakazLogo from "@/assets/barakaz-logo.png";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
-  const { user, signOut, userRoles } = useAuth();
+  const { user } = useAuth();
   const { totalItems } = useCart();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { country, language, changeLanguage, languages } = useLocale();
 
-  const isVendor = userRoles.includes("vendor");
-  const isAdmin = userRoles.includes("admin");
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-50">
-      {/* Top banner */}
-      <div className="bg-marketplace-banner text-primary-foreground text-xs py-1.5 text-center tracking-wide">
-        Free delivery on orders over KSh 2,000 | <span className="font-semibold">Shop now</span>
-      </div>
-
-      {/* Main nav */}
-      <nav className="bg-card shadow-sm border-b border-border">
-        <div className="container flex items-center gap-4 h-16">
-          {/* Logo */}
-          <Link to="/" className="shrink-0">
-            <img
-              src={barakazLogo}
-              alt="Barakaz"
-              className="h-9 w-auto mix-blend-multiply dark:mix-blend-normal dark:brightness-0 dark:invert"
-            />
-          </Link>
-
-          {/* Search - desktop */}
-          <div className="hidden md:flex flex-1 max-w-xl">
-            <div className="relative w-full">
-              <Input
-                placeholder="Search products, brands and categories..."
-                className="pr-10 bg-secondary border-none h-10 rounded-lg"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
-                  }
-                }}
+    <>
+      <header className="sticky top-0 z-50">
+        {/* Main dark navbar */}
+        <nav className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
+          <div className="container flex items-center gap-2 md:gap-4 h-14 md:h-16">
+            {/* Logo */}
+            <Link to="/" className="shrink-0">
+              <img
+                src={barakazLogo}
+                alt="Barakaz"
+                className="h-8 md:h-10 w-auto brightness-0 invert"
               />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-2 ml-auto">
-            {user ? (
-              <div className="hidden md:flex items-center gap-2">
-                <Link to="/account">
-                  <Button variant="ghost" size="sm" className="gap-1.5">
-                    <User className="h-4 w-4" />
-                    <span className="text-sm">Account</span>
-                  </Button>
-                </Link>
-                {isVendor && (
-                  <Link to="/vendor/dashboard">
-                    <Button variant="ghost" size="sm" className="text-sm">Seller Hub</Button>
-                  </Link>
-                )}
-                {isAdmin && (
-                  <Link to="/admin">
-                    <Button variant="ghost" size="sm" className="text-sm">Admin</Button>
-                  </Link>
-                )}
-                <Button variant="ghost" size="sm" onClick={signOut} className="text-sm">
-                  Sign Out
-                </Button>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center gap-2">
-                <Link to="/auth">
-                  <Button variant="ghost" size="sm" className="gap-1.5">
-                    <User className="h-4 w-4" />
-                    <span className="text-sm">Sign In</span>
-                  </Button>
-                </Link>
-              </div>
-            )}
-
-            <Link to="/cart" className="relative">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {totalItems}
-                  </span>
-                )}
-              </Button>
             </Link>
 
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Desktop Mega Menu */}
-        <DesktopMegaMenu />
-
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div className="md:hidden bg-card border-t border-border max-h-[80vh] overflow-y-auto animate-in slide-in-from-top-2 duration-200">
-            <div className="p-4 space-y-3">
-              <Input
-                placeholder="Search products..."
-                className="bg-secondary border-none"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
-                    setMobileOpen(false);
-                  }
-                }}
-              />
-
-              <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
-
-              <div className="border-t border-border pt-3 space-y-2">
-                {user ? (
-                  <>
-                    <Link to="/account" className="block py-2 text-sm" onClick={() => setMobileOpen(false)}>My Account</Link>
-                    {isVendor && <Link to="/vendor/dashboard" className="block py-2 text-sm" onClick={() => setMobileOpen(false)}>Seller Hub</Link>}
-                    {isAdmin && <Link to="/admin" className="block py-2 text-sm" onClick={() => setMobileOpen(false)}>Admin</Link>}
-                    <button onClick={() => { signOut(); setMobileOpen(false); }} className="block py-2 text-sm text-destructive">Sign Out</button>
-                  </>
-                ) : (
-                  <Link to="/auth" className="block py-2 text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Sign In / Register</Link>
-                )}
+            {/* Deliver to */}
+            <div className="hidden md:flex items-center gap-1 text-xs shrink-0 cursor-default hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-1 py-1">
+              <MapPin className="h-4 w-4 text-primary-foreground/70" />
+              <div className="leading-tight">
+                <span className="text-primary-foreground/70 block">Deliver to</span>
+                <span className="font-bold text-sm">{country.name}</span>
               </div>
             </div>
+
+            {/* Search bar */}
+            <div className="flex-1 flex">
+              <div className="relative w-full flex">
+                <Input
+                  placeholder="Search Barakaz"
+                  className="h-10 rounded-l-md rounded-r-none bg-white text-foreground border-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--marketplace-orange))] pr-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                <button
+                  onClick={handleSearch}
+                  className="bg-[hsl(var(--marketplace-orange-hover))] hover:bg-[hsl(var(--marketplace-orange))] px-3 rounded-r-md flex items-center justify-center"
+                >
+                  <Search className="h-5 w-5 text-primary-foreground" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right actions */}
+            <div className="flex items-center gap-1 md:gap-3 shrink-0">
+              {/* Language */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="hidden md:flex items-center gap-1 text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1">
+                    <Globe className="h-4 w-4" />
+                    <span className="font-bold text-sm">{language}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[140px]">
+                  {languages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => changeLanguage(lang.code)}
+                      className={language === lang.code ? "font-bold" : ""}
+                    >
+                      {lang.label} ({lang.code})
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Account */}
+              <Link
+                to={user ? "/account" : "/auth"}
+                className="hidden md:flex flex-col text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1"
+              >
+                <span className="text-primary-foreground/70 text-[11px]">
+                  {user ? "Hello, welcome" : "Hello, Sign in"}
+                </span>
+                <span className="font-bold text-sm leading-tight">Account & Lists</span>
+              </Link>
+
+              {/* Cart */}
+              <Link to="/cart" className="relative flex items-center gap-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1">
+                <div className="relative">
+                  <ShoppingCart className="h-7 w-7" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[hsl(var(--marketplace-orange))] text-xs font-extrabold">
+                      {totalItems}
+                    </span>
+                  )}
+                </div>
+                <span className="hidden md:inline text-xs font-bold">Cart</span>
+              </Link>
+            </div>
           </div>
-        )}
-      </nav>
-    </header>
+        </nav>
+
+        {/* Secondary nav bar */}
+        <div className="bg-[hsl(var(--nav-secondary))] text-primary-foreground">
+          <div className="container flex items-center gap-0 h-10 text-sm overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center gap-1 font-bold px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0"
+            >
+              <Menu className="h-5 w-5" />
+              <span>All</span>
+            </button>
+            <Link to="/search" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Today's Deals</Link>
+            <Link to="/vendor/register" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Sell on Barakaz</Link>
+            <Link to="/search?category=electronics" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Electronics</Link>
+            <Link to="/search?category=fashion" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Fashion</Link>
+            <Link to="/search?category=home-garden" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">Home & Garden</Link>
+            <Link to="/search?category=health-beauty" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">Health & Beauty</Link>
+            <Link to="/search?category=sports" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden lg:inline">Sports</Link>
+          </div>
+        </div>
+      </header>
+
+      <SidebarMenu open={sidebarOpen} onOpenChange={setSidebarOpen} />
+    </>
   );
 };
 

@@ -58,6 +58,10 @@
     --marketplace-badge: 0 84% 60%;
     --marketplace-banner: 220 20% 15%;
 
+    /* Amazon-style nav tokens */
+    --nav-dark: 210 29% 10%;
+    --nav-secondary: 210 25% 17%;
+
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
