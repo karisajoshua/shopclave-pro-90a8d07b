@@ -48,6 +48,14 @@ const AdminSettings = () => {
         const { error } = await supabase.from("platform_settings").upsert(row, { onConflict: "key" });
         if (error) throw error;
       }
+      // Propagate commission rate to all vendors
+      if (settings.default_commission_rate) {
+        const rate = parseFloat(settings.default_commission_rate);
+        if (!isNaN(rate)) {
+          const { error } = await supabase.from("vendors").update({ commission_rate: rate }).gte("id", "00000000-0000-0000-0000-000000000000");
+          if (error) throw error;
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-settings"] });
@@ -112,7 +120,7 @@ const AdminSettings = () => {
           <div>
             <Label>Default Commission Rate (%)</Label>
             <Input type="number" min="0" max="100" value={settings.default_commission_rate || "10"} onChange={(e) => update("default_commission_rate", e.target.value)} />
-            <p className="text-xs text-muted-foreground mt-1">Applied to new vendors by default</p>
+            <p className="text-xs text-muted-foreground mt-1">⚠️ Changing this will update ALL existing vendors' commission rate</p>
           </div>
           <div>
             <Label>Minimum Order Amount</Label>
