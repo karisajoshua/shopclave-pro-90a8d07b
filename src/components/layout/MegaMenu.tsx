@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen, Car } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
