@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, ShoppingCart, Minus, Plus, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,7 @@ const ProductDetailPage = () => {
   const { slug } = useParams();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const { t } = useTranslation();
 
   const { data: product, isLoading } = useQuery({
@@ -29,6 +30,57 @@ const ProductDetailPage = () => {
     },
     enabled: !!slug,
   });
+
+  const { data: variants } = useQuery({
+    queryKey: ["product-variants", product?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("product_variants")
+        .select("*")
+        .eq("product_id", product!.id);
+      return data || [];
+    },
+    enabled: !!product?.id,
+  });
+
+  // Extract option types and values from variants
+  const optionTypes = useMemo(() => {
+    if (!variants?.length) return {};
+    const types: Record<string, Set<string>> = {};
+    variants.forEach((v: any) => {
+      const opts = v.variant_options as Record<string, string>;
+      Object.entries(opts).forEach(([key, val]) => {
+        if (!types[key]) types[key] = new Set();
+        types[key].add(val);
+      });
+    });
+    return Object.fromEntries(Object.entries(types).map(([k, v]) => [k, Array.from(v)]));
+  }, [variants]);
+
+  const hasVariants = Object.keys(optionTypes).length > 0;
+
+  // Auto-select first options
+  useMemo(() => {
+    if (hasVariants && Object.keys(selectedOptions).length === 0) {
+      const defaults: Record<string, string> = {};
+      Object.entries(optionTypes).forEach(([key, values]) => {
+        defaults[key] = values[0];
+      });
+      setSelectedOptions(defaults);
+    }
+  }, [optionTypes, hasVariants]);
+
+  // Find matching variant
+  const selectedVariant = useMemo(() => {
+    if (!hasVariants || !variants?.length) return null;
+    return variants.find((v: any) => {
+      const opts = v.variant_options as Record<string, string>;
+      return Object.entries(selectedOptions).every(([key, val]) => opts[key] === val);
+    }) || null;
+  }, [variants, selectedOptions, hasVariants]);
+
+  const displayPrice = selectedVariant?.price ?? product?.price;
+  const displayStock = hasVariants ? (selectedVariant?.stock ?? 0) : product?.stock;
 
   if (isLoading) {
     return (
@@ -62,14 +114,20 @@ const ProductDetailPage = () => {
     : [barakazIcon];
 
   const handleAddToCart = () => {
+    const variantLabel = hasVariants
+      ? Object.entries(selectedOptions).map(([k, v]) => `${k}: ${v}`).join(", ")
+      : undefined;
+
     for (let i = 0; i < quantity; i++) {
       addItem({
         productId: product.id,
         name: product.name,
-        price: Number(product.price),
+        price: Number(displayPrice),
         image: images[0],
         vendorId: product.vendor_id,
         vendorName: (product.vendors as any)?.store_name || "Unknown Seller",
+        variantId: selectedVariant?.id || undefined,
+        variantLabel,
       });
     }
     toast.success(`${product.name} added to cart`);
@@ -112,11 +170,38 @@ const ProductDetailPage = () => {
             </div>
 
             <div className="mb-6">
-              <p className="text-3xl font-bold text-foreground">KSh {Number(product.price).toLocaleString()}</p>
+              <p className="text-3xl font-bold text-foreground">KSh {Number(displayPrice).toLocaleString()}</p>
               {product.compare_at_price && (
                 <p className="text-sm text-muted-foreground line-through mt-1">KSh {Number(product.compare_at_price).toLocaleString()}</p>
               )}
             </div>
+
+            {/* Variant Selectors */}
+            {hasVariants && (
+              <div className="space-y-4 mb-6">
+                {Object.entries(optionTypes).map(([optName, values]) => (
+                  <div key={optName}>
+                    <Label className="text-sm font-medium mb-2 block">{optName}</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {values.map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setSelectedOptions(prev => ({ ...prev, [optName]: val }))}
+                          className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                            selectedOptions[optName] === val
+                              ? "border-primary bg-primary/10 text-primary font-medium"
+                              : "border-border text-muted-foreground hover:border-foreground/30"
+                          }`}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center gap-3 mb-6">
               <div className="flex items-center border border-border rounded-lg">
@@ -128,15 +213,15 @@ const ProductDetailPage = () => {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <Button className="flex-1 font-semibold gap-2" size="lg" onClick={handleAddToCart}>
+              <Button className="flex-1 font-semibold gap-2" size="lg" onClick={handleAddToCart} disabled={hasVariants && !selectedVariant}>
                 <ShoppingCart className="h-5 w-5" />
                 {t("product.addToCart")}
               </Button>
             </div>
 
             <div className="text-sm text-muted-foreground">
-              <p className={`font-medium ${product.stock > 0 ? "text-success" : "text-destructive"}`}>
-                {product.stock > 0 ? `${t("product.inStock")} (${product.stock} ${t("product.available")})` : t("product.outOfStock")}
+              <p className={`font-medium ${(displayStock ?? 0) > 0 ? "text-success" : "text-destructive"}`}>
+                {(displayStock ?? 0) > 0 ? `${t("product.inStock")} (${displayStock} ${t("product.available")})` : t("product.outOfStock")}
               </p>
             </div>
 
@@ -152,5 +237,9 @@ const ProductDetailPage = () => {
     </MarketplaceLayout>
   );
 };
+
+const Label = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <span className={`text-sm font-medium ${className}`}>{children}</span>
+);
 
 export default ProductDetailPage;
