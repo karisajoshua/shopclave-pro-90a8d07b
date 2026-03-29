@@ -11,6 +11,7 @@ import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -19,6 +20,27 @@ const AuthPage = () => {
   const [appleLoading, setAppleLoading] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast.error("Please enter your email");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await (await import("@/integrations/supabase/client")).supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Password reset link sent! Check your email.");
+      setIsForgotPassword(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reset link");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
