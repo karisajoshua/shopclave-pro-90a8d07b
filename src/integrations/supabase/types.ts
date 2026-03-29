@@ -190,6 +190,13 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       orders: {
@@ -380,6 +387,13 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "products_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -546,11 +560,44 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "withdrawal_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      vendors_public: {
+        Row: {
+          banner_url: string | null
+          id: string | null
+          logo_url: string | null
+          status: string | null
+          store_description: string | null
+          store_name: string | null
+        }
+        Insert: {
+          banner_url?: string | null
+          id?: string | null
+          logo_url?: string | null
+          status?: string | null
+          store_description?: string | null
+          store_name?: string | null
+        }
+        Update: {
+          banner_url?: string | null
+          id?: string | null
+          logo_url?: string | null
+          status?: string | null
+          store_description?: string | null
+          store_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
