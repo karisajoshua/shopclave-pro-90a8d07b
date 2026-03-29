@@ -62,6 +62,8 @@ const CheckoutPage = () => {
         vendor_id: item.vendorId,
         quantity: item.quantity,
         price: item.price,
+        variant_id: item.variantId || null,
+        variant_options: item.variantLabel ? { label: item.variantLabel } : null,
       }));
 
       const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
@@ -142,7 +144,9 @@ const CheckoutPage = () => {
               <div className="space-y-2 text-sm mb-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between">
-                    <span className="text-muted-foreground line-clamp-1 flex-1">{item.name} ×{item.quantity}</span>
+                    <span className="text-muted-foreground line-clamp-1 flex-1">
+                      {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ""} ×{item.quantity}
+                    </span>
                     <span className="font-medium ml-2">KSh {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}
