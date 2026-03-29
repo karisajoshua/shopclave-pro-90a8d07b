@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { VendorSidebar } from "./VendorSidebar";
 import { Button } from "@/components/ui/button";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const VendorLayout = () => {
   const { user, loading } = useAuth();
@@ -49,8 +50,19 @@ const VendorLayout = () => {
               {vendor.status}
             </span>
           </header>
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
-            <Outlet context={{ vendor }} />
+          <main
+            className="flex-1 p-4 md:p-6 overflow-auto relative"
+            style={{
+              backgroundImage: `url(${barakazIcon})`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              backgroundSize: "300px",
+            }}
+          >
+            <div className="absolute inset-0 bg-background/95 pointer-events-none" />
+            <div className="relative z-10">
+              <Outlet context={{ vendor }} />
+            </div>
           </main>
         </div>
       </div>

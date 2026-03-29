@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 import { useLocale } from "@/hooks/useLocale";
+import { useTranslation } from "@/contexts/TranslationContext";
 import SidebarMenu from "./MegaMenu";
 import barakazLogo from "@/assets/barakaz-logo.png";
 import {
@@ -20,7 +21,8 @@ const Navbar = () => {
   const { totalItems } = useCart();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { country, language, changeLanguage, languages } = useLocale();
+  const { country, languages } = useLocale();
+  const { language, setLanguage, t } = useTranslation();
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -47,7 +49,7 @@ const Navbar = () => {
             <div className="hidden md:flex items-center gap-1 text-xs shrink-0 cursor-default hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-1 py-1">
               <MapPin className="h-4 w-4 text-primary-foreground/70" />
               <div className="leading-tight">
-                <span className="text-primary-foreground/70 block">Deliver to</span>
+                <span className="text-primary-foreground/70 block">{t("nav.deliverTo")}</span>
                 <span className="font-bold text-sm">{country.name}</span>
               </div>
             </div>
@@ -56,7 +58,7 @@ const Navbar = () => {
             <div className="flex-1 flex">
               <div className="relative w-full flex">
                 <Input
-                  placeholder="Search Barakaz"
+                  placeholder={t("nav.search")}
                   className="h-10 rounded-l-md rounded-r-none bg-white text-foreground border-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--marketplace-orange))] pr-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -81,11 +83,11 @@ const Navbar = () => {
                     <span className="font-bold text-sm">{language}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[140px]">
+                <DropdownMenuContent align="end" className="min-w-[160px] max-h-[400px] overflow-y-auto">
                   {languages.map((lang) => (
                     <DropdownMenuItem
                       key={lang.code}
-                      onClick={() => changeLanguage(lang.code)}
+                      onClick={() => setLanguage(lang.code)}
                       className={language === lang.code ? "font-bold" : ""}
                     >
                       {lang.label} ({lang.code})
@@ -100,9 +102,9 @@ const Navbar = () => {
                 className="hidden md:flex flex-col text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1"
               >
                 <span className="text-primary-foreground/70 text-[11px]">
-                  {user ? "Hello, welcome" : "Hello, Sign in"}
+                  {user ? t("nav.helloWelcome") : t("nav.hello")}
                 </span>
-                <span className="font-bold text-sm leading-tight">Account & Lists</span>
+                <span className="font-bold text-sm leading-tight">{t("nav.accountLists")}</span>
               </Link>
 
               {/* Cart */}
@@ -115,7 +117,7 @@ const Navbar = () => {
                     </span>
                   )}
                 </div>
-                <span className="hidden md:inline text-xs font-bold">Cart</span>
+                <span className="hidden md:inline text-xs font-bold">{t("nav.cart")}</span>
               </Link>
             </div>
           </div>
@@ -129,15 +131,15 @@ const Navbar = () => {
               className="flex items-center gap-1 font-bold px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0"
             >
               <Menu className="h-5 w-5" />
-              <span>All</span>
+              <span>{t("nav.all")}</span>
             </button>
-            <Link to="/search" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Today's Deals</Link>
-            <Link to="/vendor/register" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Sell on Barakaz</Link>
-            <Link to="/search?category=electronics" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Electronics</Link>
-            <Link to="/search?category=fashion" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">Fashion</Link>
-            <Link to="/search?category=home-garden" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">Home & Garden</Link>
-            <Link to="/search?category=health-beauty" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">Health & Beauty</Link>
-            <Link to="/search?category=sports" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden lg:inline">Sports</Link>
+            <Link to="/search" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
+            <Link to="/vendor/register" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
+            <Link to="/search?category=electronics" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.electronics")}</Link>
+            <Link to="/search?category=fashion" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.fashion")}</Link>
+            <Link to="/search?category=home-garden" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">{t("nav.homeGarden")}</Link>
+            <Link to="/search?category=health-beauty" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">{t("nav.healthBeauty")}</Link>
+            <Link to="/search?category=sports" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden lg:inline">{t("nav.sports")}</Link>
           </div>
         </div>
       </header>

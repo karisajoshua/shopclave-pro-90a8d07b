@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 import { Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const AdminLayout = () => {
   const { user, userRoles, loading } = useAuth();
@@ -32,8 +33,19 @@ const AdminLayout = () => {
               </Link>
             </Button>
           </header>
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
-            <Outlet />
+          <main
+            className="flex-1 p-4 md:p-6 overflow-auto relative"
+            style={{
+              backgroundImage: `url(${barakazIcon})`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              backgroundSize: "300px",
+            }}
+          >
+            <div className="absolute inset-0 bg-background/95 pointer-events-none" />
+            <div className="relative z-10">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

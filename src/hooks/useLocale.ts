@@ -8,6 +8,7 @@ const TIMEZONE_TO_COUNTRY: Record<string, { code: string; name: string; currency
   "Africa/Kampala": { code: "UG", name: "Uganda", currency: "UGX", currencySymbol: "USh" },
   "Africa/Accra": { code: "GH", name: "Ghana", currency: "GHS", currencySymbol: "GH₵" },
   "Africa/Cairo": { code: "EG", name: "Egypt", currency: "EGP", currencySymbol: "E£" },
+  "Africa/Mogadishu": { code: "SO", name: "Somalia", currency: "SOS", currencySymbol: "Sh" },
   "America/New_York": { code: "US", name: "United States", currency: "USD", currencySymbol: "$" },
   "America/Chicago": { code: "US", name: "United States", currency: "USD", currencySymbol: "$" },
   "America/Denver": { code: "US", name: "United States", currency: "USD", currencySymbol: "$" },
@@ -15,10 +16,12 @@ const TIMEZONE_TO_COUNTRY: Record<string, { code: string; name: string; currency
   "Europe/London": { code: "GB", name: "United Kingdom", currency: "GBP", currencySymbol: "£" },
   "Europe/Paris": { code: "FR", name: "France", currency: "EUR", currencySymbol: "€" },
   "Europe/Berlin": { code: "DE", name: "Germany", currency: "EUR", currencySymbol: "€" },
+  "Europe/Madrid": { code: "ES", name: "Spain", currency: "EUR", currencySymbol: "€" },
   "Asia/Dubai": { code: "AE", name: "UAE", currency: "AED", currencySymbol: "AED" },
   "Asia/Kolkata": { code: "IN", name: "India", currency: "INR", currencySymbol: "₹" },
   "Asia/Shanghai": { code: "CN", name: "China", currency: "CNY", currencySymbol: "¥" },
   "Asia/Tokyo": { code: "JP", name: "Japan", currency: "JPY", currencySymbol: "¥" },
+  "America/Sao_Paulo": { code: "BR", name: "Brazil", currency: "BRL", currencySymbol: "R$" },
 };
 
 const DEFAULT_LOCALE = { code: "KE", name: "Kenya", currency: "KES", currencySymbol: "KSh" };
@@ -27,6 +30,13 @@ const LANGUAGES = [
   { code: "EN", label: "English" },
   { code: "SW", label: "Kiswahili" },
   { code: "FR", label: "Français" },
+  { code: "ES", label: "Español" },
+  { code: "AR", label: "العربية" },
+  { code: "PT", label: "Português" },
+  { code: "DE", label: "Deutsch" },
+  { code: "ZH", label: "中文" },
+  { code: "SO", label: "Soomaali" },
+  { code: "HI", label: "हिन्दी" },
 ];
 
 export function useLocale() {
