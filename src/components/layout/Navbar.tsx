@@ -41,7 +41,7 @@ const Navbar = () => {
               <img
                 src={barakazLogo}
                 alt="Barakaz"
-                className="h-8 md:h-10 w-auto brightness-0 invert"
+                className="h-8 md:h-10 w-auto"
               />
             </Link>
 
