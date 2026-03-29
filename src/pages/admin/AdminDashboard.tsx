@@ -18,14 +18,13 @@ const AdminDashboard = () => {
     if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
 
-  if (loading || !user) return null;
-
   const { data: vendors } = useQuery({
     queryKey: ["admin-vendors"],
     queryFn: async () => {
       const { data } = await supabase.from("vendors").select("*, profiles(full_name)").order("created_at", { ascending: false });
       return data || [];
     },
+    enabled: !!user,
   });
 
   const { data: allOrders } = useQuery({
@@ -34,6 +33,7 @@ const AdminDashboard = () => {
       const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(20);
       return data || [];
     },
+    enabled: !!user,
   });
 
   const { data: allProducts } = useQuery({
@@ -42,6 +42,7 @@ const AdminDashboard = () => {
       const { data } = await supabase.from("products").select("*, vendors(store_name)").order("created_at", { ascending: false }).limit(20);
       return data || [];
     },
+    enabled: !!user,
   });
 
   const updateVendorStatus = useMutation({
@@ -55,6 +56,8 @@ const AdminDashboard = () => {
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  if (loading || !user) return null;
 
   const pendingVendors = vendors?.filter((v: any) => v.status === "pending") || [];
   const totalRevenue = allOrders?.reduce((sum, o: any) => sum + Number(o.total), 0) || 0;
