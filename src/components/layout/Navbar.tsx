@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "@/contexts/TranslationContext";
 import SidebarMenu from "./MegaMenu";
-import barakazLogo from "@/assets/barakaz-logo-color.png";
+import barakazLogo from "@/assets/barakaz-logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +41,7 @@ const Navbar = () => {
               <img
                 src={barakazLogo}
                 alt="Barakaz"
-                className="h-8 md:h-10 w-auto"
+                className="h-8 md:h-10 w-auto brightness-0 invert"
               />
             </Link>
 
