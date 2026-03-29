@@ -18,6 +18,8 @@ const AdminDashboard = () => {
     if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
 
+  if (loading || !user) return null;
+
   const { data: vendors } = useQuery({
     queryKey: ["admin-vendors"],
     queryFn: async () => {
