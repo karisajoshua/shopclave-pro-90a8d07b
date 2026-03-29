@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 24 95% 53%;
+    --primary: 13 100% 53%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -24,7 +24,7 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 24 95% 53%;
+    --accent: 13 100% 53%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -32,18 +32,18 @@
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 24 95% 53%;
+    --ring: 13 100% 53%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary: 13 100% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 24 90% 96%;
-    --sidebar-accent-foreground: 24 95% 30%;
+    --sidebar-accent: 13 90% 96%;
+    --sidebar-accent-foreground: 13 100% 30%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 24 95% 53%;
+    --sidebar-ring: 13 100% 53%;
 
     /* Custom marketplace tokens */
     --success: 142 71% 45%;
@@ -51,9 +51,9 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --marketplace-dark: 220 20% 10%;
-    --marketplace-orange: 24 95% 53%;
-    --marketplace-orange-hover: 24 95% 46%;
-    --marketplace-orange-light: 24 90% 96%;
+    --marketplace-orange: 13 100% 53%;
+    --marketplace-orange-hover: 13 100% 46%;
+    --marketplace-orange-light: 13 90% 96%;
     --marketplace-green: 142 71% 45%;
     --marketplace-badge: 0 84% 60%;
     --marketplace-banner: 220 20% 15%;
