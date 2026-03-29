@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, User } from "lucide-react";
+import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import type { LucideIcon } from "lucide-react";
 
-export const MENU_CATEGORIES = [
+export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; children: any[] }[] = [
   {
-    name: "Electronics", emoji: "💻", slug: "electronics",
+    name: "Electronics", icon: Monitor, slug: "electronics",
     children: [
       { name: "Mobile Phones", slug: "mobile-phones", children: [
         { name: "Smartphones", slug: "smartphones" }, { name: "Feature Phones", slug: "feature-phones" }
