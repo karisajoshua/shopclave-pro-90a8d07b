@@ -9,13 +9,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, TrendingUp, Wallet, Clock } from "lucide-react";
 
+interface PaymentDetails {
+  phone?: string;
+  email?: string;
+  account_name?: string;
+  bank_name?: string;
+  branch?: string;
+  account_number?: string;
+  swift_code?: string;
+}
+
 const VendorEarnings = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("mpesa");
-  const [paymentDetail, setPaymentDetail] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
+
+  const updateDetail = (key: keyof PaymentDetails, value: string) =>
+    setPaymentDetails((prev) => ({ ...prev, [key]: value }));
+
+  const handleMethodChange = (method: string) => {
+    setPaymentMethod(method);
+    setPaymentDetails({});
+  };
 
   const { data: orderItems } = useQuery({
     queryKey: ["vendor-orders", vendor?.id],
@@ -47,7 +65,6 @@ const VendorEarnings = () => {
     .reduce((s: number, w: any) => s + Number(w.amount), 0) || 0;
   const availableBalance = netEarnings - withdrawnOrPending;
 
-  // Top products
   const topProducts = (() => {
     const map: Record<string, { name: string; units: number; revenue: number }> = {};
     orderItems?.forEach((i: any) => {
@@ -60,27 +77,37 @@ const VendorEarnings = () => {
     return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   })();
 
+  const validateDetails = (): string | null => {
+    if (paymentMethod === "mpesa") {
+      if (!paymentDetails.phone?.trim()) return "Enter M-Pesa phone number";
+    } else if (paymentMethod === "bank_transfer") {
+      if (!paymentDetails.account_name?.trim()) return "Enter account name";
+      if (!paymentDetails.bank_name?.trim()) return "Enter bank name";
+      if (!paymentDetails.account_number?.trim()) return "Enter account number";
+    } else if (paymentMethod === "paypal") {
+      if (!paymentDetails.email?.trim()) return "Enter PayPal email";
+    }
+    return null;
+  };
+
   const requestWithdrawal = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(amount);
       if (!amt || amt <= 0 || amt > availableBalance) throw new Error("Invalid amount");
-      if (!paymentDetail.trim()) throw new Error("Enter payment details");
-      const details: any = {};
-      if (paymentMethod === "mpesa") details.phone = paymentDetail;
-      else if (paymentMethod === "bank_transfer") details.account = paymentDetail;
-      else details.email = paymentDetail;
+      const detailError = validateDetails();
+      if (detailError) throw new Error(detailError);
       const { error } = await (supabase as any).from("withdrawal_requests").insert({
         vendor_id: vendor.id,
         amount: amt,
         payment_method: paymentMethod,
-        payment_details: details,
+        payment_details: paymentDetails,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-withdrawals", vendor?.id] });
       setAmount("");
-      setPaymentDetail("");
+      setPaymentDetails({});
       toast({ title: "Withdrawal requested successfully" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -124,26 +151,71 @@ const VendorEarnings = () => {
       {/* Withdrawal Form */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h3 className="font-semibold mb-4">Request Withdrawal</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <Label>Amount (KSh)</Label>
-            <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} max={availableBalance} />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Amount (KSh)</Label>
+              <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} max={availableBalance} />
+            </div>
+            <div>
+              <Label>Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={handleMethodChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mpesa">M-Pesa</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="paypal">PayPal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <Label>Payment Method</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mpesa">M-Pesa</SelectItem>
-                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                <SelectItem value="paypal">PayPal</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>{paymentMethod === "mpesa" ? "Phone Number" : paymentMethod === "bank_transfer" ? "Account Number" : "PayPal Email"}</Label>
-            <Input placeholder={paymentMethod === "mpesa" ? "254..." : paymentMethod === "bank_transfer" ? "Account #" : "email@example.com"} value={paymentDetail} onChange={(e) => setPaymentDetail(e.target.value)} />
-          </div>
+
+          {/* M-Pesa fields */}
+          {paymentMethod === "mpesa" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Phone Number</Label>
+                <Input placeholder="254..." value={paymentDetails.phone || ""} onChange={(e) => updateDetail("phone", e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Bank Transfer fields */}
+          {paymentMethod === "bank_transfer" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Account Name</Label>
+                <Input placeholder="John Doe" value={paymentDetails.account_name || ""} onChange={(e) => updateDetail("account_name", e.target.value)} />
+              </div>
+              <div>
+                <Label>Bank Name</Label>
+                <Input placeholder="e.g. Equity Bank" value={paymentDetails.bank_name || ""} onChange={(e) => updateDetail("bank_name", e.target.value)} />
+              </div>
+              <div>
+                <Label>Branch</Label>
+                <Input placeholder="e.g. Nairobi CBD" value={paymentDetails.branch || ""} onChange={(e) => updateDetail("branch", e.target.value)} />
+              </div>
+              <div>
+                <Label>Account Number</Label>
+                <Input placeholder="Account #" value={paymentDetails.account_number || ""} onChange={(e) => updateDetail("account_number", e.target.value)} />
+              </div>
+              <div>
+                <Label>SWIFT Code</Label>
+                <Input placeholder="e.g. EABORBI" value={paymentDetails.swift_code || ""} onChange={(e) => updateDetail("swift_code", e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* PayPal fields */}
+          {paymentMethod === "paypal" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>PayPal Email</Label>
+                <Input type="email" placeholder="email@example.com" value={paymentDetails.email || ""} onChange={(e) => updateDetail("email", e.target.value)} />
+              </div>
+            </div>
+          )}
+
           <Button onClick={() => requestWithdrawal.mutate()} disabled={requestWithdrawal.isPending || availableBalance <= 0}>
             {requestWithdrawal.isPending ? "Submitting..." : "Request Withdrawal"}
           </Button>
