@@ -11,7 +11,7 @@ const VendorNotifications = () => {
   const { data: notifications } = useQuery({
     queryKey: ["vendor-notifications", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("notifications").select("*").eq("recipient_id", user!.id).order("created_at", { ascending: false });
+      const { data } = await (supabase as any).from("notifications").select("*").eq("recipient_id", user!.id).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!user,
@@ -19,7 +19,7 @@ const VendorNotifications = () => {
 
   const markRead = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notifications").update({ is_read: true } as any).eq("id", id);
+      const { error } = await (supabase as any).from("notifications").update({ is_read: true }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vendor-notifications"] }),

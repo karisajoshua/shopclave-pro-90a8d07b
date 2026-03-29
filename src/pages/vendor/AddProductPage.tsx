@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 const AddProductPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { vendor } = useOutletContext<{ vendor: any }>();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -26,15 +26,6 @@ const AddProductPage = () => {
     imageUrl: "",
   });
 
-  const { data: vendor } = useQuery({
-    queryKey: ["vendor", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("vendors").select("*").eq("user_id", user!.id).single();
-      return data;
-    },
-    enabled: !!user,
-  });
-
   const { data: categories } = useQuery({
     queryKey: ["all-categories"],
     queryFn: async () => {
@@ -43,9 +34,6 @@ const AddProductPage = () => {
     },
   });
 
-  if (!user) { navigate("/auth"); return null; }
-
-  // Build a flat list with indented names for subcategories
   const categoryOptions = (() => {
     if (!categories) return [];
     const topLevel = categories.filter((c: any) => !c.parent_id);
@@ -85,7 +73,6 @@ const AddProductPage = () => {
       }).select().single();
       if (error) throw error;
 
-      // If image URL provided, insert it
       if (form.imageUrl.trim() && product) {
         await supabase.from("product_images").insert({
           product_id: product.id,
@@ -95,7 +82,7 @@ const AddProductPage = () => {
       }
 
       toast.success("Product added!");
-      navigate("/vendor/dashboard");
+      navigate("/vendor/products");
     } catch (err: any) {
       toast.error(err.message || "Failed to add product");
     } finally {
@@ -104,68 +91,66 @@ const AddProductPage = () => {
   };
 
   return (
-    <MarketplaceLayout>
-      <div className="container py-8 max-w-lg">
-        <h1 className="font-display text-2xl font-bold mb-6">Add New Product</h1>
-        <form onSubmit={handleSubmit} className="bg-card rounded-lg border border-border p-6 space-y-4">
+    <div className="max-w-lg">
+      <h2 className="text-xl font-bold mb-6">Add New Product</h2>
+      <form onSubmit={handleSubmit} className="bg-card rounded-lg border border-border p-6 space-y-4">
+        <div>
+          <Label>Product Name *</Label>
+          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </div>
+        <div>
+          <Label>Description</Label>
+          <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
+        </div>
+        <div>
+          <Label>Category</Label>
+          <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
+            <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Product Name *</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <Label>Price (KSh) *</Label>
+            <Input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
+            <Label>Compare at Price</Label>
+            <Input type="number" min="0" step="0.01" value={form.compareAtPrice} onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Stock Quantity</Label>
+            <Input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
           </div>
           <div>
-            <Label>Category</Label>
-            <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
-              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {categoryOptions.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
-                ))}
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Price (KSh) *</Label>
-              <Input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-            </div>
-            <div>
-              <Label>Compare at Price</Label>
-              <Input type="number" min="0" step="0.01" value={form.compareAtPrice} onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Stock Quantity</Label>
-              <Input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
-            </div>
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label>Image URL</Label>
-            <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://example.com/image.jpg" />
-          </div>
-          <div className="flex gap-3">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/vendor/dashboard")}>Cancel</Button>
-            <Button type="submit" className="flex-1 font-semibold" disabled={loading}>
-              {loading ? "Adding..." : "Add Product"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </MarketplaceLayout>
+        </div>
+        <div>
+          <Label>Image URL</Label>
+          <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://example.com/image.jpg" />
+        </div>
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/vendor/products")}>Cancel</Button>
+          <Button type="submit" className="flex-1 font-semibold" disabled={loading}>
+            {loading ? "Adding..." : "Add Product"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 
