@@ -14,10 +14,30 @@ import AccountPage from "./pages/AccountPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import SearchPage from "./pages/SearchPage";
 import VendorRegisterPage from "./pages/VendorRegisterPage";
-import VendorDashboard from "./pages/vendor/VendorDashboard";
-import AddProductPage from "./pages/vendor/AddProductPage";
-import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
+
+// Admin
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminVendors from "./pages/admin/AdminVendors";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminBulkImport from "./pages/admin/AdminBulkImport";
+import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminSettings from "./pages/admin/AdminSettings";
+
+// Vendor
+import VendorLayout from "./components/vendor/VendorLayout";
+import VendorDashboard from "./pages/vendor/VendorDashboard";
+import VendorProducts from "./pages/vendor/VendorProducts";
+import AddProductPage from "./pages/vendor/AddProductPage";
+import VendorOrders from "./pages/vendor/VendorOrders";
+import VendorEarnings from "./pages/vendor/VendorEarnings";
+import VendorNotifications from "./pages/vendor/VendorNotifications";
+import VendorSettings from "./pages/vendor/VendorSettings";
+import VendorBulkImport from "./pages/vendor/VendorBulkImport";
 
 const queryClient = new QueryClient();
 
@@ -40,9 +60,32 @@ const App = () => (
               <Route path="/search" element={<SearchPage />} />
               <Route path="/category/:slug" element={<SearchPage />} />
               <Route path="/vendor/register" element={<VendorRegisterPage />} />
-              <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-              <Route path="/vendor/products/new" element={<AddProductPage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
+
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="vendors" element={<AdminVendors />} />
+                <Route path="products" element={<AdminProducts />} />
+                <Route path="orders" element={<AdminOrders />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="categories" element={<AdminCategories />} />
+                <Route path="bulk-import" element={<AdminBulkImport />} />
+                <Route path="notifications" element={<AdminNotifications />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
+
+              {/* Vendor routes */}
+              <Route path="/vendor" element={<VendorLayout />}>
+                <Route path="dashboard" element={<VendorDashboard />} />
+                <Route path="products" element={<VendorProducts />} />
+                <Route path="products/new" element={<AddProductPage />} />
+                <Route path="orders" element={<VendorOrders />} />
+                <Route path="earnings" element={<VendorEarnings />} />
+                <Route path="notifications" element={<VendorNotifications />} />
+                <Route path="settings" element={<VendorSettings />} />
+                <Route path="bulk-import" element={<VendorBulkImport />} />
+              </Route>
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>
