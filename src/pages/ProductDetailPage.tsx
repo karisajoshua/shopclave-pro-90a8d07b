@@ -9,6 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/contexts/TranslationContext";
+import ProductGallery from "@/components/product/ProductGallery";
 import barakazIcon from "@/assets/barakaz-icon.png";
 
 const ProductDetailPage = () => {
