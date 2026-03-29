@@ -92,6 +92,15 @@ const Footer = () => (
         </p>
       </div>
     </div>
+
+    {/* Powered by */}
+    <div className="bg-[hsl(var(--nav-dark))] border-t border-primary-foreground/5">
+      <div className="container py-3 text-center">
+        <p className="text-[11px] text-primary-foreground/40">
+          Powered by Texcortech Systems
+        </p>
+      </div>
+    </div>
   </footer>
 );
 

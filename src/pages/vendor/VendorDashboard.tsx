@@ -30,6 +30,19 @@ const VendorDashboard = () => {
   const totalCommission = orderItems?.reduce((sum, i: any) => sum + Number(i.commission_amount), 0) || 0;
   const netEarnings = totalRevenue - totalCommission;
 
+  // Top selling products
+  const topProducts = (() => {
+    const map: Record<string, { name: string; units: number; revenue: number }> = {};
+    orderItems?.forEach((i: any) => {
+      const pid = i.product_id;
+      if (!pid) return;
+      if (!map[pid]) map[pid] = { name: (i.products as any)?.name || "Unknown", units: 0, revenue: 0 };
+      map[pid].units += i.quantity;
+      map[pid].revenue += Number(i.price) * i.quantity;
+    });
+    return Object.values(map).sort((a, b) => b.units - a.units).slice(0, 5);
+  })();
+
   const stats = [
     { label: "Revenue", value: `KSh ${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-success" },
     { label: "Orders", value: orderItems?.length || 0, icon: ShoppingBag, color: "text-primary" },
@@ -52,6 +65,36 @@ const VendorDashboard = () => {
         ))}
       </div>
 
+      {/* Top Selling Products */}
+      {topProducts.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-3">Top Selling Products</h3>
+          <div className="bg-card rounded-lg border border-border overflow-x-auto">
+            <table className="w-full text-sm min-w-[400px]">
+              <thead className="bg-secondary">
+                <tr>
+                  <th className="text-left p-3 font-medium">#</th>
+                  <th className="text-left p-3 font-medium">Product</th>
+                  <th className="text-left p-3 font-medium">Units Sold</th>
+                  <th className="text-left p-3 font-medium">Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topProducts.map((p, idx) => (
+                  <tr key={idx} className="border-t border-border">
+                    <td className="p-3 text-muted-foreground">{idx + 1}</td>
+                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3">{p.units}</td>
+                    <td className="p-3">KSh {p.revenue.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Orders */}
       {orderItems && orderItems.length > 0 && (
         <div>
           <h3 className="font-semibold mb-3">Recent Orders</h3>

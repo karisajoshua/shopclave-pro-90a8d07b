@@ -1,6 +1,6 @@
-import { LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree, Settings } from "lucide-react";
+import { LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree, Settings, Wallet, Home } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ const items = [
   { title: "Vendors", url: "/admin/vendors", icon: Store },
   { title: "Products", url: "/admin/products", icon: Package },
   { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
+  { title: "Withdrawals", url: "/admin/withdrawals", icon: Wallet },
   { title: "Categories", url: "/admin/categories", icon: FolderTree },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Bulk Import", url: "/admin/bulk-import", icon: Upload },
@@ -52,6 +53,21 @@ export function AdminSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+                    <Home className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>Back to Site</span>}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
