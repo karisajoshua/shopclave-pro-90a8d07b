@@ -13,10 +13,17 @@ const AdminVendors = () => {
   const [search, setSearch] = useState("");
 
   const { data: vendors } = useQuery({
-    queryKey: ["admin-vendors"],
+    queryKey: ["admin-vendors-detail"],
     queryFn: async () => {
-      const { data } = await supabase.from("vendors").select("*, profiles(full_name)").order("created_at", { ascending: false });
-      return data || [];
+      const { data: vendorData } = await supabase.from("vendors").select("*").order("created_at", { ascending: false });
+      if (!vendorData || vendorData.length === 0) return [];
+      
+      // Fetch profile names separately since there's no FK relationship
+      const userIds = vendorData.map((v: any) => v.user_id);
+      const { data: profileData } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+      
+      const profileMap = new Map((profileData || []).map((p: any) => [p.user_id, p.full_name]));
+      return vendorData.map((v: any) => ({ ...v, owner_name: profileMap.get(v.user_id) || "—" }));
     },
     enabled: !!user,
   });
@@ -27,7 +34,7 @@ const AdminVendors = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-vendors-detail"] });
       toast.success("Vendor status updated");
     },
     onError: (err: any) => toast.error(err.message),
@@ -39,7 +46,7 @@ const AdminVendors = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-vendors-detail"] });
       toast.success("Commission rate updated");
     },
     onError: (err: any) => toast.error(err.message),
@@ -100,7 +107,7 @@ const VendorRow = ({ vendor: v, statusColor, onUpdateStatus, onUpdateCommission 
   return (
     <tr className="border-t border-border">
       <td className="p-3 font-medium">{v.store_name}</td>
-      <td className="p-3 text-muted-foreground">{v.profiles?.full_name || "—"}</td>
+      <td className="p-3 text-muted-foreground">{v.owner_name || "—"}</td>
       <td className="p-3">
         {editRate ? (
           <div className="flex items-center gap-1">
