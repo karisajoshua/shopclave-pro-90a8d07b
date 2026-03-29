@@ -1,89 +1,35 @@
 
 
-## Plan: Withdrawal System, Analytics Dashboard, Top Performers, Footer Update, and Navigation
+## Plan: Fix Commission Rate Propagation and Withdrawal Form Fields
 
-### Database Changes
+### Problem 1: Commission Rate Not Taking Effect
+The admin's `default_commission_rate` in `platform_settings` only affects new vendors. Existing vendors keep their original `commission_rate` value in the `vendors` table. When admin changes it, nothing updates the vendors table.
 
-**Create `withdrawal_requests` table:**
-```sql
-CREATE TABLE public.withdrawal_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  vendor_id uuid NOT NULL,
-  amount numeric NOT NULL,
-  payment_method text NOT NULL DEFAULT 'mpesa', -- mpesa, bank_transfer, paypal
-  payment_details jsonb DEFAULT '{}',
-  status text NOT NULL DEFAULT 'pending', -- pending, approved, completed, rejected
-  admin_notes text,
-  requested_at timestamptz NOT NULL DEFAULT now(),
-  processed_at timestamptz
-);
-ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
--- Vendors can view own, insert own; Admins can view all, update all
-ALTER PUBLICATION supabase_realtime ADD TABLE public.withdrawal_requests;
-```
+**Fix:** When saving settings, if `default_commission_rate` changed, also update all vendors' `commission_rate` in the `vendors` table. Add a confirmation note in the UI that this applies to all vendors.
 
-RLS policies: vendors SELECT/INSERT where vendor matches their own vendor record; admins SELECT/UPDATE all.
+**File:** `src/pages/admin/AdminSettings.tsx`
+- After saving platform settings, run `supabase.from("vendors").update({ commission_rate: newRate })` to apply globally
+- Add a note under the commission field: "Changing this will update ALL existing vendors"
 
-### Changes Summary
+### Problem 2: Withdrawal Form Needs Dynamic Fields
+Currently a single `paymentDetail` text field is used for all methods. Bank transfer needs multiple fields (account name, bank name, branch, account number, SWIFT code). PayPal needs an email input.
 
-**1. Vendor Earnings page rewrite** (`src/pages/vendor/VendorEarnings.tsx`):
-- Show gross revenue, platform fee, available balance (net earnings minus already-withdrawn/pending amounts)
-- Top performing products table (sorted by revenue)
-- Withdrawal request form: enter amount, choose payment method (M-Pesa, Bank Transfer, PayPal), enter payment details (phone/account number)
-- Withdrawal history table with status badges (pending/approved/completed/rejected)
+**Fix:** Replace single `paymentDetail` state with a `paymentDetails` object. Render different form fields based on selected payment method.
 
-**2. Vendor Dashboard rewrite** (`src/pages/vendor/VendorDashboard.tsx`):
-- Add top selling products section (top 5 by quantity sold)
-- Add sales chart placeholder showing recent order activity
+**File:** `src/pages/vendor/VendorEarnings.tsx`
+- Replace `paymentDetail` string state with `paymentDetails` object state
+- When payment method changes, reset the details object
+- Render method-specific fields:
+  - **M-Pesa**: Phone number input
+  - **Bank Transfer**: Account name, bank name, branch, account number, SWIFT code (5 fields in a grid)
+  - **PayPal**: Email input with `type="email"`
+- Update mutation to send the full `paymentDetails` object
+- Adjust form layout to stack vertically for bank transfer's extra fields
 
-**3. Admin Dashboard rewrite** (`src/pages/admin/AdminDashboard.tsx`):
-- **Time frame selector**: buttons for Last 24h, 7 days, 30 days, 12 months, + custom date range
-- **Revenue chart**: bar/line chart using Recharts showing platform revenue over selected period
-- **Platform earnings card**: total revenue, total commission earned, total vendor payouts
-- **Top performing vendors**: table showing vendor name, total sales, commission paid, number of orders
-- **Top performing products**: table showing product name, vendor name, units sold, revenue generated
-- **Recent orders** (existing, keep)
+### Files Changed
 
-**4. Admin Withdrawals page** (`src/pages/admin/AdminWithdrawals.tsx`):
-- List all withdrawal requests with realtime subscription
-- Show vendor name, amount, payment method, status, date
-- Admin can approve/reject with notes
-- Mark as completed after transfer
-
-**5. Admin Sidebar** (`src/components/admin/AdminSidebar.tsx`):
-- Add "Withdrawals" menu item with Wallet icon
-- Add "Back to Site" link at bottom pointing to `/`
-
-**6. Vendor Sidebar** (`src/components/vendor/VendorSidebar.tsx`):
-- Add "Back to Site" link at bottom pointing to `/`
-
-**7. Admin Layout** (`src/components/admin/AdminLayout.tsx`):
-- Add "Back to Site" button in header
-
-**8. Footer** (`src/components/layout/Footer.tsx`):
-- Add "Powered by Texcortech Systems" text at the very bottom
-
-**9. Routes** (`src/App.tsx`):
-- Add `/admin/withdrawals` route
-
-### Files
-
-| File | Action |
+| File | Change |
 |------|--------|
-| Migration SQL | Create `withdrawal_requests` table + RLS |
-| `src/pages/admin/AdminDashboard.tsx` | Rewrite with analytics, time filters, top performers |
-| `src/pages/admin/AdminWithdrawals.tsx` | Create |
-| `src/pages/vendor/VendorEarnings.tsx` | Rewrite with withdrawal requests + top products |
-| `src/pages/vendor/VendorDashboard.tsx` | Add top products section |
-| `src/components/admin/AdminSidebar.tsx` | Add Withdrawals + Back to Site |
-| `src/components/vendor/VendorSidebar.tsx` | Add Back to Site |
-| `src/components/admin/AdminLayout.tsx` | Add Back to Site button in header |
-| `src/components/layout/Footer.tsx` | Add "Powered by Texcortech Systems" |
-| `src/App.tsx` | Add withdrawals route |
-
-### Technical Notes
-- Revenue charts use Recharts (already available via shadcn chart component)
-- Time frame filtering done client-side for simplicity, with date range passed to Supabase queries
-- Withdrawal amounts validated against available balance (net earnings - pending/completed withdrawals)
-- Realtime on `withdrawal_requests` so admin sees new requests instantly
+| `src/pages/admin/AdminSettings.tsx` | Propagate commission rate to all vendors on save |
+| `src/pages/vendor/VendorEarnings.tsx` | Expand withdrawal form with method-specific fields |
 
