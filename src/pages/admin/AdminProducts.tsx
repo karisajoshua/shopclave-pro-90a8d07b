@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Star, StarOff, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const AdminProducts = () => {
   const { user } = useAuth();
