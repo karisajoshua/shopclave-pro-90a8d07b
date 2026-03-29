@@ -131,6 +131,8 @@ export type Database = {
           product_id: string | null
           quantity: number
           status: string
+          variant_id: string | null
+          variant_options: Json | null
           vendor_id: string | null
         }
         Insert: {
@@ -142,6 +144,8 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           status?: string
+          variant_id?: string | null
+          variant_options?: Json | null
           vendor_id?: string | null
         }
         Update: {
@@ -153,6 +157,8 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           status?: string
+          variant_id?: string | null
+          variant_options?: Json | null
           vendor_id?: string | null
         }
         Relationships: [
@@ -168,6 +174,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
           {
@@ -258,6 +271,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          price: number | null
+          product_id: string
+          sku: string | null
+          stock: number
+          variant_options: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price?: number | null
+          product_id: string
+          sku?: string | null
+          stock?: number
+          variant_options?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number | null
+          product_id?: string
+          sku?: string | null
+          stock?: number
+          variant_options?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"

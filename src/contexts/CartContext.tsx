@@ -9,6 +9,8 @@ export interface CartItem {
   quantity: number;
   vendorId: string;
   vendorName: string;
+  variantId?: string;
+  variantLabel?: string;
 }
 
 interface CartContextType {
@@ -39,11 +41,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addItem = useCallback((item: Omit<CartItem, "id" | "quantity">) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === item.productId);
+      const existing = prev.find((i) =>
+        i.productId === item.productId &&
+        (i.variantId || null) === (item.variantId || null)
+      );
       let next: CartItem[];
       if (existing) {
         next = prev.map((i) =>
-          i.productId === item.productId ? { ...i, quantity: i.quantity + 1 } : i
+          i.productId === item.productId && (i.variantId || null) === (item.variantId || null)
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
         );
       } else {
         next = [...prev, { ...item, id: crypto.randomUUID(), quantity: 1 }];

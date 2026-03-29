@@ -15,7 +15,7 @@ const VendorProducts = () => {
   const { data: products } = useQuery({
     queryKey: ["vendor-products", vendor?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*, product_images(url)").eq("vendor_id", vendor.id).order("created_at", { ascending: false });
+      const { data } = await supabase.from("products").select("*, product_images(url), product_variants(id)").eq("vendor_id", vendor.id).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!vendor,
@@ -123,7 +123,12 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock }: an
       <td className="p-3">
         <div className="flex items-center gap-2">
           <img src={p.product_images?.[0]?.url || "/placeholder.svg"} alt="" className="w-8 h-8 rounded object-cover bg-secondary" />
-          <span className="font-medium line-clamp-1">{p.name}</span>
+          <div>
+            <span className="font-medium line-clamp-1">{p.name}</span>
+            {p.product_variants?.length > 0 && (
+              <span className="ml-1.5 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{p.product_variants.length} variants</span>
+            )}
+          </div>
         </div>
       </td>
       <td className="p-3">KSh {Number(p.price).toLocaleString()}</td>
