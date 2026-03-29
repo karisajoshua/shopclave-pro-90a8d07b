@@ -2,106 +2,120 @@ import { Link } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/contexts/TranslationContext";
 import barakazLogo from "@/assets/barakaz-logo.png";
+import appBadges from "@/assets/app-store-badges.png";
 
-const Footer = () => (
-  <footer>
-    {/* Back to top */}
-    <button
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="w-full bg-[hsl(var(--nav-secondary))] hover:bg-[hsl(var(--nav-secondary))]/90 text-primary-foreground text-sm py-3 text-center font-medium transition-colors"
-    >
-      Back to top
-    </button>
+const Footer = () => {
+  const { t } = useTranslation();
 
-    {/* Newsletter */}
-    <div className="bg-[hsl(var(--marketplace-orange))]">
-      <div className="container py-6 flex flex-col md:flex-row items-center justify-center gap-4">
-        <p className="text-primary-foreground font-semibold text-sm md:text-base">
-          New to Barakaz? Subscribe to our newsletter for exclusive deals!
-        </p>
-        <div className="flex gap-2 w-full max-w-md">
-          <Input
-            placeholder="Enter your email"
-            className="bg-white text-foreground border-none h-10"
-          />
-          <Button className="bg-[hsl(var(--nav-dark))] text-primary-foreground hover:bg-[hsl(var(--nav-dark))]/90 shrink-0 font-semibold">
-            Subscribe
-          </Button>
-        </div>
-      </div>
-    </div>
+  return (
+    <footer>
+      {/* Back to top */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        className="w-full bg-[hsl(var(--nav-secondary))] hover:bg-[hsl(var(--nav-secondary))]/90 text-primary-foreground text-sm py-3 text-center font-medium transition-colors"
+      >
+        {t("footer.backToTop")}
+      </button>
 
-    {/* Link columns */}
-    <div className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
-      <div className="container py-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div>
-            <h4 className="font-bold text-sm mb-4">Need Help?</h4>
-            <ul className="space-y-2.5 text-sm text-primary-foreground/70">
-              <li><Link to="/search" className="hover:text-primary-foreground transition-colors">Chat with us</Link></li>
-              <li><Link to="/search" className="hover:text-primary-foreground transition-colors">Help Center</Link></li>
-              <li><Link to="/search" className="hover:text-primary-foreground transition-colors">Contact Us</Link></li>
-              <li>
-                <a href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-primary-foreground transition-colors">
-                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Us
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-sm mb-4">About Barakaz</h4>
-            <ul className="space-y-2.5 text-sm text-primary-foreground/70">
-              <li><Link to="/" className="hover:text-primary-foreground transition-colors">About Us</Link></li>
-              <li><Link to="/" className="hover:text-primary-foreground transition-colors">Terms & Conditions</Link></li>
-              <li><Link to="/" className="hover:text-primary-foreground transition-colors">Privacy Policy</Link></li>
-              <li><Link to="/" className="hover:text-primary-foreground transition-colors">Cookie Policy</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-sm mb-4">Make Money with Barakaz</h4>
-            <ul className="space-y-2.5 text-sm text-primary-foreground/70">
-              <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">Sell on Barakaz</Link></li>
-              <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">Vendor Hub</Link></li>
-              <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">Become a Partner</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-sm mb-4">Barakaz Services</h4>
-            <ul className="space-y-2.5 text-sm text-primary-foreground/70">
-              <li><Link to="/search" className="hover:text-primary-foreground transition-colors">Delivery Services</Link></li>
-              <li><Link to="/search" className="hover:text-primary-foreground transition-colors">Return Policy</Link></li>
-              <li><Link to="/auth" className="hover:text-primary-foreground transition-colors">My Account</Link></li>
-              <li><Link to="/cart" className="hover:text-primary-foreground transition-colors">My Cart</Link></li>
-            </ul>
+      {/* Newsletter */}
+      <div className="bg-[hsl(var(--marketplace-orange))]">
+        <div className="container py-6 flex flex-col md:flex-row items-center justify-center gap-4">
+          <p className="text-primary-foreground font-semibold text-sm md:text-base">
+            {t("footer.newsletter")}
+          </p>
+          <div className="flex gap-2 w-full max-w-md">
+            <Input
+              placeholder={t("footer.enterEmail")}
+              className="bg-white text-foreground border-none h-10"
+            />
+            <Button className="bg-[hsl(var(--nav-dark))] text-primary-foreground hover:bg-[hsl(var(--nav-dark))]/90 shrink-0 font-semibold">
+              {t("footer.subscribe")}
+            </Button>
           </div>
         </div>
       </div>
-    </div>
 
-    {/* Bottom bar */}
-    <div className="bg-[hsl(var(--nav-dark))] border-t border-primary-foreground/10">
-      <div className="container py-6 flex flex-col md:flex-row items-center justify-center gap-4">
-        <img
-          src={barakazLogo}
-          alt="Barakaz"
-          className="h-8 w-auto brightness-0 invert"
-        />
-        <p className="text-xs text-primary-foreground/50">
-          © {new Date().getFullYear()} Barakaz. All rights reserved.
-        </p>
+      {/* Link columns */}
+      <div className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
+        <div className="container py-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+              <h4 className="font-bold text-sm mb-4">{t("footer.needHelp")}</h4>
+              <ul className="space-y-2.5 text-sm text-primary-foreground/70">
+                <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">{t("footer.chatWithUs")}</Link></li>
+                <li><Link to="/help" className="hover:text-primary-foreground transition-colors">{t("footer.helpCenter")}</Link></li>
+                <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">{t("footer.contactUs")}</Link></li>
+                <li>
+                  <a href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-primary-foreground transition-colors">
+                    <MessageCircle className="h-3.5 w-3.5" /> {t("footer.whatsappUs")}
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm mb-4">{t("footer.aboutBarakaz")}</h4>
+              <ul className="space-y-2.5 text-sm text-primary-foreground/70">
+                <li><Link to="/about" className="hover:text-primary-foreground transition-colors">{t("footer.aboutUs")}</Link></li>
+                <li><Link to="/terms" className="hover:text-primary-foreground transition-colors">{t("footer.terms")}</Link></li>
+                <li><Link to="/privacy-policy" className="hover:text-primary-foreground transition-colors">{t("footer.privacy")}</Link></li>
+                <li><Link to="/cookie-policy" className="hover:text-primary-foreground transition-colors">{t("footer.cookies")}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm mb-4">{t("footer.makeMoney")}</h4>
+              <ul className="space-y-2.5 text-sm text-primary-foreground/70">
+                <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">{t("footer.sellOnBarakaz")}</Link></li>
+                <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">{t("footer.vendorHub")}</Link></li>
+                <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">{t("footer.becomePartner")}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm mb-4">{t("footer.services")}</h4>
+              <ul className="space-y-2.5 text-sm text-primary-foreground/70">
+                <li><Link to="/delivery" className="hover:text-primary-foreground transition-colors">{t("footer.delivery")}</Link></li>
+                <li><Link to="/return-policy" className="hover:text-primary-foreground transition-colors">{t("footer.returnPolicy")}</Link></li>
+                <li><Link to="/auth" className="hover:text-primary-foreground transition-colors">{t("footer.myAccount")}</Link></li>
+                <li><Link to="/cart" className="hover:text-primary-foreground transition-colors">{t("footer.myCart")}</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    {/* Powered by */}
-    <div className="bg-[hsl(var(--nav-dark))] border-t border-primary-foreground/5">
-      <div className="container py-3 text-center">
-        <p className="text-[11px] text-primary-foreground/40">
-          Powered by Texcortech Systems
-        </p>
+      {/* App badges + bottom bar */}
+      <div className="bg-[hsl(var(--nav-dark))] border-t border-primary-foreground/10">
+        <div className="container py-6 flex flex-col items-center gap-4">
+          <p className="text-sm text-primary-foreground/70 font-medium">{t("footer.getApp")}</p>
+          <div className="flex items-center gap-3">
+            <a href="#" target="_blank" rel="noopener noreferrer">
+              <img src={appBadges} alt="Download on App Store & Google Play" className="h-10 w-auto" />
+            </a>
+          </div>
+          <div className="flex items-center gap-4 mt-2">
+            <img
+              src={barakazLogo}
+              alt="Barakaz"
+              className="h-8 w-auto brightness-0 invert"
+            />
+            <p className="text-xs text-primary-foreground/50">
+              © {new Date().getFullYear()} Barakaz. All rights reserved.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
-  </footer>
-);
+
+      {/* Powered by */}
+      <div className="bg-[hsl(var(--nav-dark))] border-t border-primary-foreground/5">
+        <div className="container py-3 text-center">
+          <p className="text-[11px] text-primary-foreground/40">
+            Powered by Texcortech Systems
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+};
 
 export default Footer;

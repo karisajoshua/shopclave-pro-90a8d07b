@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Star, StarOff, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const AdminProducts = () => {
   const { user } = useAuth();
@@ -64,7 +65,7 @@ const AdminProducts = () => {
               <tr key={p.id} className="border-t border-border">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
-                    <img src={p.product_images?.[0]?.url || "/placeholder.svg"} alt="" className="w-8 h-8 rounded object-cover bg-secondary" />
+                    <img src={p.product_images?.[0]?.url || barakazIcon} alt="" className="w-8 h-8 rounded object-cover bg-secondary" />
                     <span className="font-medium line-clamp-1">{p.name}</span>
                   </div>
                 </td>

@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80";
+import { useTranslation } from "@/contexts/TranslationContext";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const DEFAULT_CATEGORIES = [
   { name: "Electronics", slug: "electronics", image: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80" },
@@ -43,6 +43,8 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
 }));
 
 const Index = () => {
+  const { t } = useTranslation();
+
   const { data: products, isLoading } = useQuery({
     queryKey: ["featured-products"],
     queryFn: async () => {
@@ -71,7 +73,7 @@ const Index = () => {
   const displayCategories = categories?.length ? categories.map((c: any) => ({
     name: c.name,
     slug: c.slug,
-    image: c.image_url || PLACEHOLDER_IMG,
+    image: c.image_url || barakazIcon,
   })) : DEFAULT_CATEGORIES;
 
   const displayProducts = products?.length ? products.map((p: any) => ({
@@ -79,7 +81,7 @@ const Index = () => {
     name: p.name,
     price: Number(p.price),
     compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
-    image: p.product_images?.[0]?.url || PLACEHOLDER_IMG,
+    image: p.product_images?.[0]?.url || barakazIcon,
     vendorId: p.vendor_id,
     vendorName: p.vendors?.store_name || "Unknown Seller",
     slug: p.slug,
@@ -94,10 +96,10 @@ const Index = () => {
       {/* Featured Products */}
       <section className="container py-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">Featured Products</h2>
+          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">{t("home.featured")}</h2>
           <Link to="/search">
             <Button variant="ghost" size="sm" className="gap-1 text-primary">
-              View All <ArrowRight className="h-4 w-4" />
+              {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
@@ -120,14 +122,14 @@ const Index = () => {
       <section className="container py-8">
         <div className="bg-[hsl(var(--nav-dark))] rounded-2xl p-8 md:p-12 text-center">
           <h2 className="font-display text-2xl md:text-3xl font-bold text-primary-foreground mb-3">
-            Start Selling on Barakaz
+            {t("home.startSelling")}
           </h2>
           <p className="text-primary-foreground/70 text-sm md:text-base mb-6 max-w-lg mx-auto">
-            Join thousands of vendors and reach millions of customers. Easy setup, powerful tools, and dedicated support.
+            {t("home.sellDesc")}
           </p>
           <Link to="/vendor/register">
             <Button size="lg" className="font-semibold bg-[hsl(var(--marketplace-orange))] hover:bg-[hsl(var(--marketplace-orange-hover))] text-primary-foreground">
-              Become a Seller
+              {t("home.becomeSeller")}
             </Button>
           </Link>
         </div>

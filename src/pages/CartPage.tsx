@@ -3,26 +3,27 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "@/contexts/TranslationContext";
 
 const CartPage = () => {
   const { items, removeItem, updateQuantity, totalPrice, totalItems, clearCart } = useCart();
+  const { t } = useTranslation();
 
   if (items.length === 0) {
     return (
       <MarketplaceLayout>
         <div className="container py-16 text-center">
           <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h1 className="font-display text-2xl font-bold mb-2">Your cart is empty</h1>
-          <p className="text-muted-foreground mb-6">Discover amazing products from our sellers</p>
+          <h1 className="font-display text-2xl font-bold mb-2">{t("cart.empty")}</h1>
+          <p className="text-muted-foreground mb-6">{t("cart.discover")}</p>
           <Link to="/">
-            <Button className="font-semibold">Continue Shopping</Button>
+            <Button className="font-semibold">{t("cart.continueShopping")}</Button>
           </Link>
         </div>
       </MarketplaceLayout>
     );
   }
 
-  // Group by vendor
   const groupedByVendor = items.reduce((acc, item) => {
     if (!acc[item.vendorName]) acc[item.vendorName] = [];
     acc[item.vendorName].push(item);
@@ -32,12 +33,12 @@ const CartPage = () => {
   return (
     <MarketplaceLayout>
       <div className="container py-8">
-        <h1 className="font-display text-2xl font-bold mb-6">Shopping Cart ({totalItems} items)</h1>
+        <h1 className="font-display text-2xl font-bold mb-6">{t("cart.shoppingCart")} ({totalItems} {t("cart.items")})</h1>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-4">
             {Object.entries(groupedByVendor).map(([vendor, vendorItems]) => (
               <div key={vendor} className="bg-card rounded-lg border border-border p-4">
-                <p className="text-sm font-semibold text-muted-foreground mb-3">Sold by: {vendor}</p>
+                <p className="text-sm font-semibold text-muted-foreground mb-3">{t("cart.soldBy")}: {vendor}</p>
                 <div className="space-y-3">
                   {vendorItems.map((item) => (
                     <div key={item.id} className="flex gap-3 items-start">
@@ -65,28 +66,27 @@ const CartPage = () => {
             ))}
           </div>
 
-          {/* Summary */}
           <div className="bg-card rounded-lg border border-border p-6 h-fit sticky top-20">
-            <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+            <h2 className="font-semibold text-lg mb-4">{t("cart.orderSummary")}</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal ({totalItems} items)</span>
+                <span className="text-muted-foreground">{t("cart.subtotal")} ({totalItems} {t("cart.items")})</span>
                 <span className="font-medium">KSh {totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Delivery</span>
-                <span className="font-medium text-success">Free</span>
+                <span className="text-muted-foreground">{t("cart.delivery")}</span>
+                <span className="font-medium text-success">{t("cart.free")}</span>
               </div>
               <div className="border-t border-border pt-2 flex justify-between text-base">
-                <span className="font-semibold">Total</span>
+                <span className="font-semibold">{t("cart.total")}</span>
                 <span className="font-bold text-lg">KSh {totalPrice.toLocaleString()}</span>
               </div>
             </div>
             <Link to="/checkout">
-              <Button className="w-full mt-4 font-semibold">Proceed to Checkout</Button>
+              <Button className="w-full mt-4 font-semibold">{t("cart.checkout")}</Button>
             </Link>
             <Button variant="ghost" className="w-full mt-2 text-sm text-muted-foreground" onClick={clearCart}>
-              Clear Cart
+              {t("cart.clearCart")}
             </Button>
           </div>
         </div>

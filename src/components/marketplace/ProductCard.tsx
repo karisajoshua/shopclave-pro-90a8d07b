@@ -3,6 +3,7 @@ import { Star, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 interface ProductCardProps {
   id: string;
@@ -30,6 +31,10 @@ const ProductCard = ({
     toast.success(`${name} added to cart`);
   };
 
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.src = barakazIcon;
+  };
+
   return (
     <Link
       to={`/product/${slug}`}
@@ -37,10 +42,11 @@ const ProductCard = ({
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
         <img
-          src={image}
+          src={image || barakazIcon}
           alt={name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
+          onError={handleImgError}
         />
         {discount > 0 && (
           <span className="absolute top-2 left-2 bg-marketplace-badge text-primary-foreground text-xs font-bold px-2 py-0.5 rounded">

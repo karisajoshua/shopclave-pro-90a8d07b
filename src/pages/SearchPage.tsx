@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80";
+import { useTranslation } from "@/contexts/TranslationContext";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
+  const { t } = useTranslation();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["search-products", query],
@@ -39,7 +40,7 @@ const SearchPage = () => {
     name: p.name,
     price: Number(p.price),
     compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
-    image: p.product_images?.[0]?.url || PLACEHOLDER_IMG,
+    image: p.product_images?.[0]?.url || barakazIcon,
     vendorId: p.vendor_id,
     vendorName: p.vendors?.store_name || "Unknown Seller",
     slug: p.slug,
@@ -53,7 +54,7 @@ const SearchPage = () => {
         <div className="flex items-center gap-4 mb-8">
           <div className="relative flex-1 max-w-xl">
             <Input
-              placeholder="Search products..."
+              placeholder={t("search.placeholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pr-10 h-12 text-base"
@@ -63,7 +64,7 @@ const SearchPage = () => {
         </div>
 
         <h1 className="font-display text-xl font-bold mb-6">
-          {query ? `Results for "${query}"` : "All Products"}
+          {query ? `${t("search.resultsFor")} "${query}"` : t("search.allProducts")}
           {displayProducts.length > 0 && (
             <span className="text-muted-foreground font-normal text-base ml-2">({displayProducts.length})</span>
           )}
@@ -83,8 +84,8 @@ const SearchPage = () => {
           </div>
         ) : (
           <div className="text-center py-16">
-            <p className="text-lg text-muted-foreground">No products found</p>
-            <p className="text-sm text-muted-foreground mt-1">Try a different search term</p>
+            <p className="text-lg text-muted-foreground">{t("search.noProducts")}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t("search.tryDifferent")}</p>
           </div>
         )}
       </div>

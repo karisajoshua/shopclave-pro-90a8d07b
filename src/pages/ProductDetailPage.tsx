@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
-import ProductCard from "@/components/marketplace/ProductCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, ShoppingCart, Minus, Plus, Store } from "lucide-react";
@@ -9,13 +8,14 @@ import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80";
+import { useTranslation } from "@/contexts/TranslationContext";
+import barakazIcon from "@/assets/barakaz-icon.png";
 
 const ProductDetailPage = () => {
   const { slug } = useParams();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const { t } = useTranslation();
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -51,7 +51,7 @@ const ProductDetailPage = () => {
     return (
       <MarketplaceLayout>
         <div className="container py-16 text-center">
-          <h1 className="font-display text-2xl font-bold">Product not found</h1>
+          <h1 className="font-display text-2xl font-bold">{t("product.notFound")}</h1>
         </div>
       </MarketplaceLayout>
     );
@@ -59,7 +59,7 @@ const ProductDetailPage = () => {
 
   const images = product.product_images?.length
     ? product.product_images.sort((a: any, b: any) => a.position - b.position).map((i: any) => i.url)
-    : [PLACEHOLDER_IMG];
+    : [barakazIcon];
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
@@ -108,7 +108,7 @@ const ProductDetailPage = () => {
                   <Star key={i} className={`h-4 w-4 ${i < 4 ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
                 ))}
               </div>
-              <span className="text-sm text-muted-foreground">(0 reviews)</span>
+              <span className="text-sm text-muted-foreground">(0 {t("product.reviews")})</span>
             </div>
 
             <div className="mb-6">
@@ -130,19 +130,19 @@ const ProductDetailPage = () => {
               </div>
               <Button className="flex-1 font-semibold gap-2" size="lg" onClick={handleAddToCart}>
                 <ShoppingCart className="h-5 w-5" />
-                Add to Cart
+                {t("product.addToCart")}
               </Button>
             </div>
 
             <div className="text-sm text-muted-foreground">
               <p className={`font-medium ${product.stock > 0 ? "text-success" : "text-destructive"}`}>
-                {product.stock > 0 ? `In Stock (${product.stock} available)` : "Out of Stock"}
+                {product.stock > 0 ? `${t("product.inStock")} (${product.stock} ${t("product.available")})` : t("product.outOfStock")}
               </p>
             </div>
 
             {product.description && (
               <div className="mt-6 border-t border-border pt-6">
-                <h3 className="font-semibold mb-2">Description</h3>
+                <h3 className="font-semibold mb-2">{t("product.description")}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
               </div>
             )}
