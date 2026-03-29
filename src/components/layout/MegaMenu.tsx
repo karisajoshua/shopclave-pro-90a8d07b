@@ -43,7 +43,7 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
     ],
   },
   {
-    name: "Fashion", emoji: "👗", slug: "fashion",
+    name: "Fashion", icon: Shirt, slug: "fashion",
     children: [
       { name: "Men", slug: "men", children: [
         { name: "Shirts", slug: "shirts" }, { name: "T-Shirts", slug: "tshirts" }, { name: "Jeans", slug: "jeans-men" },
@@ -66,7 +66,7 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
     ],
   },
   {
-    name: "Home & Garden", emoji: "🏡", slug: "home-garden",
+    name: "Home & Garden", icon: Home, slug: "home-garden",
     children: [
       { name: "Furniture", slug: "furniture", children: [
         { name: "Sofas", slug: "sofas" }, { name: "Beds", slug: "beds" }, { name: "Tables", slug: "tables" }
@@ -91,7 +91,7 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
     ],
   },
   {
-    name: "Health & Beauty", emoji: "💄", slug: "health-beauty",
+    name: "Health & Beauty", icon: Heart, slug: "health-beauty",
     children: [
       { name: "Beauty", slug: "beauty", children: [
         { name: "Makeup", slug: "makeup" }, { name: "Skincare", slug: "skincare" },
@@ -109,7 +109,7 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
     ],
   },
   {
-    name: "Sports", emoji: "🏀", slug: "sports",
+    name: "Sports", icon: Dumbbell, slug: "sports",
     children: [
       { name: "Fitness Equipment", slug: "fitness-equipment", children: [
         { name: "Dumbbells", slug: "dumbbells" }, { name: "Treadmills", slug: "treadmills" }
@@ -125,7 +125,7 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
     ],
   },
   {
-    name: "Phones & Tablets", emoji: "📱", slug: "phones-tablets",
+    name: "Phones & Tablets", icon: Smartphone, slug: "phones-tablets",
     children: [
       { name: "Smartphones", slug: "smartphones-pt", children: [] },
       { name: "Feature Phones", slug: "feature-phones-pt", children: [] },
@@ -136,6 +136,21 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
       { name: "Smartwatches", slug: "smartwatches", children: [] },
       { name: "Phone Parts", slug: "phone-parts", children: [] },
       { name: "Refurbished Phones", slug: "refurbished-phones", children: [] },
+    ],
+  },
+  {
+    name: "Books", icon: BookOpen, slug: "books",
+    children: [
+      { name: "Fiction", slug: "fiction", children: [] },
+      { name: "Non-Fiction", slug: "non-fiction", children: [] },
+      { name: "Academic & Textbooks", slug: "academic-textbooks", children: [] },
+      { name: "Children's Books", slug: "childrens-books", children: [] },
+      { name: "Comics & Manga", slug: "comics-manga", children: [] },
+      { name: "Self-Help & Motivation", slug: "self-help-motivation", children: [] },
+      { name: "Religion & Spirituality", slug: "religion-spirituality", children: [] },
+      { name: "Business & Finance", slug: "business-finance-books", children: [] },
+      { name: "Science & Technology", slug: "science-technology-books", children: [] },
+      { name: "Art & Photography", slug: "art-photography-books", children: [] },
     ],
   },
 ];
@@ -180,7 +195,7 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
                 onClick={() => toggleCat(cat.slug)}
                 className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium hover:bg-secondary transition-colors"
               >
-                <span>{cat.emoji} {cat.name}</span>
+                <span className="flex items-center gap-2.5"><cat.icon className="h-4 w-4 text-muted-foreground" /> {cat.name}</span>
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedCat === cat.slug ? "rotate-180" : ""}`} />
               </button>
               {expandedCat === cat.slug && (
