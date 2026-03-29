@@ -9,11 +9,13 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AdminDashboard = () => {
-  const { user, userRoles } = useAuth();
+  const { user, userRoles, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  if (!user) { navigate("/auth"); return null; }
+  useEffect(() => {
+    if (!loading && !user) navigate("/auth");
+  }, [user, loading, navigate]);
 
   const { data: vendors } = useQuery({
     queryKey: ["admin-vendors"],
