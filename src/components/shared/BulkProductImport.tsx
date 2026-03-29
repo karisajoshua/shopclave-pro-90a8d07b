@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +14,11 @@ interface BulkProductImportProps {
   vendorId?: string;
 }
 
-const TEMPLATE_CSV = "name,price,stock,description,status,category_slug\nSample Product,1999,50,A great product,active,electronics\nAnother Product,599,100,Another item,draft,fashion";
+const TEMPLATE_HEADERS = ["name", "price", "stock", "description", "status", "category_slug"];
+const TEMPLATE_ROWS = [
+  ["Sample Product", "1999", "50", "A great product", "active", "electronics"],
+  ["Another Product", "599", "100", "Another item", "draft", "fashion"],
+];
 
 const BulkProductImport = ({ vendors, isAdmin, vendorId }: BulkProductImportProps) => {
   const [rows, setRows] = useState<any[]>([]);
@@ -22,28 +27,51 @@ const BulkProductImport = ({ vendors, isAdmin, vendorId }: BulkProductImportProp
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        setRows(results.data);
-        setResult(null);
-      },
-      error: () => toast.error("Failed to parse CSV"),
-    });
-  };
-
-  const downloadTemplate = () => {
-    const blob = new Blob([TEMPLATE_CSV], { type: "text/csv" });
+  const downloadCSV = () => {
+    const csv = [TEMPLATE_HEADERS.join(","), ...TEMPLATE_ROWS.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "product_import_template.csv";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, ...TEMPLATE_ROWS]);
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+    XLSX.writeFile(wb, "product_import_template.xlsx");
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    if (ext === "xlsx" || ext === "xls") {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws);
+        setRows(json);
+        setResult(null);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          setRows(results.data);
+          setResult(null);
+        },
+        error: () => toast.error("Failed to parse CSV"),
+      });
+    }
   };
 
   const handleImport = async () => {
@@ -57,15 +85,15 @@ const BulkProductImport = ({ vendors, isAdmin, vendorId }: BulkProductImportProp
 
     for (const row of rows) {
       try {
-        if (!row.name?.trim() || !row.price) { failed++; continue; }
-        const slug = row.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+        if (!row.name?.toString().trim() || !row.price) { failed++; continue; }
+        const slug = row.name.toString().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
         const { error } = await supabase.from("products").insert({
           vendor_id: vid,
-          name: row.name.trim(),
+          name: row.name.toString().trim(),
           slug,
           price: parseFloat(row.price) || 0,
           stock: parseInt(row.stock) || 0,
-          description: row.description?.trim() || null,
+          description: row.description?.toString().trim() || null,
           status: row.status === "active" ? "active" : "draft",
         });
         if (error) { failed++; } else { success++; }
@@ -81,11 +109,16 @@ const BulkProductImport = ({ vendors, isAdmin, vendorId }: BulkProductImportProp
 
   return (
     <div className="bg-card rounded-lg border border-border p-6 space-y-4 max-w-2xl">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Upload a CSV file to import products in bulk.</p>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadTemplate}>
-          <Download className="h-4 w-4" /> Template
-        </Button>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-muted-foreground">Upload a CSV or Excel file to import products in bulk.</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadCSV}>
+            <Download className="h-4 w-4" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadExcel}>
+            <Download className="h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
 
       {isAdmin && vendors && (
@@ -107,8 +140,8 @@ const BulkProductImport = ({ vendors, isAdmin, vendorId }: BulkProductImportProp
         onClick={() => fileRef.current?.click()}
       >
         <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">Click to upload CSV file</p>
-        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
+        <p className="text-sm text-muted-foreground">Click to upload CSV or Excel file</p>
+        <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
       </div>
 
       {rows.length > 0 && (
@@ -148,7 +181,7 @@ const BulkProductImport = ({ vendors, isAdmin, vendorId }: BulkProductImportProp
 
       {result && (
         <div className="flex gap-4">
-          <div className="flex items-center gap-1 text-success text-sm"><CheckCircle className="h-4 w-4" /> {result.success} succeeded</div>
+          <div className="flex items-center gap-1 text-sm" style={{ color: "hsl(var(--primary))" }}><CheckCircle className="h-4 w-4" /> {result.success} succeeded</div>
           {result.failed > 0 && <div className="flex items-center gap-1 text-destructive text-sm"><XCircle className="h-4 w-4" /> {result.failed} failed</div>}
         </div>
       )}
