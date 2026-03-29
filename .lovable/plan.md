@@ -1,68 +1,70 @@
 
 
-## Plan: Rebrand to Barakaz + Mega Menu + Enhanced Vendor Dashboard
+## Plan: Amazon-Style Redesign for Barakaz
 
 ### Overview
-Rename the platform from "ShopZone" to "Barakaz", add the uploaded logo (with transparent background) to navbar/footer, build a full mega menu with the provided category hierarchy, fix the hero "Start Selling" button visibility, and enhance the vendor dashboard with more shop management features.
+Transform the Barakaz marketplace to match Amazon's layout and UX patterns: dark navbar with hamburger sidebar menu, Amazon-style hero with category cards containing 4 clickable subcategory images each, language selector, auto-currency detection, updated logo sizing, and Jumia-style footer with Barakaz brand colors.
 
 ### Changes
 
-#### 1. Copy Logo & Rebrand
-- Copy `user-uploads://Barakaz.png` to `src/assets/barakaz-logo.png`
-- Update all "ShopZone" references across the codebase to "Barakaz" (Navbar, Footer, HeroBanner, Index page sell banner, page titles in `index.html`)
+#### 1. Update Logo
+- Copy `user-uploads://barakaz_logo.png` to `src/assets/barakaz-logo.png` (replacing existing) -- this is the wider text+icon version
+- Increase logo height in Navbar (~40px) and Footer (~32px)
 
-#### 2. Navbar with Logo + Mega Menu
-- **Navbar.tsx**: Replace text logo with the Barakaz logo image (sized ~36px height). Remove the white background from the image using CSS (`mix-blend-mode` or just relying on the PNG transparency).
-- Replace the simple categories bar with a **mega menu** using hover-triggered dropdowns. Each top-level category (Electronics, Fashion, Home & Garden, Health & Beauty, Sports, Phones & Tablets) opens a multi-column dropdown panel showing subcategories and their children as provided.
-- On mobile: the mega menu becomes an accordion-style expandable list inside the mobile drawer.
-- Create a new component `src/components/layout/MegaMenu.tsx` with the full category data structure and desktop/mobile rendering.
+#### 2. Amazon-Style Navbar
+- **Dark background** (like Amazon's `#131921`) instead of white card
+- **Left hamburger menu** button with "All" text (like Amazon's "All" menu)
+- Clicking hamburger opens a **slide-out sidebar drawer** (Sheet component) with the full category mega menu (accordion style)
+- **Search bar** centered, prominent, with category dropdown prefix
+- **Right side**: "Deliver to [Country]" with auto-detected location, Language selector dropdown, Account/Sign In, Cart
+- **Secondary nav bar** below with quick links (Today's Deals, Sell on Barakaz, etc.)
+- Remove the current horizontal mega menu bar
 
-#### 3. Footer Update
-- Replace "ShopZone" text with logo image import
-- Update all text references to "Barakaz"
+#### 3. Language & Currency
+- Create a `useLocale` hook that auto-detects user's country via browser `navigator.language` and free IP geolocation API
+- Currency map: KE→KSh, US→$, GB→£, NG→₦, etc.
+- Language selector in navbar (EN, SW for Swahili, FR) -- UI only for now, stores preference in localStorage
+- Format prices using `Intl.NumberFormat` with detected currency
 
-#### 4. Hero Banner Fix
-- Make the "Start Selling" button more visible by using a contrasting style (e.g., `bg-white text-primary` or `variant="secondary"` with solid background) instead of the semi-transparent outline.
+#### 4. Amazon-Style Homepage Hero
+- Replace current gradient hero banner with a **carousel/slider** of promotional banners (auto-rotating)
+- Below the hero: **Grid of category cards** (2x4 on desktop, 2x2 on mobile) -- each card has:
+  - A title (e.g. "Top categories in Electronics")
+  - 4 subcategory items in a 2x2 grid, each with an image and label
+  - A "See all" link at the bottom
+  - All items are clickable Links to `/category/[slug]`
+- Use placeholder images from Unsplash for subcategories
 
-#### 5. Database: Seed Categories
-- Create a migration to insert the full category hierarchy (6 top-level categories with subcategories and sub-subcategories) into the `categories` table, using `parent_id` for nesting.
+#### 5. Amazon-Style Footer
+- Match the Jumia footer screenshot structure with Barakaz brand colors:
+  - **"Back to top" button** at the very top
+  - **Newsletter section** with email input (deep orange background)
+  - **4-column link grid** on dark background: "Need Help?", "About Barakaz", "Make Money with Barakaz", "Barakaz Services"
+  - **Bottom bar** with logo + copyright
+  - All using the deep orange (`--marketplace-dark` adjusted to match brand)
 
-#### 6. Enhanced Vendor Dashboard
-Add tabbed sections to VendorDashboard with:
-- **Overview tab** (existing stats + recent orders)
-- **Products tab** with edit/delete actions, status toggle (active/draft), inline stock editing
-- **Orders tab** with full order list, status update buttons (pending → processing → shipped → delivered)
-- **Store Settings tab** to edit store name, description, logo URL, banner URL
-- **Earnings tab** showing revenue breakdown, commission deducted, net earnings
-
-Also enhance `AddProductPage.tsx` with:
-- Category selector (dropdown from categories table)
-- Image URL field (text input for now)
-- Product status selector (draft/active)
-
-#### 7. Mobile Responsiveness Audit
-- Ensure all pages use responsive grid classes
-- Vendor dashboard tables become card-based on mobile
-- Mega menu works as accordion on mobile
+#### 6. Mobile Responsiveness
+- Hamburger sidebar works on all screen sizes
+- Category cards stack 1-2 columns on mobile
+- Footer columns stack on mobile
+- Search bar full width on mobile
 
 ### Files to Create/Modify
 
 | File | Action |
 |------|--------|
-| `src/assets/barakaz-logo.png` | Copy from uploads |
-| `src/components/layout/MegaMenu.tsx` | Create - mega menu component with category data |
-| `src/components/layout/Navbar.tsx` | Modify - logo, mega menu integration |
-| `src/components/layout/Footer.tsx` | Modify - logo, rebrand |
-| `src/components/marketplace/HeroBanner.tsx` | Modify - rebrand, fix button |
-| `src/pages/Index.tsx` | Modify - rebrand sell banner |
-| `src/pages/vendor/VendorDashboard.tsx` | Major rewrite - tabbed dashboard |
-| `src/pages/vendor/AddProductPage.tsx` | Enhance - category, images, status |
-| `index.html` | Update title to Barakaz |
-| New migration | Seed categories hierarchy |
+| `src/assets/barakaz-logo.png` | Replace with new wider logo |
+| `src/components/layout/Navbar.tsx` | Major rewrite -- Amazon dark style, hamburger, language/currency |
+| `src/components/layout/MegaMenu.tsx` | Refactor into sidebar drawer menu |
+| `src/components/layout/Footer.tsx` | Rewrite -- Jumia-style with brand colors |
+| `src/components/marketplace/HeroBanner.tsx` | Rewrite -- carousel + category cards grid |
+| `src/hooks/useLocale.ts` | Create -- auto-detect country, currency, language |
+| `src/pages/Index.tsx` | Update to use new hero + category cards layout |
+| `src/index.css` | Add Amazon-dark nav color tokens |
 
 ### Technical Details
-- Mega menu data will be a static constant in `MegaMenu.tsx` matching the exact hierarchy provided. On desktop, hovering a top-level item shows a positioned panel with 2-4 columns of subcategories. On mobile, categories are collapsible accordions.
-- Logo will be imported as an ES module from `src/assets/` for proper bundling.
-- Vendor dashboard will use shadcn `Tabs` component for the tabbed layout.
-- Category seeding migration will insert ~100+ rows with proper parent_id references using CTEs.
+- Hamburger sidebar uses shadcn `Sheet` component (side="left")
+- Currency detection: use `Intl.DateTimeFormat().resolvedOptions().timeZone` to infer country, with a timezone-to-currency mapping. No external API needed.
+- Category cards data is a static array with Unsplash placeholder images, linking to `/category/[slug]`
+- Hero carousel uses CSS-only auto-rotation or a simple `setInterval` state toggle
 
