@@ -36,7 +36,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "shopclave-pro"
+const SITE_NAME = "Barakaz"
 const SENDER_DOMAIN = "notify.barakaz.com"
 const ROOT_DOMAIN = "barakaz.com"
 const FROM_DOMAIN = "barakaz.com" // Domain shown in From address (may be root or sender subdomain)
