@@ -41,37 +41,27 @@ const CheckoutPage = () => {
     }
     setLoading(true);
     try {
-      const { data: order, error } = await supabase
-        .from("orders")
-        .insert({
-          user_id: user.id,
-          total: totalPrice,
-          shipping_address: address,
-          payment_method: paymentMethod,
-          status: "pending",
-          payment_status: "pending",
-        })
-        .select()
-        .single();
+      const orderPayload = {
+        items: items.map((item) => ({
+          product_id: item.productId,
+          quantity: item.quantity,
+          variant_id: item.variantId || null,
+          variant_label: item.variantLabel || null,
+        })),
+        shipping_address: address,
+        payment_method: paymentMethod,
+      };
+
+      const { data, error } = await supabase.functions.invoke("create-order", {
+        body: orderPayload,
+      });
 
       if (error) throw error;
-
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.productId,
-        vendor_id: item.vendorId,
-        quantity: item.quantity,
-        price: item.price,
-        variant_id: item.variantId || null,
-        variant_options: item.variantLabel ? { label: item.variantLabel } : null,
-      }));
-
-      const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
-      if (itemsError) throw itemsError;
+      if (data?.error) throw new Error(data.error);
 
       clearCart();
       toast.success("Order placed successfully!");
-      navigate(`/order-confirmation/${order.id}`);
+      navigate(`/order-confirmation/${data.order_id}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to place order");
     } finally {

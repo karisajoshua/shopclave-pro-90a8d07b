@@ -39,12 +39,7 @@ const VendorRegisterPage = () => {
       });
       if (vendorError) throw vendorError;
 
-      // Add vendor role
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: user.id,
-        role: "vendor" as any,
-      });
-      if (roleError && !roleError.message.includes("duplicate")) throw roleError;
+      // Vendor role will be assigned by admin upon approval
 
       toast.success("Vendor application submitted! We'll review it shortly.");
       navigate("/account");
