@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen, Car } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -136,6 +136,19 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
       { name: "Smartwatches", slug: "smartwatches", children: [] },
       { name: "Phone Parts", slug: "phone-parts", children: [] },
       { name: "Refurbished Phones", slug: "refurbished-phones", children: [] },
+    ],
+  },
+  {
+    name: "Automotive", icon: Car, slug: "automotive",
+    children: [
+      { name: "Car Parts", slug: "car-parts", children: [] },
+      { name: "Motorcycle Parts", slug: "motorcycle-parts", children: [] },
+      { name: "Car Electronics", slug: "car-electronics", children: [] },
+      { name: "Tires & Wheels", slug: "tires-wheels", children: [] },
+      { name: "Interior Accessories", slug: "interior-accessories", children: [] },
+      { name: "Exterior Accessories", slug: "exterior-accessories", children: [] },
+      { name: "Oils & Fluids", slug: "oils-fluids", children: [] },
+      { name: "Tools & Equipment", slug: "tools-equipment", children: [] },
     ],
   },
   {
