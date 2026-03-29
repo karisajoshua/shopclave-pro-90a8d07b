@@ -1,209 +1,97 @@
 
 
-## Plan: Comprehensive Admin/Vendor Dashboards + Notifications + Bulk Import + Mobile App Feel
+## Plan: Enhanced Categories, Bulk Import Templates, and Admin Settings
 
 ### Overview
-This is a large scope covering: (1) sidebar-based admin dashboard with full vendor control, (2) notifications system, (3) bulk CSV import for products, (4) enhanced vendor dashboard, and (5) mobile-native app feel. We will break it into structured pieces.
+Three main areas: (1) Redesign admin categories page with CRUD, image upload, and seed automotive data, (2) Add Excel template download to bulk import, (3) Build a fully functional admin settings page with platform-wide controls.
 
-### Database Changes (Migration)
+### Database Changes
 
-Create a `notifications` table for internal admin-to-vendor messaging:
+**Migration 1 -- Platform settings table + Automotive categories seed:**
 ```sql
-CREATE TABLE public.notifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  recipient_id uuid NOT NULL, -- user_id of recipient
-  sender_id uuid, -- admin who sent it
-  title text NOT NULL,
-  message text NOT NULL,
-  type text NOT NULL DEFAULT 'info', -- info, warning, success, alert
-  is_read boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
+-- Platform settings table (key-value store for admin config)
+CREATE TABLE public.platform_settings (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 
--- Users can read their own notifications
-CREATE POLICY "Users can view own notifications" ON public.notifications
-  FOR SELECT TO authenticated USING (auth.uid() = recipient_id);
+-- Everyone can read settings (needed for frontend to apply them)
+CREATE POLICY "Settings readable by everyone" ON public.platform_settings
+  FOR SELECT USING (true);
 
--- Users can update (mark read) their own
-CREATE POLICY "Users can update own notifications" ON public.notifications
-  FOR UPDATE TO authenticated USING (auth.uid() = recipient_id);
+-- Only admins can modify
+CREATE POLICY "Admins can manage settings" ON public.platform_settings
+  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin')) 
+  WITH CHECK (has_role(auth.uid(), 'admin'));
 
--- Admins can insert notifications
-CREATE POLICY "Admins can insert notifications" ON public.notifications
-  FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(), 'admin'));
-
--- Admins can view all
-CREATE POLICY "Admins can view all notifications" ON public.notifications
-  FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'));
+-- Seed default settings
+INSERT INTO public.platform_settings (key, value) VALUES
+  ('default_commission_rate', '"10"'),
+  ('platform_name', '"Barakaz"'),
+  ('support_email', '"support@barakaz.com"'),
+  ('currency', '"KES"'),
+  ('min_order_amount', '"0"'),
+  ('free_shipping_threshold', '"5000"'),
+  ('vendor_auto_approve', '"false"'),
+  ('maintenance_mode', '"false"');
 ```
 
-Enable realtime on notifications:
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
-```
+**Migration 2 -- Seed Automotive category + subcategories:**
+Insert top-level "Automotive" category and subcategories (Car Parts, Tires & Wheels, Car Electronics, Interior Accessories, Exterior Accessories, Oils & Fluids, Tools & Equipment, Motorcycle Parts) into the `categories` table with appropriate slugs and placeholder image URLs.
 
-Also add admin SELECT policy on `products` and `order_items` so admin queries work:
-```sql
-CREATE POLICY "Admins can view all products" ON public.products
-  FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'));
+### 1. Admin Categories Page Redesign
 
-CREATE POLICY "Admins can view all order items" ON public.order_items
-  FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'));
-```
+Rewrite `src/pages/admin/AdminCategories.tsx`:
+- **Organized tree view** with category images (thumbnail), expand/collapse per top-level category
+- **Add Category dialog** with fields: name, slug (auto-generated), parent (dropdown for subcategory), image upload to `product-images` storage bucket
+- **Edit Category** inline or dialog -- update name, slug, image
+- **Delete Category** with confirmation dialog
+- Categories displayed in a clean card grid (top-level) with expandable subcategories underneath
+- Image upload uses Supabase Storage (`product-images` bucket, path: `categories/{slug}.webp`)
 
-### 1. Admin Dashboard Redesign (Sidebar Layout)
+### 2. Bulk Import -- Excel + CSV Templates
 
-Replace the current tab-based `AdminDashboard` with a **sidebar layout** using shadcn `Sidebar` component. The admin area becomes a multi-page routed section under `/admin/*`.
+Update `src/components/shared/BulkProductImport.tsx`:
+- Add **two download buttons**: "CSV Template" and "Excel Template"
+- Excel template generated client-side using `xlsx` library (SheetJS) -- creates a `.xlsx` file with headers and 2 sample rows, same data as CSV
+- Accept both `.csv` and `.xlsx` uploads -- detect file type by extension
+- For `.xlsx` files, parse using `xlsx` library (`XLSX.read` → convert first sheet to JSON)
+- Add `xlsx` package dependency
+- Update file input accept to `.csv,.xlsx,.xls`
 
-**Sidebar modules:**
-- **Dashboard** (`/admin`) -- Overview stats, charts, recent activity
-- **Vendors** (`/admin/vendors`) -- Full vendor management (approve/reject/suspend, view details, edit commission rates)
-- **Products** (`/admin/products`) -- All products across vendors, can deactivate/feature products
-- **Orders** (`/admin/orders`) -- All orders, status tracking, filter by vendor/status/date
-- **Categories** (`/admin/categories`) -- View/manage category tree
-- **Users** (`/admin/users`) -- View all users, roles management
-- **Bulk Import** (`/admin/bulk-import`) -- CSV upload for products
-- **Notifications** (`/admin/notifications`) -- Send notifications to all vendors or specific vendors
-- **Settings** (`/admin/settings`) -- Platform commission rate, site settings
+### 3. Fully Functional Admin Settings
 
-**New files:**
-- `src/components/admin/AdminLayout.tsx` -- SidebarProvider + Sidebar + content area
-- `src/components/admin/AdminSidebar.tsx` -- Sidebar with all menu items
-- `src/pages/admin/AdminDashboard.tsx` -- Rewrite: overview only
-- `src/pages/admin/AdminVendors.tsx` -- Vendor management
-- `src/pages/admin/AdminProducts.tsx` -- Product management
-- `src/pages/admin/AdminOrders.tsx` -- Order management
-- `src/pages/admin/AdminUsers.tsx` -- User/role management
-- `src/pages/admin/AdminBulkImport.tsx` -- CSV bulk import
-- `src/pages/admin/AdminNotifications.tsx` -- Send notifications
-- `src/pages/admin/AdminCategories.tsx` -- Category management
+Rewrite `src/pages/admin/AdminSettings.tsx` with sections:
 
-**Routes added to App.tsx:**
-```
-/admin -- Dashboard overview
-/admin/vendors -- Vendor management
-/admin/products -- Product management
-/admin/orders -- Order management
-/admin/users -- User management
-/admin/bulk-import -- Bulk import
-/admin/notifications -- Notifications
-/admin/categories -- Categories
-```
+| Section | Settings |
+|---------|----------|
+| **General** | Platform name, support email, currency (dropdown) |
+| **Commerce** | Default commission rate (%), minimum order amount, free shipping threshold |
+| **Vendor Policy** | Auto-approve new vendors (toggle), maintenance mode (toggle) |
 
-### 2. Vendor Dashboard Enhancement (Sidebar Layout)
+- Each setting reads from / writes to `platform_settings` table
+- Form with save button per section (or single save all)
+- Use `useQuery` to load settings, `useMutation` to upsert
+- Toast on save success/failure
+- Settings are stored as key-value pairs so they're extensible
 
-Similarly convert vendor dashboard to sidebar layout under `/vendor/*`:
-
-**Sidebar modules:**
-- **Dashboard** (`/vendor/dashboard`) -- Overview stats
-- **Products** (`/vendor/products`) -- Product list with edit/delete/status
-- **Add Product** (`/vendor/products/new`) -- Add product form
-- **Bulk Import** (`/vendor/bulk-import`) -- CSV upload for products
-- **Orders** (`/vendor/orders`) -- Order management with status flow
-- **Earnings** (`/vendor/earnings`) -- Revenue breakdown
-- **Notifications** (`/vendor/notifications`) -- View notifications from admin (realtime)
-- **Store Settings** (`/vendor/settings`) -- Store info editing
-
-**New files:**
-- `src/components/vendor/VendorLayout.tsx` -- SidebarProvider + Sidebar
-- `src/components/vendor/VendorSidebar.tsx` -- Sidebar menu
-- Split existing VendorDashboard tabs into separate page components
-
-### 3. Bulk Import Feature
-
-Shared component `src/components/shared/BulkProductImport.tsx`:
-- CSV file upload with drag-and-drop
-- Parse CSV client-side using `Papa Parse` (add dependency)
-- Preview table showing parsed rows
-- Validate required fields (name, price, stock)
-- Map CSV columns to product fields
-- Insert products in batch via Supabase
-- Show success/error count
-- Download CSV template button
-
-Available to both admin (can specify vendor_id) and vendors (auto-uses their vendor_id).
-
-### 4. Notifications System
-
-**Admin side** (`AdminNotifications.tsx`):
-- Form to compose notification (title, message, type)
-- Choose recipients: "All vendors", specific vendor from dropdown
-- Send button inserts into `notifications` table
-- History of sent notifications
-
-**Vendor side** (`VendorNotifications.tsx`):
-- List of received notifications with read/unread state
-- Click to mark as read
-- Realtime subscription for new notifications (bell icon with badge count in sidebar)
-
-### 5. Mobile App Feel
-
-To make the site feel like a native mobile app:
-- Add `<meta name="mobile-web-app-capable" content="yes">` and Apple-specific meta tags to `index.html`
-- Add a simple `manifest.json` with `display: "standalone"` (no service worker, just installability)
-- Add bottom navigation bar on mobile (Home, Search, Cart, Account) that appears only on `< 768px`
-- Create `src/components/layout/MobileBottomNav.tsx` -- fixed bottom bar with icons
-- Add smooth page transitions
-- Use `safe-area-inset` padding for notch phones
-- Touch-friendly tap targets (min 44px)
-
-**Changes to `index.html`:**
-```html
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#131921">
-<link rel="manifest" href="/manifest.json">
-```
-
-**Create `public/manifest.json`:**
-```json
-{
-  "name": "Barakaz",
-  "short_name": "Barakaz",
-  "display": "standalone",
-  "start_url": "/",
-  "theme_color": "#131921",
-  "background_color": "#f5f5f5"
-}
-```
-
-### Files Summary
+### Files to Create/Modify
 
 | File | Action |
 |------|--------|
-| Migration SQL | Create `notifications` table + admin RLS policies |
-| `src/components/admin/AdminLayout.tsx` | Create |
-| `src/components/admin/AdminSidebar.tsx` | Create |
-| `src/pages/admin/AdminDashboard.tsx` | Rewrite (overview only) |
-| `src/pages/admin/AdminVendors.tsx` | Create |
-| `src/pages/admin/AdminProducts.tsx` | Create |
-| `src/pages/admin/AdminOrders.tsx` | Create |
-| `src/pages/admin/AdminUsers.tsx` | Create |
-| `src/pages/admin/AdminBulkImport.tsx` | Create |
-| `src/pages/admin/AdminNotifications.tsx` | Create |
-| `src/pages/admin/AdminCategories.tsx` | Create |
-| `src/components/vendor/VendorLayout.tsx` | Create |
-| `src/components/vendor/VendorSidebar.tsx` | Create |
-| `src/pages/vendor/VendorDashboard.tsx` | Rewrite |
-| `src/pages/vendor/VendorProducts.tsx` | Create |
-| `src/pages/vendor/VendorOrders.tsx` | Create |
-| `src/pages/vendor/VendorEarnings.tsx` | Create |
-| `src/pages/vendor/VendorNotifications.tsx` | Create |
-| `src/pages/vendor/VendorSettings.tsx` | Create |
-| `src/pages/vendor/VendorBulkImport.tsx` | Create |
-| `src/components/shared/BulkProductImport.tsx` | Create |
-| `src/components/layout/MobileBottomNav.tsx` | Create |
-| `src/components/layout/MarketplaceLayout.tsx` | Modify (add MobileBottomNav) |
-| `src/App.tsx` | Add all new routes |
-| `index.html` | Add mobile app meta tags |
-| `public/manifest.json` | Create |
+| Migration SQL | Create `platform_settings` table + seed automotive categories |
+| `src/pages/admin/AdminCategories.tsx` | Full rewrite -- tree view with CRUD + image upload |
+| `src/pages/admin/AdminSettings.tsx` | Full rewrite -- functional settings with all controls |
+| `src/components/shared/BulkProductImport.tsx` | Add Excel template support + xlsx parsing |
+| `src/pages/admin/AdminBulkImport.tsx` | No change needed |
+| `src/pages/vendor/VendorBulkImport.tsx` | No change needed |
 
-### Technical Notes
-- Admin/vendor sidebars use shadcn `Sidebar` with `collapsible="icon"` for mini-collapse on mobile
-- Bulk import uses `papaparse` library for CSV parsing
-- Notifications use Supabase realtime subscriptions
-- Mobile bottom nav uses fixed positioning with `pb-16` body padding on mobile
-- All admin pages check `has_role(auth.uid(), 'admin')` via the `userRoles` context
+### Technical Details
+- Category image upload uses existing `product-images` bucket with path prefix `categories/`
+- Excel generation uses `xlsx` (SheetJS) library -- lightweight, client-side only
+- Platform settings use JSONB values so we can store strings, numbers, booleans flexibly
+- `platform_settings` table uses `key` as primary key for simple upsert with `.upsert()`
+- Automotive subcategories seeded with Unsplash placeholder images
 
