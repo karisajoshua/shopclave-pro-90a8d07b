@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,11 +10,15 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AdminDashboard = () => {
-  const { user, userRoles } = useAuth();
+  const { user, userRoles, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  if (!user) { navigate("/auth"); return null; }
+  useEffect(() => {
+    if (!loading && !user) navigate("/auth");
+  }, [user, loading, navigate]);
+
+  if (loading || !user) return null;
 
   const { data: vendors } = useQuery({
     queryKey: ["admin-vendors"],
