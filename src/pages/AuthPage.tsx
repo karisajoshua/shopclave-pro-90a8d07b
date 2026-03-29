@@ -87,7 +87,7 @@ const AuthPage = () => {
               {googleLoading ? "Please wait..." : "Continue with Google"}
             </Button>
 
-            <div className="relative my-2">
+            <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <Separator className="w-full" />
               </div>
@@ -96,7 +96,7 @@ const AuthPage = () => {
               </div>
             </div>
 
-
+            <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
                 <Label htmlFor="fullName">Full Name</Label>
