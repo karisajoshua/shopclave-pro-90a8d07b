@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Facebook, Instagram, Twitter, Youtube, Linkedin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
@@ -92,6 +92,14 @@ const Footer = () => {
             <a href="#" target="_blank" rel="noopener noreferrer">
               <img src={appBadges} alt="Download on App Store & Google Play" className="h-10 w-auto" />
             </a>
+          </div>
+          <div className="flex items-center gap-4 mt-2">
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Facebook className="h-5 w-5" /></a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Instagram className="h-5 w-5" /></a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Twitter className="h-5 w-5" /></a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Youtube className="h-5 w-5" /></a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Linkedin className="h-5 w-5" /></a>
+            <a href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><MessageCircle className="h-5 w-5" /></a>
           </div>
           <div className="flex items-center gap-4 mt-2">
             <img
