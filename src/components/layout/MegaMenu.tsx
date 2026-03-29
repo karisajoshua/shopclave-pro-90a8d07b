@@ -139,6 +139,19 @@ export const MENU_CATEGORIES: { name: string; icon: LucideIcon; slug: string; ch
     ],
   },
   {
+    name: "Automotive", icon: Car, slug: "automotive",
+    children: [
+      { name: "Car Parts", slug: "car-parts", children: [] },
+      { name: "Motorcycle Parts", slug: "motorcycle-parts", children: [] },
+      { name: "Car Electronics", slug: "car-electronics", children: [] },
+      { name: "Tires & Wheels", slug: "tires-wheels", children: [] },
+      { name: "Interior Accessories", slug: "interior-accessories", children: [] },
+      { name: "Exterior Accessories", slug: "exterior-accessories", children: [] },
+      { name: "Oils & Fluids", slug: "oils-fluids", children: [] },
+      { name: "Tools & Equipment", slug: "tools-equipment", children: [] },
+    ],
+  },
+  {
     name: "Books", icon: BookOpen, slug: "books",
     children: [
       { name: "Fiction", slug: "fiction", children: [] },
