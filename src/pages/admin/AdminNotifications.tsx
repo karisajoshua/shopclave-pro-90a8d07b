@@ -27,7 +27,7 @@ const AdminNotifications = () => {
   const { data: sentNotifications } = useQuery({
     queryKey: ["admin-sent-notifications"],
     queryFn: async () => {
-      const { data } = await supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(50);
+      const { data } = await (supabase as any).from("notifications").select("*").order("created_at", { ascending: false }).limit(50);
       return data || [];
     },
     enabled: !!user,
@@ -51,7 +51,7 @@ const AdminNotifications = () => {
         type: form.type,
       }));
 
-      const { error } = await supabase.from("notifications").insert(rows);
+      const { error } = await (supabase as any).from("notifications").insert(rows);
       if (error) throw error;
     },
     onSuccess: () => {
