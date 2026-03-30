@@ -4,101 +4,86 @@ import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Users, Eye, MousePointerClick, Clock, TrendingDown, RefreshCw } from "lucide-react";
-import { format, subDays, subHours, startOfDay, startOfYesterday, endOfYesterday, subMonths } from "date-fns";
+import { format, subDays, startOfDay, startOfYesterday, endOfYesterday, isAfter, isBefore, parseISO } from "date-fns";
 
-type TimeFrame = "today" | "yesterday" | "24h" | "7d" | "30d" | "90d" | "12m";
+type TimeFrame = "today" | "yesterday" | "7d" | "30d";
 
 const timeFrameOptions: { label: string; value: TimeFrame }[] = [
   { label: "Today", value: "today" },
   { label: "Yesterday", value: "yesterday" },
-  { label: "Last 24h", value: "24h" },
   { label: "7 Days", value: "7d" },
   { label: "30 Days", value: "30d" },
-  { label: "90 Days", value: "90d" },
-  { label: "12 Months", value: "12m" },
 ];
-
-const getDateRange = (tf: TimeFrame) => {
-  const now = new Date();
-  let start: Date;
-  let end: Date = now;
-  let granularity = "daily";
-
-  switch (tf) {
-    case "today":
-      start = startOfDay(now);
-      granularity = "hourly";
-      break;
-    case "yesterday":
-      start = startOfYesterday();
-      end = endOfYesterday();
-      granularity = "hourly";
-      break;
-    case "24h":
-      start = subHours(now, 24);
-      granularity = "hourly";
-      break;
-    case "7d":
-      start = subDays(now, 7);
-      break;
-    case "30d":
-      start = subDays(now, 30);
-      break;
-    case "90d":
-      start = subDays(now, 90);
-      break;
-    case "12m":
-      start = subMonths(now, 12);
-      break;
-    default:
-      start = subDays(now, 7);
-  }
-
-  return {
-    startDate: format(start, "yyyy-MM-dd"),
-    endDate: format(end, "yyyy-MM-dd"),
-    granularity,
-  };
-};
 
 const SiteAnalytics = () => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("7d");
 
-  const dateRange = useMemo(() => getDateRange(timeFrame), [timeFrame]);
-
-  const { data: analyticsData, isLoading, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["site-analytics", dateRange.startDate, dateRange.endDate, dateRange.granularity],
+  const { data: cacheRow, isLoading, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["site-analytics-cache"],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const response = await supabase.functions.invoke("get-analytics", {
-        body: {
-          startDate: dateRange.startDate,
-          endDate: dateRange.endDate,
-          granularity: dateRange.granularity,
-        },
-      });
-
-      if (response.error) throw response.error;
-      return response.data;
+      const { data, error } = await supabase
+        .from("site_analytics_cache" as any)
+        .select("data, updated_at")
+        .eq("id", 1)
+        .single();
+      if (error) throw error;
+      return data as any;
     },
     refetchInterval: 30000,
   });
 
+  const analyticsData = cacheRow?.data;
   const timeSeries = analyticsData?.timeSeries;
   const lists = analyticsData?.lists;
 
-  const chartData = useMemo(() => {
-    const series = timeSeries?.visitors?.data || [];
-    const isHourly = dateRange.granularity === "hourly";
-    return series.map((point: any) => ({
-      date: isHourly
-        ? format(new Date(point.date), "HH:mm")
-        : format(new Date(point.date), "MMM dd"),
-      visitors: point.value,
-    }));
-  }, [timeSeries, dateRange.granularity]);
+  // Filter time series data based on selected time frame
+  const filterByTimeFrame = (data: any[] | undefined) => {
+    if (!data) return [];
+    const now = new Date();
+    let start: Date;
+    let end: Date = now;
+
+    switch (timeFrame) {
+      case "today":
+        start = startOfDay(now);
+        break;
+      case "yesterday":
+        start = startOfYesterday();
+        end = endOfYesterday();
+        break;
+      case "7d":
+        start = subDays(now, 7);
+        break;
+      case "30d":
+        start = subDays(now, 30);
+        break;
+      default:
+        start = subDays(now, 7);
+    }
+
+    return data.filter((point: any) => {
+      const date = parseISO(point.date);
+      return isAfter(date, start) && isBefore(date, end);
+    });
+  };
+
+  const filteredVisitors = useMemo(() => filterByTimeFrame(timeSeries?.visitors?.data), [timeSeries, timeFrame]);
+  const filteredPageviews = useMemo(() => filterByTimeFrame(timeSeries?.pageviews?.data), [timeSeries, timeFrame]);
+  const filteredBounce = useMemo(() => filterByTimeFrame(timeSeries?.bounceRate?.data), [timeSeries, timeFrame]);
+  const filteredDuration = useMemo(() => filterByTimeFrame(timeSeries?.sessionDuration?.data), [timeSeries, timeFrame]);
+  const filteredPpv = useMemo(() => filterByTimeFrame(timeSeries?.pageviewsPerVisit?.data), [timeSeries, timeFrame]);
+
+  const sumValues = (arr: any[]) => arr.reduce((s: number, p: any) => s + (p.value || 0), 0);
+  const avgValues = (arr: any[]) => {
+    const nonZero = arr.filter((p: any) => p.value > 0);
+    if (!nonZero.length) return 0;
+    return Math.round((nonZero.reduce((s: number, p: any) => s + p.value, 0) / nonZero.length) * 100) / 100;
+  };
+
+  const chartData = filteredVisitors.map((point: any) => ({
+    date: format(parseISO(point.date), "MMM dd"),
+    visitors: point.value,
+  }));
 
   const formatDuration = (seconds: number) => {
     if (!seconds) return "0s";
@@ -108,11 +93,11 @@ const SiteAnalytics = () => {
   };
 
   const statCards = [
-    { label: "Visitors", value: timeSeries?.visitors?.total ?? "—", icon: Users, color: "text-primary" },
-    { label: "Pageviews", value: timeSeries?.pageviews?.total ?? "—", icon: Eye, color: "text-blue-500" },
-    { label: "Views / Visit", value: timeSeries?.pageviewsPerVisit?.total ?? "—", icon: MousePointerClick, color: "text-green-500" },
-    { label: "Visit Duration", value: timeSeries?.sessionDuration?.total ? formatDuration(timeSeries.sessionDuration.total) : "—", icon: Clock, color: "text-amber-500" },
-    { label: "Bounce Rate", value: timeSeries?.bounceRate?.total != null ? `${timeSeries.bounceRate.total}%` : "—", icon: TrendingDown, color: "text-destructive" },
+    { label: "Visitors", value: sumValues(filteredVisitors), icon: Users, color: "text-primary" },
+    { label: "Pageviews", value: sumValues(filteredPageviews), icon: Eye, color: "text-blue-500" },
+    { label: "Views / Visit", value: avgValues(filteredPpv), icon: MousePointerClick, color: "text-green-500" },
+    { label: "Visit Duration", value: formatDuration(avgValues(filteredDuration)), icon: Clock, color: "text-amber-500" },
+    { label: "Bounce Rate", value: `${avgValues(filteredBounce)}%`, icon: TrendingDown, color: "text-destructive" },
   ];
 
   const renderBreakdown = (title: string, items: any[] | undefined) => (
