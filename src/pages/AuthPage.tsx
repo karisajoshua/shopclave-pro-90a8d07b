@@ -78,7 +78,12 @@ const AuthPage = () => {
         toast.success("Account created! Please check your email to verify your account.");
       }
     } catch (err: any) {
-      toast.error(err.message || "An error occurred");
+      const msg = err.message || "An error occurred";
+      if (isLogin && msg.toLowerCase().includes("invalid login credentials")) {
+        toast.error("Invalid login credentials. If you signed up with Google, please use the Google button above.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
