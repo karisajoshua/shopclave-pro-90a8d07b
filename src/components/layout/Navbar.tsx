@@ -180,11 +180,24 @@ const Navbar = () => {
           </div>
         </nav>
 
-        {/* === MOBILE LOCATION BAR === */}
+        {/* === MOBILE QUICK LINKS === */}
         <div className="md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground">
-          <div className="flex items-center gap-1.5 px-3 h-9 text-xs">
-            <MapPin className="h-4 w-4 text-primary-foreground/80" />
-            <span className="text-primary-foreground/80">{t("nav.deliverTo")}</span>
+          <div className="flex items-center gap-0 h-9 text-xs overflow-x-auto scrollbar-hide px-1">
+            <Link to="/search" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
+            <Link to="/vendor/register" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
+            <Link to="/search?category=electronics" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.electronics")}</Link>
+            <Link to="/search?category=fashion" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.fashion")}</Link>
+            <Link to="/search?category=home-garden" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.homeGarden")}</Link>
+            <Link to="/search?category=health-beauty" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.healthBeauty")}</Link>
+            <Link to="/search?category=sports" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.sports")}</Link>
+          </div>
+        </div>
+
+        {/* === MOBILE LOCATION BAR === */}
+        <div className="md:hidden bg-background border-b border-border">
+          <div className="flex items-center gap-1.5 px-3 h-9 text-xs text-foreground">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{t("nav.deliverTo")}</span>
             <span className="font-bold text-sm">{country.name}</span>
           </div>
         </div>
