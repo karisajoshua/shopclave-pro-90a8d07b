@@ -1,0 +1,38 @@
+# Barakaz
+
+> Barakaz is a multi-vendor online marketplace based in Kenya, offering electronics, fashion, home & garden, health & beauty, and more from thousands of verified vendors with fast delivery across Kenya.
+
+## About
+
+Barakaz connects buyers with verified sellers across Kenya. Vendors can register and list products, while customers enjoy a curated shopping experience with secure checkout, M-Pesa and card payments, and reliable delivery.
+
+## Key Features
+
+- Multi-vendor marketplace with verified sellers
+- Product categories: Electronics, Fashion, Home & Garden, Health & Beauty, Sports, Phones & Tablets
+- Secure authentication (email, Google OAuth)
+- Shopping cart and checkout with M-Pesa, Visa, Mastercard, PayPal
+- Order tracking and delivery across Kenya
+- Vendor dashboard for product management, order fulfillment, and earnings
+- Admin panel for platform management
+- Multilingual support (English, Swahili)
+
+## Pages
+
+- [Home](https://shopclave-pro.lovable.app/)
+- [Search Products](https://shopclave-pro.lovable.app/search)
+- [About Us](https://shopclave-pro.lovable.app/about)
+- [Contact Us](https://shopclave-pro.lovable.app/contact)
+- [Help Center](https://shopclave-pro.lovable.app/help)
+- [Delivery Information](https://shopclave-pro.lovable.app/delivery)
+- [Return Policy](https://shopclave-pro.lovable.app/return-policy)
+- [Sell on Barakaz](https://shopclave-pro.lovable.app/vendor/register)
+- [Terms & Conditions](https://shopclave-pro.lovable.app/terms)
+- [Privacy Policy](https://shopclave-pro.lovable.app/privacy-policy)
+
+## Contact
+
+- Email: support@barakaz.com
+- Phone: +254 700 000 000
+- WhatsApp: +254 700 000 000
+- Location: Nairobi, Kenya
