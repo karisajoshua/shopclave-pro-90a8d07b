@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, MapPin, Globe } from "lucide-react";
+import { ShoppingCart, Search, Menu, MapPin, Globe, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,7 +35,64 @@ const Navbar = () => {
       <header className="sticky top-0 z-50">
         {/* Main dark navbar */}
         <nav className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
-          <div className="container flex items-center gap-2 md:gap-4 h-14 md:h-16">
+          {/* === MOBILE TOP ROW === */}
+          <div className="md:hidden flex items-center justify-between px-3 h-12">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSidebarOpen(true)}>
+                <Menu className="h-6 w-6" />
+              </button>
+              <Link to="/">
+                <img
+                  src={barakazLogo}
+                  alt="Barakaz"
+                  className="h-7 w-auto brightness-0 invert"
+                />
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to={user ? "/account" : "/auth"}
+                className="flex items-center gap-1 text-xs px-1 py-1"
+              >
+                <span className="font-semibold text-sm">
+                  {user ? t("nav.helloWelcome") : <>Sign in <span className="text-[10px]">›</span></>}
+                </span>
+              </Link>
+              <Link to={user ? "/account" : "/auth"} className="p-1">
+                <User className="h-5 w-5" />
+              </Link>
+              <Link to="/cart" className="relative p-1">
+                <ShoppingCart className="h-6 w-6" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[hsl(var(--marketplace-orange))] text-xs font-extrabold">
+                    {totalItems}
+                  </span>
+                )}
+              </Link>
+            </div>
+          </div>
+
+          {/* === MOBILE SEARCH ROW === */}
+          <div className="md:hidden px-3 pb-2">
+            <div className="flex w-full">
+              <Input
+                placeholder={t("nav.search")}
+                className="h-10 rounded-l-md rounded-r-none bg-white text-foreground border-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--marketplace-orange))] flex-1"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+              <button
+                onClick={handleSearch}
+                className="bg-[hsl(var(--marketplace-orange-hover))] hover:bg-[hsl(var(--marketplace-orange))] px-3 rounded-r-md flex items-center justify-center"
+              >
+                <Search className="h-5 w-5 text-primary-foreground" />
+              </button>
+            </div>
+          </div>
+
+          {/* === DESKTOP ROW (unchanged) === */}
+          <div className="container hidden md:flex items-center gap-2 md:gap-4 h-14 md:h-16">
             {/* Logo */}
             <Link to="/" className="shrink-0">
               <img
@@ -46,7 +103,7 @@ const Navbar = () => {
             </Link>
 
             {/* Deliver to */}
-            <div className="hidden md:flex items-center gap-1 text-xs shrink-0 cursor-default hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-1 py-1">
+            <div className="flex items-center gap-1 text-xs shrink-0 cursor-default hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-1 py-1">
               <MapPin className="h-4 w-4 text-primary-foreground/70" />
               <div className="leading-tight">
                 <span className="text-primary-foreground/70 block">{t("nav.deliverTo")}</span>
@@ -74,11 +131,11 @@ const Navbar = () => {
             </div>
 
             {/* Right actions */}
-            <div className="flex items-center gap-1 md:gap-3 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               {/* Language */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="hidden md:flex items-center gap-1 text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1">
+                  <button className="flex items-center gap-1 text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1">
                     <Globe className="h-4 w-4" />
                     <span className="font-bold text-sm">{language}</span>
                   </button>
@@ -99,7 +156,7 @@ const Navbar = () => {
               {/* Account */}
               <Link
                 to={user ? "/account" : "/auth"}
-                className="hidden md:flex flex-col text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1"
+                className="flex flex-col text-xs hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1"
               >
                 <span className="text-primary-foreground/70 text-[11px]">
                   {user ? t("nav.helloWelcome") : t("nav.hello")}
@@ -117,14 +174,23 @@ const Navbar = () => {
                     </span>
                   )}
                 </div>
-                <span className="hidden md:inline text-xs font-bold">{t("nav.cart")}</span>
+                <span className="text-xs font-bold">{t("nav.cart")}</span>
               </Link>
             </div>
           </div>
         </nav>
 
-        {/* Secondary nav bar */}
-        <div className="bg-[hsl(var(--nav-secondary))] text-primary-foreground">
+        {/* === MOBILE LOCATION BAR === */}
+        <div className="md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground">
+          <div className="flex items-center gap-1.5 px-3 h-9 text-xs">
+            <MapPin className="h-4 w-4 text-primary-foreground/80" />
+            <span className="text-primary-foreground/80">{t("nav.deliverTo")}</span>
+            <span className="font-bold text-sm">{country.name}</span>
+          </div>
+        </div>
+
+        {/* Secondary nav bar — desktop only */}
+        <div className="hidden md:block bg-[hsl(var(--nav-secondary))] text-primary-foreground">
           <div className="container flex items-center gap-0 h-10 text-sm overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -137,8 +203,8 @@ const Navbar = () => {
             <Link to="/vendor/register" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
             <Link to="/search?category=electronics" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.electronics")}</Link>
             <Link to="/search?category=fashion" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.fashion")}</Link>
-            <Link to="/search?category=home-garden" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">{t("nav.homeGarden")}</Link>
-            <Link to="/search?category=health-beauty" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden md:inline">{t("nav.healthBeauty")}</Link>
+            <Link to="/search?category=home-garden" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.homeGarden")}</Link>
+            <Link to="/search?category=health-beauty" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.healthBeauty")}</Link>
             <Link to="/search?category=sports" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap hidden lg:inline">{t("nav.sports")}</Link>
           </div>
         </div>
