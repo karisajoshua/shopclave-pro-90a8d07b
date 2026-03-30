@@ -61,6 +61,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <TranslationProvider>
           <AuthProvider>
             <CartProvider>
