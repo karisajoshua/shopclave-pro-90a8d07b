@@ -10,8 +10,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import barakazLogo from "@/assets/barakaz-logo.png";
 
 const items = [
   { title: "Dashboard", url: "/vendor/dashboard", icon: LayoutDashboard },
@@ -30,6 +32,15 @@ export function VendorSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
+      <SidebarHeader className="border-b border-border px-4 py-4 flex items-center justify-center">
+        <Link to="/">
+          <img
+            src={barakazLogo}
+            alt="Barakaz"
+            className="h-10 w-auto group-data-[collapsible=icon]:h-7 transition-all"
+          />
+        </Link>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Vendor Panel</SidebarGroupLabel>
