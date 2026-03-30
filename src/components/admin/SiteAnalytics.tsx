@@ -4,44 +4,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Users, Eye, MousePointerClick, Clock, TrendingDown, RefreshCw } from "lucide-react";
-import { format, subDays, subMonths } from "date-fns";
-
-type Range = "7d" | "30d" | "90d";
+import { format } from "date-fns";
 
 const SiteAnalytics = () => {
-  const [range, setRange] = useState<Range>("7d");
-
-  const { startDate, endDate, granularity } = useMemo(() => {
-    const end = new Date();
-    const start =
-      range === "7d" ? subDays(end, 7) :
-      range === "30d" ? subDays(end, 30) :
-      subMonths(end, 3);
-    return {
-      startDate: format(start, "yyyy-MM-dd"),
-      endDate: format(end, "yyyy-MM-dd"),
-      granularity: range === "7d" ? "daily" : "daily",
-    };
-  }, [range]);
-
-  const { data, isLoading, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["site-analytics", startDate, endDate, granularity],
+  const { data: cacheRow, isLoading, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["site-analytics-cache"],
     queryFn: async () => {
-      const { data: result, error } = await supabase.functions.invoke("get-analytics", {
-        body: { startDate, endDate, granularity },
-      });
+      const { data, error } = await supabase
+        .from("site_analytics_cache" as any)
+        .select("data, updated_at")
+        .eq("id", 1)
+        .single();
       if (error) throw error;
-      return result;
+      return data as any;
     },
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
-  const stats = data?.stats;
-  const breakdowns = data?.breakdowns;
-  const timeseries = data?.stats?.visitors?.timeseries || [];
+  const analyticsData = cacheRow?.data;
+  const stats = analyticsData?.stats;
+  const breakdowns = analyticsData?.breakdowns;
+  const timeseries = stats?.visitors?.timeseries || [];
+  const cacheUpdatedAt = cacheRow?.updated_at;
 
   const chartData = timeseries.map((point: any) => ({
-    date: format(new Date(point.date), range === "7d" ? "EEE" : "MMM dd"),
+    date: format(new Date(point.date), "EEE"),
     visitors: point.value,
   }));
 
@@ -58,12 +45,6 @@ const SiteAnalytics = () => {
     { label: "Views / Visit", value: stats?.pageviewsPerVisit?.total ?? "—", icon: MousePointerClick, color: "text-green-500" },
     { label: "Visit Duration", value: stats?.sessionDuration?.total ? formatDuration(stats.sessionDuration.total) : "—", icon: Clock, color: "text-amber-500" },
     { label: "Bounce Rate", value: stats?.bounceRate?.total != null ? `${stats.bounceRate.total}%` : "—", icon: TrendingDown, color: "text-destructive" },
-  ];
-
-  const ranges: { label: string; value: Range }[] = [
-    { label: "7 Days", value: "7d" },
-    { label: "30 Days", value: "30d" },
-    { label: "90 Days", value: "90d" },
   ];
 
   const renderBreakdown = (title: string, items: any[] | undefined) => (
@@ -104,19 +85,14 @@ const SiteAnalytics = () => {
           <Button variant="ghost" size="sm" onClick={() => refetch()} className="gap-1">
             <RefreshCw className="h-3.5 w-3.5" />
             <span className="text-xs text-muted-foreground">
-              {dataUpdatedAt ? `Updated ${format(dataUpdatedAt, "HH:mm:ss")}` : ""}
+              {cacheUpdatedAt ? `Updated ${format(new Date(cacheUpdatedAt), "MMM dd, HH:mm")}` : ""}
             </span>
           </Button>
-          {ranges.map((r) => (
-            <Button
-              key={r.value}
-              size="sm"
-              variant={range === r.value ? "default" : "outline"}
-              onClick={() => setRange(r.value)}
-            >
-              {r.label}
-            </Button>
-          ))}
+          {analyticsData?.dateRange && (
+            <span className="text-xs text-muted-foreground">
+              {analyticsData.dateRange.start} – {analyticsData.dateRange.end}
+            </span>
+          )}
         </div>
       </div>
 
