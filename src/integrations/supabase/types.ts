@@ -548,6 +548,24 @@ export type Database = {
           },
         ]
       }
+      site_analytics_cache: {
+        Row: {
+          data: Json
+          id: number
+          updated_at: string | null
+        }
+        Insert: {
+          data?: Json
+          id?: number
+          updated_at?: string | null
+        }
+        Update: {
+          data?: Json
+          id?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
