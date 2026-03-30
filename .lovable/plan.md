@@ -1,27 +1,31 @@
 
 
-## Customizing OAuth Sign-In Page Branding
+## Mobile Navbar Redesign — Amazon-Style Layout
 
-The Google/Apple sign-in pages currently show Lovable branding because they use Lovable's **managed OAuth credentials**. To display "Barakaz" branding on those pages, you need to use your **own OAuth credentials**.
+Based on the reference screenshot, the mobile navbar (`< md` breakpoint) needs to be restructured into a stacked layout:
 
-### Steps
+**Row 1** (dark bg): Hamburger menu | Barakaz logo | "Sign in >" text | User icon | Cart icon with badge
 
-1. **Google OAuth** — Create your own OAuth Client ID in the [Google Cloud Console](https://console.cloud.google.com/):
-   - Set up a consent screen with "Barakaz" as the app name and your logo
-   - Add authorized redirect URL from Lovable Cloud's Auth Settings
-   - Enter your Client ID and Secret in **Cloud → Users → Auth Settings → Google**
+**Row 2** (dark bg): Full-width search bar with orange search button
 
-2. **Apple OAuth** — Register your own Services ID in the [Apple Developer Portal](https://developer.apple.com/):
-   - Configure the service with "Barakaz" branding
-   - Enter credentials in **Cloud → Users → Auth Settings → Apple**
+**Row 3** (lighter bar): MapPin icon + delivery location text (currently hidden on mobile)
 
-Once your own credentials are configured, the OAuth consent screens will show "Barakaz" instead of "Lovable".
+The secondary category nav bar will be hidden on mobile since the bottom nav already handles navigation.
 
-No code changes are needed — the `lovable.auth.signInWithOAuth()` calls will automatically use your custom credentials once configured in Cloud settings.
+### Changes (single file: `src/components/layout/Navbar.tsx`)
 
-<lov-actions>
-  <lov-open-backend>Open Cloud Auth Settings</lov-open-backend>
-  <lov-suggestion message="I've set up my own Google OAuth credentials in Cloud Auth Settings. Please verify the Google sign-in flow works correctly.">Test Google sign-in after setup</lov-suggestion>
-  <lov-suggestion message="I've set up my own Apple OAuth credentials in Cloud Auth Settings. Please verify the Apple sign-in flow works correctly.">Test Apple sign-in after setup</lov-suggestion>
-</lov-actions>
+1. **Mobile top row**: Restructure the main nav so on mobile it shows hamburger, logo, "Sign in >" link, user icon, and cart — all in one compact row without the search bar.
+
+2. **Mobile search row**: Move the search bar to a second row below, spanning full width with horizontal padding — matching the Amazon mobile pattern.
+
+3. **Show location bar on mobile**: The "Deliver to [Country]" section (currently `hidden md:flex`) will become a third row visible on mobile, styled as a slim bar with MapPin icon and country name.
+
+4. **Hide secondary category bar on mobile**: The category links bar (`Today's Deals`, `Electronics`, etc.) will be hidden on mobile (`hidden md:flex`) since the bottom nav and hamburger menu cover navigation.
+
+5. **Desktop stays unchanged**: All changes are wrapped in responsive classes so the desktop layout remains identical.
+
+### Technical approach
+- Use `md:hidden` / `hidden md:flex` classes to swap between mobile stacked layout and current desktop single-row layout
+- No new components needed — just restructuring the JSX with responsive wrappers
+- The `MobileBottomNav` component remains as-is
 
