@@ -1,0 +1,12 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Barakaz Marketplace",
+  "name_for_model": "barakaz",
+  "description_for_human": "Shop from thousands of verified vendors in Kenya. Electronics, fashion, home & beauty with fast delivery.",
+  "description_for_model": "Barakaz is a multi-vendor e-commerce marketplace based in Kenya offering electronics, fashion, home & garden, health & beauty, sports equipment, and phones from verified vendors. Supports M-Pesa, Visa, Mastercard payments with delivery across Kenya.",
+  "auth": { "type": "none" },
+  "api": { "type": "openapi", "url": "" },
+  "logo_url": "https://shopclave-pro.lovable.app/placeholder.svg",
+  "contact_email": "support@barakaz.com",
+  "legal_info_url": "https://shopclave-pro.lovable.app/terms"
+}
