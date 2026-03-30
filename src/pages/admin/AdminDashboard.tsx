@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import SiteAnalytics from "@/components/admin/SiteAnalytics";
 import { Users, Package, ShoppingBag, Store, DollarSign, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -138,8 +139,13 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Site Analytics */}
+      <SiteAnalytics />
+
+      <div className="border-t border-border pt-6" />
+
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold">Dashboard Overview</h2>
+        <h2 className="text-xl font-bold">Sales Dashboard</h2>
         <div className="flex gap-1 flex-wrap">
           {timeFrames.map((tf) => (
             <Button key={tf.value} size="sm" variant={timeFrame === tf.value ? "default" : "outline"} onClick={() => setTimeFrame(tf.value)}>
