@@ -10,8 +10,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import barakazLogo from "@/assets/barakaz-logo.png";
 
 const items = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
