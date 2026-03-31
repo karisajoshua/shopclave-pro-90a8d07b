@@ -142,6 +142,23 @@ const AddProductPage = () => {
     })));
   };
 
+  const handleVariantImageSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const next = [...variantRows];
+    next[idx] = { ...next[idx], imageFile: file, imagePreview: URL.createObjectURL(file) };
+    setVariantRows(next);
+  };
+
+  const uploadVariantImage = async (file: File, productId: string): Promise<string> => {
+    const ext = file.name.split(".").pop();
+    const path = `${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(path, file);
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   const addOptionType = () => {
     setOptionTypes([...optionTypes, { name: "", values: [] }]);
   };
