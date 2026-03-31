@@ -211,6 +211,7 @@ const ProductDetailPage = () => {
             images={images}
             videoUrl={(product as any).video_url}
             productName={product.name}
+            forcedImageUrl={selectedVariant?.image_url || null}
           />
 
           {/* Product Info */}

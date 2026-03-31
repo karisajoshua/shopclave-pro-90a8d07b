@@ -51,7 +51,7 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: Produ
             title={`${productName} video`}
           />
         ) : (
-          <img src={allImages[activeIndex] || barakazIcon} alt={productName} className="w-full h-full object-cover" />
+          <img src={displayImage || barakazIcon} alt={productName} className="w-full h-full object-cover" />
         )}
       </div>
 

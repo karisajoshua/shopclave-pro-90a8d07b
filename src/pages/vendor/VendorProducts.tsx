@@ -150,6 +150,9 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock }: an
       </td>
       <td className="p-3">
         <div className="flex gap-1">
+          <Link to={`/vendor/products/edit/${p.id}`}>
+            <Button size="sm" variant="outline" className="h-7 text-xs"><Pencil className="h-3 w-3" /></Button>
+          </Link>
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onToggle.mutate({ id: p.id, status: p.status === "active" ? "draft" : "active" })}>
             {p.status === "active" ? "Draft" : "Activate"}
           </Button>

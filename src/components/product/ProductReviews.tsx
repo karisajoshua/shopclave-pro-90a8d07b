@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useTranslation } from "@/contexts/TranslationContext";
 
 interface ProductReviewsProps {
   productId: string;
@@ -40,32 +39,31 @@ const StarRating = ({
 
 const ProductReviews = ({ productId }: ProductReviewsProps) => {
   const { user } = useAuth();
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState("");
 
-  // Fetch reviews with profile info
+  // Fetch reviews
   const { data: reviews = [] } = useQuery({
     queryKey: ["reviews", productId],
     queryFn: async () => {
-      // Fetch reviews
       const { data: reviewsData } = await supabase
         .from("reviews")
         .select("*")
         .eq("product_id", productId)
         .order("created_at", { ascending: false });
-      
+
       if (!reviewsData?.length) return [];
-      
-      // Fetch profiles for review authors
+
+      // Fetch profiles via security-definer function
       const userIds = [...new Set(reviewsData.map(r => r.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, avatar_url")
-        .in("user_id", userIds);
-      
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const { data: profiles } = await supabase.rpc("get_public_profiles", {
+        user_ids: userIds,
+      });
+
+      const profileMap = new Map(
+        (profiles as any[] || []).map((p: any) => [p.user_id, p])
+      );
       return reviewsData.map(r => ({
         ...r,
         profile: profileMap.get(r.user_id) || null,
@@ -73,7 +71,7 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
     },
   });
 
-  // Check if user can review (has delivered order for this product)
+  // Check if user can review
   const { data: canReview } = useQuery({
     queryKey: ["can-review", productId, user?.id],
     queryFn: async () => {
@@ -87,17 +85,24 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
         .maybeSingle();
       if (existing) return false;
 
-      // Check if has delivered order
-      const { data: orderItems } = await supabase
+      // Check delivered orders: query user's orders first, then check order_items
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("user_id", user.id)
+        .in("status", ["delivered", "completed"]);
+
+      if (!orders?.length) return false;
+
+      const orderIds = orders.map(o => o.id);
+      const { data: items } = await supabase
         .from("order_items")
-        .select("id, orders!inner(status, user_id)")
-        .eq("product_id", productId);
-      
-      const hasDelivered = orderItems?.some(
-        (oi: any) => oi.orders?.user_id === user.id && 
-        ["delivered", "completed"].includes(oi.orders?.status)
-      );
-      return !!hasDelivered;
+        .select("id")
+        .eq("product_id", productId)
+        .in("order_id", orderIds)
+        .limit(1);
+
+      return (items?.length ?? 0) > 0;
     },
     enabled: !!user,
   });
@@ -118,11 +123,11 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
       setNewComment("");
       queryClient.invalidateQueries({ queryKey: ["reviews", productId] });
       queryClient.invalidateQueries({ queryKey: ["can-review", productId] });
+      queryClient.invalidateQueries({ queryKey: ["review-stats", productId] });
     },
-    onError: () => toast.error("Failed to submit review"),
+    onError: (e: any) => toast.error(e.message || "Failed to submit review"),
   });
 
-  // Calculate stats
   const avgRating = reviews.length
     ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length
     : 0;
@@ -159,7 +164,6 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
 
         {/* Reviews list + form */}
         <div className="space-y-6">
-          {/* Submit form */}
           {canReview && (
             <div className="border border-border rounded-lg p-4 space-y-3 bg-muted/30">
               <h3 className="font-semibold">Write a Review</h3>
@@ -183,7 +187,6 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
             </div>
           )}
 
-          {/* Reviews list */}
           {reviews.length === 0 ? (
             <p className="text-muted-foreground text-sm py-4">No reviews yet. Be the first to review this product!</p>
           ) : (
