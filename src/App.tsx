@@ -52,6 +52,7 @@ import VendorEarnings from "./pages/vendor/VendorEarnings";
 import VendorNotifications from "./pages/vendor/VendorNotifications";
 import VendorSettings from "./pages/vendor/VendorSettings";
 import VendorBulkImport from "./pages/vendor/VendorBulkImport";
+import EditProductPage from "./pages/vendor/EditProductPage";
 
 const queryClient = new QueryClient();
 
