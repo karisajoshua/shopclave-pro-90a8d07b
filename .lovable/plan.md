@@ -1,73 +1,87 @@
 
 
-# Plan: Product Page Enhancements, Location Detection, and Reviews
+# Plan: Vendor Product Edit, Variant Image Switching, and Review Fix
 
 ## Summary
-Four changes: (1) Add "Buy Now" button to product pages, (2) Redesign product detail page to match the uploaded reference (Amazon-style layout), (3) Fix location detection using IP-based geolocation instead of timezone, (4) Add verified buyer review system to product pages.
+Three fixes: (1) Add edit product capability to vendor dashboard, (2) Link variant images so selecting a color switches the product gallery, (3) Fix the review system so customers can actually submit reviews.
 
 ---
 
-## 1. Add "Buy Now" Button to Product Detail Page
+## 1. Vendor Product Edit
 
-**File: `src/pages/ProductDetailPage.tsx`**
-- Add a "Buy Now" button below (or beside) the "Add to Cart" button
-- "Buy Now" adds the item to cart and navigates directly to `/checkout`
-- Style it with a distinct look (e.g., orange/warning background) to differentiate from "Add to Cart"
+**Current state**: VendorProducts page only has delete/status toggle — no edit button. AddProductPage only creates new products.
 
-## 2. Redesign Product Detail Page (Amazon-style)
+**Approach**: Create a new `EditProductPage` that loads existing product data and allows updating all fields (name, description, price, category, images, variants, video). Add an edit button to VendorProducts and register the route.
 
-**File: `src/pages/ProductDetailPage.tsx`**
-Based on the reference PDF, restructure the page to include:
-- Breadcrumb navigation at the top
-- Product title more prominent with brand/vendor link
-- Rating stars with clickable review count (scrolls to reviews section)
-- Price section with discount percentage badge when compare_at_price exists
-- Delivery info section showing user's detected country
-- Variant selectors styled as visual chips (color swatches where applicable)
-- "Add to Cart" + "Buy Now" buttons stacked or side-by-side
-- Stock availability indicator
-- Product details/description in a tabbed or accordion section
-- Reviews section at the bottom
+### Files
+- **Create** `src/pages/vendor/EditProductPage.tsx` — Clone of AddProductPage but pre-populates from existing product, uses `.update()` instead of `.insert()`, handles existing images alongside new uploads, and updates/replaces variants
+- **Modify** `src/pages/vendor/VendorProducts.tsx` — Add an Edit (Pencil) button linking to `/vendor/products/edit/:id`
+- **Modify** `src/App.tsx` — Add route `products/edit/:id` under vendor layout
 
-## 3. Fix Location Detection (IP-based Geolocation)
+## 2. Variant Image Switching (Color Selection Changes Gallery)
 
-**File: `src/hooks/useLocale.ts`**
-- Current approach uses `Intl.DateTimeFormat().resolvedOptions().timeZone` which has a limited mapping and misses many countries (e.g., Canada)
-- Replace with a free IP geolocation API call (e.g., `https://ipapi.co/json/` or `https://ip-api.com/json/`) to detect the user's actual country
-- Fall back to timezone-based detection if the API call fails
-- Cache the result in localStorage to avoid repeated API calls
+**Current state**: `product_variants` has no image reference. The gallery shows all product images regardless of selected variant.
 
-## 4. Verified Buyer Review System on Product Pages
+**Approach**: Add an `image_url` column to `product_variants` so vendors can assign a specific image to each variant. On the product detail page, when a color variant is selected and has an `image_url`, scroll the gallery to that image or show it as the active image.
 
-**Database**: The `reviews` table already exists with RLS policies that restrict reviews to purchasers of delivered orders. A unique constraint on `(user_id, product_id)` is needed if not already present.
+### Database Migration
+```sql
+ALTER TABLE product_variants ADD COLUMN image_url text;
+```
 
-**Migration needed**: Add unique constraint on `reviews(user_id, product_id)` if missing.
+### Files
+- **Modify** `src/pages/vendor/AddProductPage.tsx` — Add optional image upload per variant row
+- **Modify** `src/pages/vendor/EditProductPage.tsx` (new file) — Same variant image support
+- **Modify** `src/pages/ProductDetailPage.tsx` — When a color option is selected, find the matching variant's `image_url` and set it as the active gallery image
+- **Modify** `src/components/product/ProductGallery.tsx` — Accept an `activeImageUrl` prop that forces a specific image to display
 
-**File: `src/pages/ProductDetailPage.tsx`** (or new component `src/components/product/ProductReviews.tsx`)
-- Fetch reviews for the current product with user profile info (full_name, avatar_url)
-- Display average rating and rating breakdown (5-star bar chart)
-- Show individual reviews with star rating, comment, date, and "Verified Purchase" badge
-- If the logged-in user has a delivered order for this product and hasn't reviewed yet, show a review form (star picker + text area)
-- The existing RLS policy already enforces verified-purchase-only inserts
+## 3. Fix Review System
 
-## 5. Vendor Variant Image Assignment (Clarification)
+Two bugs preventing reviews from working:
 
-The current vendor "Add Product" page already supports defining variant option types (Color, Size, etc.) with values, and auto-generates variant combinations with individual price/stock/SKU fields. The variants system already works — each variant combination appears as a row. No structural changes needed to the vendor form; the existing flow handles the described use case (uploading 3 belt types with different colors/sizes).
+**Bug A — Profile fetching fails due to RLS**: The `ProductReviews` component fetches profiles for review authors using `.in("user_id", userIds)`, but the `profiles` RLS only allows users to see their *own* profile. Non-admin users see empty reviewer names.
+
+**Fix**: Create a `profiles_public` view (or add an RLS policy allowing SELECT on profiles for authenticated users — limited to `full_name` and `avatar_url`). Simplest: add a public SELECT policy on profiles that only exposes `full_name` and `avatar_url`, or create a security-definer function to fetch public profile data.
+
+**Bug B — canReview query may fail**: The query uses `orders!inner(status, user_id)` on `order_items`, but `order_items` RLS requires the user to own the order or be the vendor. This should work for the buyer since "Users can view own order items" policy checks `orders.user_id = auth.uid()`. However, the join syntax `orders!inner(...)` might not work correctly without a foreign key. Need to verify and potentially rewrite as a simpler two-step query.
+
+### Database Migration
+```sql
+-- Option: Create a security definer function to get public profile info
+CREATE OR REPLACE FUNCTION public.get_public_profiles(user_ids uuid[])
+RETURNS TABLE(user_id uuid, full_name text, avatar_url text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT p.user_id, p.full_name, p.avatar_url
+  FROM public.profiles p
+  WHERE p.user_id = ANY(user_ids);
+$$;
+```
+
+### Files
+- **Modify** `src/components/product/ProductReviews.tsx`:
+  - Use `rpc('get_public_profiles', { user_ids: [...] })` instead of direct profiles query
+  - Simplify `canReview` check: first query user's orders with delivered status, then check if any order_item has the current product_id
 
 ---
 
 ## Technical Details
 
+### New Route
+- `/vendor/products/edit/:id` → `EditProductPage`
+
+### Database Changes
+1. `ALTER TABLE product_variants ADD COLUMN image_url text;`
+2. `CREATE FUNCTION get_public_profiles(...)` — security definer for public profile data
+
 ### Files to Create
-- `src/components/product/ProductReviews.tsx` — Review display + submission component
+- `src/pages/vendor/EditProductPage.tsx`
 
 ### Files to Modify
-- `src/pages/ProductDetailPage.tsx` — Add Buy Now button, redesign layout, integrate reviews
-- `src/hooks/useLocale.ts` — Switch to IP-based geolocation with fallback
-
-### Database Migration
-- Add unique constraint: `ALTER TABLE reviews ADD CONSTRAINT reviews_user_product_unique UNIQUE (user_id, product_id);` (if not already present)
-
-### Dependencies
-- No new packages needed; uses existing `react-query`, `sonner`, `lucide-react`, `recharts` (for rating bars)
+- `src/pages/vendor/VendorProducts.tsx` (add edit button)
+- `src/App.tsx` (add edit route)
+- `src/pages/vendor/AddProductPage.tsx` (variant image upload field)
+- `src/pages/ProductDetailPage.tsx` (variant image switching)
+- `src/components/product/ProductGallery.tsx` (accept forced active image)
+- `src/components/product/ProductReviews.tsx` (fix profile fetch + canReview logic)
 
