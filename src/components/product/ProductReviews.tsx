@@ -196,7 +196,7 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
                   </Badge>
                 </div>
                 <p className="text-sm font-medium">
-                  {(review.profiles as any)?.full_name || "Customer"}
+                  {review.profile?.full_name || "Customer"}
                 </p>
                 <p className="text-xs text-muted-foreground mb-2">
                   {new Date(review.created_at).toLocaleDateString("en-US", {
