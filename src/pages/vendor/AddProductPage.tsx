@@ -22,6 +22,8 @@ interface VariantRow {
   price: string;
   stock: string;
   sku: string;
+  imageFile?: File;
+  imagePreview?: string;
 }
 
 interface ImageFile {
