@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, X, Layers, Upload, Trash2, Video } from "lucide-react";
+import { Plus, X, Layers, Upload, Trash2, Video, ImageIcon } from "lucide-react";
 
 interface OptionType {
   name: string;
