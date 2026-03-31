@@ -70,7 +70,10 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
         ...r,
         profile: profileMap.get(r.user_id) || null,
       }));
-      return data || [];
+      return reviewsData.map(r => ({
+        ...r,
+        profile: profileMap.get(r.user_id) || null,
+      }));
     },
   });
 
