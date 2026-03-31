@@ -63,6 +63,7 @@ const AddProductPage = () => {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [videoUrl, setVideoUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const variantFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [form, setForm] = useState({
     name: "",
     description: "",
