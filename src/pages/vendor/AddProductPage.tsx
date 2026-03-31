@@ -242,13 +242,21 @@ const AddProductPage = () => {
       }
 
       if (hasVariants && variantRows.length > 0 && product) {
-        const variants = variantRows.map(v => ({
-          product_id: product.id,
-          variant_options: v.options,
-          price: v.price ? parseFloat(v.price) : null,
-          stock: parseInt(v.stock) || 0,
-          sku: v.sku.trim() || null,
-        }));
+        const variants = [];
+        for (const v of variantRows) {
+          let imgUrl: string | null = null;
+          if (v.imageFile) {
+            imgUrl = await uploadVariantImage(v.imageFile, product.id);
+          }
+          variants.push({
+            product_id: product.id,
+            variant_options: v.options,
+            price: v.price ? parseFloat(v.price) : null,
+            stock: parseInt(v.stock) || 0,
+            sku: v.sku.trim() || null,
+            image_url: imgUrl,
+          });
+        }
         const { error: vErr } = await supabase.from("product_variants").insert(variants);
         if (vErr) throw vErr;
       }
