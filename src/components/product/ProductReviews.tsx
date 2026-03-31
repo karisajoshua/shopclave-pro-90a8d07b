@@ -49,11 +49,27 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
   const { data: reviews = [] } = useQuery({
     queryKey: ["reviews", productId],
     queryFn: async () => {
-      const { data } = await supabase
+      // Fetch reviews
+      const { data: reviewsData } = await supabase
         .from("reviews")
-        .select("*, profiles!inner(full_name, avatar_url)")
+        .select("*")
         .eq("product_id", productId)
         .order("created_at", { ascending: false });
+      
+      if (!reviewsData?.length) return [];
+      
+      // Fetch profiles for review authors
+      const userIds = [...new Set(reviewsData.map(r => r.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, avatar_url")
+        .in("user_id", userIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      return reviewsData.map(r => ({
+        ...r,
+        profile: profileMap.get(r.user_id) || null,
+      }));
       return data || [];
     },
   });
