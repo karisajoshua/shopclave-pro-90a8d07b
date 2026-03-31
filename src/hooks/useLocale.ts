@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 
-const TIMEZONE_TO_COUNTRY: Record<string, { code: string; name: string; currency: string; currencySymbol: string }> = {
+interface CountryInfo {
+  code: string;
+  name: string;
+  currency: string;
+  currencySymbol: string;
+}
+
+const TIMEZONE_TO_COUNTRY: Record<string, CountryInfo> = {
   "Africa/Nairobi": { code: "KE", name: "Kenya", currency: "KES", currencySymbol: "KSh" },
   "Africa/Lagos": { code: "NG", name: "Nigeria", currency: "NGN", currencySymbol: "₦" },
   "Africa/Johannesburg": { code: "ZA", name: "South Africa", currency: "ZAR", currencySymbol: "R" },
@@ -13,6 +20,8 @@ const TIMEZONE_TO_COUNTRY: Record<string, { code: string; name: string; currency
   "America/Chicago": { code: "US", name: "United States", currency: "USD", currencySymbol: "$" },
   "America/Denver": { code: "US", name: "United States", currency: "USD", currencySymbol: "$" },
   "America/Los_Angeles": { code: "US", name: "United States", currency: "USD", currencySymbol: "$" },
+  "America/Toronto": { code: "CA", name: "Canada", currency: "CAD", currencySymbol: "CA$" },
+  "America/Vancouver": { code: "CA", name: "Canada", currency: "CAD", currencySymbol: "CA$" },
   "Europe/London": { code: "GB", name: "United Kingdom", currency: "GBP", currencySymbol: "£" },
   "Europe/Paris": { code: "FR", name: "France", currency: "EUR", currencySymbol: "€" },
   "Europe/Berlin": { code: "DE", name: "Germany", currency: "EUR", currencySymbol: "€" },
@@ -24,7 +33,40 @@ const TIMEZONE_TO_COUNTRY: Record<string, { code: string; name: string; currency
   "America/Sao_Paulo": { code: "BR", name: "Brazil", currency: "BRL", currencySymbol: "R$" },
 };
 
-const DEFAULT_LOCALE = { code: "KE", name: "Kenya", currency: "KES", currencySymbol: "KSh" };
+// Map of country codes to currency info for IP geolocation results
+const COUNTRY_CODE_MAP: Record<string, { currency: string; currencySymbol: string }> = {
+  KE: { currency: "KES", currencySymbol: "KSh" },
+  NG: { currency: "NGN", currencySymbol: "₦" },
+  ZA: { currency: "ZAR", currencySymbol: "R" },
+  TZ: { currency: "TZS", currencySymbol: "TSh" },
+  UG: { currency: "UGX", currencySymbol: "USh" },
+  GH: { currency: "GHS", currencySymbol: "GH₵" },
+  EG: { currency: "EGP", currencySymbol: "E£" },
+  SO: { currency: "SOS", currencySymbol: "Sh" },
+  US: { currency: "USD", currencySymbol: "$" },
+  CA: { currency: "CAD", currencySymbol: "CA$" },
+  GB: { currency: "GBP", currencySymbol: "£" },
+  FR: { currency: "EUR", currencySymbol: "€" },
+  DE: { currency: "EUR", currencySymbol: "€" },
+  ES: { currency: "EUR", currencySymbol: "€" },
+  IT: { currency: "EUR", currencySymbol: "€" },
+  NL: { currency: "EUR", currencySymbol: "€" },
+  AE: { currency: "AED", currencySymbol: "AED" },
+  IN: { currency: "INR", currencySymbol: "₹" },
+  CN: { currency: "CNY", currencySymbol: "¥" },
+  JP: { currency: "JPY", currencySymbol: "¥" },
+  BR: { currency: "BRL", currencySymbol: "R$" },
+  AU: { currency: "AUD", currencySymbol: "A$" },
+  MX: { currency: "MXN", currencySymbol: "MX$" },
+  RW: { currency: "RWF", currencySymbol: "RF" },
+  ET: { currency: "ETB", currencySymbol: "Br" },
+  SA: { currency: "SAR", currencySymbol: "SAR" },
+  PK: { currency: "PKR", currencySymbol: "₨" },
+};
+
+const DEFAULT_LOCALE: CountryInfo = { code: "KE", name: "Kenya", currency: "KES", currencySymbol: "KSh" };
+
+const CACHE_KEY = "barakaz_geo_country";
 
 const LANGUAGES = [
   { code: "EN", label: "English" },
@@ -40,15 +82,60 @@ const LANGUAGES = [
 ];
 
 export function useLocale() {
-  const [country, setCountry] = useState(DEFAULT_LOCALE);
+  const [country, setCountry] = useState<CountryInfo>(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return DEFAULT_LOCALE;
+  });
   const [language, setLanguage] = useState(() => localStorage.getItem("barakaz_lang") || "EN");
 
   useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const detected = TIMEZONE_TO_COUNTRY[tz];
-      if (detected) setCountry(detected);
-    } catch {}
+    // Check cache first
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        setCountry(JSON.parse(cached));
+        return;
+      } catch {}
+    }
+
+    // Try IP-based geolocation
+    const controller = new AbortController();
+    fetch("https://ipapi.co/json/", { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error("API error");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.country_code && data.country_name) {
+          const currencyInfo = COUNTRY_CODE_MAP[data.country_code] || {
+            currency: data.currency || "USD",
+            currencySymbol: data.currency || "$",
+          };
+          const detected: CountryInfo = {
+            code: data.country_code,
+            name: data.country_name,
+            ...currencyInfo,
+          };
+          setCountry(detected);
+          localStorage.setItem(CACHE_KEY, JSON.stringify(detected));
+        }
+      })
+      .catch(() => {
+        // Fallback to timezone detection
+        try {
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const detected = TIMEZONE_TO_COUNTRY[tz];
+          if (detected) {
+            setCountry(detected);
+            localStorage.setItem(CACHE_KEY, JSON.stringify(detected));
+          }
+        } catch {}
+      });
+
+    return () => controller.abort();
   }, []);
 
   const changeLanguage = (lang: string) => {
