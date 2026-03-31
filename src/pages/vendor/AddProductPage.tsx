@@ -495,6 +495,27 @@ const AddProductPage = () => {
                                   className="h-8 w-24 text-xs"
                                 />
                               </td>
+                              <td className="p-2.5">
+                                <div className="flex items-center gap-1">
+                                  {row.imagePreview && (
+                                    <img src={row.imagePreview} alt="" className="w-8 h-8 rounded object-cover border border-border" />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => variantFileRefs.current[idx]?.click()}
+                                    className="h-8 w-8 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                                  >
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                  <input
+                                    ref={(el) => { variantFileRefs.current[idx] = el; }}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleVariantImageSelect(idx, e)}
+                                  />
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
