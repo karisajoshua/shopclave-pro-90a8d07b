@@ -456,6 +456,7 @@ const AddProductPage = () => {
                             <th className="text-left p-2.5 font-medium">Price Override</th>
                             <th className="text-left p-2.5 font-medium">Stock</th>
                             <th className="text-left p-2.5 font-medium">SKU</th>
+                            <th className="text-left p-2.5 font-medium">Image</th>
                           </tr>
                         </thead>
                         <tbody>
