@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { Package, Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 const VendorProducts = () => {
