@@ -376,6 +376,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          image_url: string | null
           price: number | null
           product_id: string
           sku: string | null
@@ -385,6 +386,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          image_url?: string | null
           price?: number | null
           product_id: string
           sku?: string | null
@@ -394,6 +396,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          image_url?: string | null
           price?: number | null
           product_id?: string
           sku?: string | null
@@ -736,6 +739,14 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_public_profiles: {
+        Args: { user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          user_id: string
+        }[]
       }
       has_role: {
         Args: {

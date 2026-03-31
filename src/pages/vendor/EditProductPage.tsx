@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, X, Layers, Upload, Trash2, Video, ImageIcon } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OptionType {
   name: string;
@@ -18,10 +19,12 @@ interface OptionType {
 }
 
 interface VariantRow {
+  id?: string;
   options: Record<string, string>;
   price: string;
   stock: string;
   sku: string;
+  imageUrl: string;
   imageFile?: File;
   imagePreview?: string;
 }
@@ -30,14 +33,13 @@ interface ImageFile {
   file?: File;
   url: string;
   preview: string;
-  uploading?: boolean;
+  dbId?: string; // existing product_images row id
 }
 
 function generateCombinations(optionTypes: OptionType[]): Record<string, string>[] {
   if (optionTypes.length === 0) return [];
   const filtered = optionTypes.filter(o => o.name && o.values.length > 0);
   if (filtered.length === 0) return [];
-
   let combos: Record<string, string>[] = [{}];
   for (const opt of filtered) {
     const next: Record<string, string>[] = [];
@@ -51,9 +53,10 @@ function generateCombinations(optionTypes: OptionType[]): Record<string, string>
   return combos;
 }
 
-const AddProductPage = () => {
+const EditProductPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { id: productId } = useParams<{ id: string }>();
   const { vendor } = useOutletContext<{ vendor: any }>();
   const [loading, setLoading] = useState(false);
   const [hasVariants, setHasVariants] = useState(false);
@@ -74,6 +77,19 @@ const AddProductPage = () => {
     status: "active",
   });
 
+  const { data: product, isLoading: productLoading } = useQuery({
+    queryKey: ["edit-product", productId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("*, product_images(id, url, position), product_variants(*)")
+        .eq("id", productId!)
+        .single();
+      return data;
+    },
+    enabled: !!productId,
+  });
+
   const { data: categories } = useQuery({
     queryKey: ["all-categories"],
     queryFn: async () => {
@@ -81,6 +97,51 @@ const AddProductPage = () => {
       return data || [];
     },
   });
+
+  // Populate form when product loads
+  useEffect(() => {
+    if (!product) return;
+    setForm({
+      name: product.name,
+      description: product.description || "",
+      price: String(product.price),
+      compareAtPrice: product.compare_at_price ? String(product.compare_at_price) : "",
+      stock: String(product.stock),
+      categoryId: product.category_id || "",
+      status: product.status,
+    });
+    setVideoUrl(product.video_url || "");
+
+    // Load existing images
+    const existingImages: ImageFile[] = (product.product_images || [])
+      .sort((a: any, b: any) => a.position - b.position)
+      .map((img: any) => ({ url: img.url, preview: img.url, dbId: img.id }));
+    setImages(existingImages);
+
+    // Load existing variants
+    const existingVariants = product.product_variants || [];
+    if (existingVariants.length > 0) {
+      setHasVariants(true);
+      // Extract option types from variants
+      const types: Record<string, Set<string>> = {};
+      existingVariants.forEach((v: any) => {
+        const opts = v.variant_options as Record<string, string>;
+        Object.entries(opts).forEach(([key, val]) => {
+          if (!types[key]) types[key] = new Set();
+          types[key].add(val);
+        });
+      });
+      setOptionTypes(Object.entries(types).map(([name, vals]) => ({ name, values: Array.from(vals) })));
+      setVariantRows(existingVariants.map((v: any) => ({
+        id: v.id,
+        options: v.variant_options as Record<string, string>,
+        price: v.price ? String(v.price) : "",
+        stock: String(v.stock),
+        sku: v.sku || "",
+        imageUrl: v.image_url || "",
+      })));
+    }
+  }, [product]);
 
   const categoryOptions = (() => {
     if (!categories) return [];
@@ -115,53 +176,44 @@ const AddProductPage = () => {
     setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const uploadImages = async (productId: string): Promise<string[]> => {
-    const urls: string[] = [];
+  const uploadImages = async (prodId: string): Promise<{ url: string; dbId?: string }[]> => {
+    const result: { url: string; dbId?: string }[] = [];
     for (const img of images) {
       if (img.file) {
         const ext = img.file.name.split(".").pop();
-        const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `${prodId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error } = await supabase.storage.from("product-images").upload(path, img.file);
         if (error) throw error;
         const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-        urls.push(urlData.publicUrl);
+        result.push({ url: urlData.publicUrl });
       } else if (img.url) {
-        urls.push(img.url);
+        result.push({ url: img.url, dbId: img.dbId });
       }
     }
-    return urls;
+    return result;
   };
 
-  const regenerateVariants = (opts: OptionType[]) => {
-    const combos = generateCombinations(opts);
-    setVariantRows(combos.map(options => ({
-      options,
-      price: "",
-      stock: "0",
-      sku: "",
-    })));
-  };
-
-  const handleVariantImageSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const next = [...variantRows];
-    next[idx] = { ...next[idx], imageFile: file, imagePreview: URL.createObjectURL(file) };
-    setVariantRows(next);
-  };
-
-  const uploadVariantImage = async (file: File, productId: string): Promise<string> => {
+  const uploadVariantImage = async (file: File, prodId: string): Promise<string> => {
     const ext = file.name.split(".").pop();
-    const path = `${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const path = `${prodId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file);
     if (error) throw error;
     const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
     return urlData.publicUrl;
   };
 
-  const addOptionType = () => {
-    setOptionTypes([...optionTypes, { name: "", values: [] }]);
+  const regenerateVariants = (opts: OptionType[]) => {
+    const combos = generateCombinations(opts);
+    setVariantRows(prev => {
+      return combos.map(options => {
+        const key = JSON.stringify(options);
+        const existing = prev.find(r => JSON.stringify(r.options) === key);
+        return existing || { options, price: "", stock: "0", sku: "", imageUrl: "" };
+      });
+    });
   };
+
+  const addOptionType = () => setOptionTypes([...optionTypes, { name: "", values: [] }]);
 
   const removeOptionType = (idx: number) => {
     const next = optionTypes.filter((_, i) => i !== idx);
@@ -200,23 +252,24 @@ const AddProductPage = () => {
     setVariantRows(next);
   };
 
+  const handleVariantImageSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const next = [...variantRows];
+    next[idx] = { ...next[idx], imageFile: file, imagePreview: URL.createObjectURL(file) };
+    setVariantRows(next);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vendor) { toast.error("Vendor account not found"); return; }
+    if (!vendor || !productId) return;
     if (!form.name.trim() || !form.price) { toast.error("Name and price are required"); return; }
-
-    if (hasVariants && variantRows.length === 0) {
-      toast.error("Please add at least one variant option with values");
-      return;
-    }
 
     setLoading(true);
     try {
-      const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-      const { data: product, error } = await supabase.from("products").insert({
-        vendor_id: vendor.id,
+      // Update product
+      const { error } = await supabase.from("products").update({
         name: form.name.trim(),
-        slug,
         description: form.description.trim() || null,
         price: parseFloat(form.price),
         compare_at_price: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
@@ -224,32 +277,34 @@ const AddProductPage = () => {
         category_id: form.categoryId || null,
         status: form.status,
         video_url: videoUrl.trim() || null,
-      }).select().single();
+      }).eq("id", productId);
       if (error) throw error;
 
-      // Upload images to storage and insert into product_images
-      if (images.length > 0 && product) {
-        const urls = await uploadImages(product.id);
-        const imageRows = urls.map((url, idx) => ({
-          product_id: product.id,
-          url,
+      // Handle images: delete old, insert new
+      const uploadedImages = await uploadImages(productId);
+      // Delete all old product_images rows, then re-insert
+      await supabase.from("product_images").delete().eq("product_id", productId);
+      if (uploadedImages.length > 0) {
+        const imageRows = uploadedImages.map((img, idx) => ({
+          product_id: productId,
+          url: img.url,
           position: idx,
         }));
-        if (imageRows.length > 0) {
-          const { error: imgErr } = await supabase.from("product_images").insert(imageRows);
-          if (imgErr) throw imgErr;
-        }
+        const { error: imgErr } = await supabase.from("product_images").insert(imageRows);
+        if (imgErr) throw imgErr;
       }
 
-      if (hasVariants && variantRows.length > 0 && product) {
+      // Handle variants: delete old, insert new
+      await supabase.from("product_variants").delete().eq("product_id", productId);
+      if (hasVariants && variantRows.length > 0) {
         const variants = [];
         for (const v of variantRows) {
-          let imgUrl: string | null = null;
+          let imgUrl = v.imageUrl || null;
           if (v.imageFile) {
-            imgUrl = await uploadVariantImage(v.imageFile, product.id);
+            imgUrl = await uploadVariantImage(v.imageFile, productId);
           }
           variants.push({
-            product_id: product.id,
+            product_id: productId,
             variant_options: v.options,
             price: v.price ? parseFloat(v.price) : null,
             stock: parseInt(v.stock) || 0,
@@ -261,18 +316,31 @@ const AddProductPage = () => {
         if (vErr) throw vErr;
       }
 
-      toast.success("Product added!");
+      toast.success("Product updated!");
       navigate("/vendor/products");
     } catch (err: any) {
-      toast.error(err.message || "Failed to add product");
+      toast.error(err.message || "Failed to update product");
     } finally {
       setLoading(false);
     }
   };
 
+  if (productLoading) {
+    return (
+      <div className="max-w-2xl space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-[600px] w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return <div className="text-center py-12 text-muted-foreground">Product not found</div>;
+  }
+
   return (
     <div className="max-w-2xl">
-      <h2 className="text-xl font-bold mb-6">Add New Product</h2>
+      <h2 className="text-xl font-bold mb-6">Edit Product</h2>
       <form onSubmit={handleSubmit} className="bg-card rounded-lg border border-border p-6 space-y-4">
         <div>
           <Label>Product Name *</Label>
@@ -362,15 +430,7 @@ const AddProductPage = () => {
               <span className="text-[10px]">Upload</span>
             </button>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-          <p className="text-xs text-muted-foreground">Upload multiple images. First image will be the main product image.</p>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
         </div>
 
         {/* Video URL */}
@@ -379,11 +439,7 @@ const AddProductPage = () => {
             <Video className="h-4 w-4 text-muted-foreground" />
             <Label>Video URL (YouTube or Vimeo)</Label>
           </div>
-          <Input
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
-          />
+          <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
         </div>
 
         {/* Variants Section */}
@@ -398,7 +454,7 @@ const AddProductPage = () => {
 
           {hasVariants && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Define option types (e.g. Size, Color) and their values. Variant rows are auto-generated.</p>
+              <p className="text-sm text-muted-foreground">Define option types (e.g. Size, Color) and their values.</p>
 
               {optionTypes.map((opt, optIdx) => (
                 <div key={optIdx} className="bg-secondary/50 rounded-lg p-4 space-y-3">
@@ -444,16 +500,14 @@ const AddProductPage = () => {
 
               {variantRows.length > 0 && (
                 <div className="mt-4">
-                  <Label className="text-sm font-medium mb-2 block">
-                    Variant Combinations ({variantRows.length})
-                  </Label>
+                  <Label className="text-sm font-medium mb-2 block">Variant Combinations ({variantRows.length})</Label>
                   <div className="bg-card border border-border rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-secondary">
                           <tr>
                             <th className="text-left p-2.5 font-medium">Variant</th>
-                            <th className="text-left p-2.5 font-medium">Price Override</th>
+                            <th className="text-left p-2.5 font-medium">Price</th>
                             <th className="text-left p-2.5 font-medium">Stock</th>
                             <th className="text-left p-2.5 font-medium">SKU</th>
                             <th className="text-left p-2.5 font-medium">Image</th>
@@ -468,38 +522,19 @@ const AddProductPage = () => {
                                 </span>
                               </td>
                               <td className="p-2.5">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  placeholder={form.price || "Default"}
-                                  value={row.price}
-                                  onChange={(e) => updateVariantRow(idx, "price", e.target.value)}
-                                  className="h-8 w-24 text-xs"
-                                />
+                                <Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 w-24 text-xs" />
                               </td>
                               <td className="p-2.5">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={row.stock}
-                                  onChange={(e) => updateVariantRow(idx, "stock", e.target.value)}
-                                  className="h-8 w-20 text-xs"
-                                />
+                                <Input type="number" min="0" value={row.stock} onChange={(e) => updateVariantRow(idx, "stock", e.target.value)} className="h-8 w-20 text-xs" />
                               </td>
                               <td className="p-2.5">
-                                <Input
-                                  placeholder="Optional"
-                                  value={row.sku}
-                                  onChange={(e) => updateVariantRow(idx, "sku", e.target.value)}
-                                  className="h-8 w-24 text-xs"
-                                />
+                                <Input placeholder="Optional" value={row.sku} onChange={(e) => updateVariantRow(idx, "sku", e.target.value)} className="h-8 w-24 text-xs" />
                               </td>
                               <td className="p-2.5">
                                 <div className="flex items-center gap-1">
-                                  {row.imagePreview && (
-                                    <img src={row.imagePreview} alt="" className="w-8 h-8 rounded object-cover border border-border" />
-                                  )}
+                                  {(row.imagePreview || row.imageUrl) ? (
+                                    <img src={row.imagePreview || row.imageUrl} alt="" className="w-8 h-8 rounded object-cover border border-border" />
+                                  ) : null}
                                   <button
                                     type="button"
                                     onClick={() => variantFileRefs.current[idx]?.click()}
@@ -531,7 +566,7 @@ const AddProductPage = () => {
         <div className="flex gap-3">
           <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/vendor/products")}>Cancel</Button>
           <Button type="submit" className="flex-1 font-semibold" disabled={loading}>
-            {loading ? "Adding..." : "Add Product"}
+            {loading ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </form>
@@ -539,4 +574,4 @@ const AddProductPage = () => {
   );
 };
 
-export default AddProductPage;
+export default EditProductPage;

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { Package, Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 const VendorProducts = () => {
@@ -100,6 +100,9 @@ const VendorProducts = () => {
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(p.status)}`}>{p.status}</span>
             </div>
             <div className="flex gap-1">
+              <Link to={`/vendor/products/edit/${p.id}`}>
+                <Button size="sm" variant="outline" className="h-7 text-xs"><Pencil className="h-3 w-3" /></Button>
+              </Link>
               <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={() => toggleStatus.mutate({ id: p.id, status: p.status === "active" ? "draft" : "active" })}>
                 {p.status === "active" ? "Set Draft" : "Activate"}
               </Button>
@@ -147,6 +150,9 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock }: an
       </td>
       <td className="p-3">
         <div className="flex gap-1">
+          <Link to={`/vendor/products/edit/${p.id}`}>
+            <Button size="sm" variant="outline" className="h-7 text-xs"><Pencil className="h-3 w-3" /></Button>
+          </Link>
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onToggle.mutate({ id: p.id, status: p.status === "active" ? "draft" : "active" })}>
             {p.status === "active" ? "Draft" : "Activate"}
           </Button>
