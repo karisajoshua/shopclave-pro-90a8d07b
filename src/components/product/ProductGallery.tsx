@@ -16,13 +16,25 @@ interface ProductGalleryProps {
   images: string[];
   videoUrl?: string | null;
   productName: string;
+  forcedImageUrl?: string | null;
 }
 
-const ProductGallery = ({ images, videoUrl, productName }: ProductGalleryProps) => {
+const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: ProductGalleryProps) => {
   const allImages = images.length ? images : [barakazIcon];
   const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const [activeIndex, setActiveIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
+
+  // When forcedImageUrl changes, find its index or show it directly
+  const displayImage = (() => {
+    if (showVideo) return null;
+    if (forcedImageUrl) {
+      const idx = allImages.indexOf(forcedImageUrl);
+      if (idx >= 0) return allImages[idx];
+      return forcedImageUrl; // variant image not in main gallery
+    }
+    return allImages[activeIndex] || barakazIcon;
+  })();
 
   const totalItems = allImages.length + (embedUrl ? 1 : 0);
 
