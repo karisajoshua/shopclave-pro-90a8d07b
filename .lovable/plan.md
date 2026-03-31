@@ -1,38 +1,73 @@
 
 
-## Add Real-Time Site Analytics to Admin Dashboard
+# Plan: Product Page Enhancements, Location Detection, and Reviews
 
-Based on your screenshot, you want visitor analytics (visitors, pageviews, views/visit, duration, bounce rate) with breakdowns by source, page, country, and device — plus a visitor trend chart.
+## Summary
+Four changes: (1) Add "Buy Now" button to product pages, (2) Redesign product detail page to match the uploaded reference (Amazon-style layout), (3) Fix location detection using IP-based geolocation instead of timezone, (4) Add verified buyer review system to product pages.
 
-### Architecture
+---
 
-The Lovable platform provides analytics data via an internal API. To surface it in your admin dashboard:
+## 1. Add "Buy Now" Button to Product Detail Page
 
-1. **Edge function** (`get-analytics`) — server-side proxy that calls the Lovable analytics API using the project ID and API key, then returns the data to the frontend. Accepts `startDate`, `endDate`, and `granularity` parameters. Admin-only (validates JWT + admin role).
+**File: `src/pages/ProductDetailPage.tsx`**
+- Add a "Buy Now" button below (or beside) the "Add to Cart" button
+- "Buy Now" adds the item to cart and navigates directly to `/checkout`
+- Style it with a distinct look (e.g., orange/warning background) to differentiate from "Add to Cart"
 
-2. **Analytics section on AdminDashboard** — a new tab or section at the top of the existing dashboard page showing:
-   - **Stat cards row**: Visitors, Pageviews, Views Per Visit, Visit Duration, Bounce Rate
-   - **Visitor trend chart**: Line chart (recharts `LineChart`) with daily data points
-   - **Breakdown tables** (2x2 grid): Source, Page, Country, Device — each showing a horizontal bar + count, matching the screenshot's style
-   - **Time range selector**: Last 7 days / 30 days / 90 days dropdown
+## 2. Redesign Product Detail Page (Amazon-style)
 
-3. **Auto-refresh**: `refetchInterval: 30000` on the react-query hook so data updates every 30 seconds.
+**File: `src/pages/ProductDetailPage.tsx`**
+Based on the reference PDF, restructure the page to include:
+- Breadcrumb navigation at the top
+- Product title more prominent with brand/vendor link
+- Rating stars with clickable review count (scrolls to reviews section)
+- Price section with discount percentage badge when compare_at_price exists
+- Delivery info section showing user's detected country
+- Variant selectors styled as visual chips (color swatches where applicable)
+- "Add to Cart" + "Buy Now" buttons stacked or side-by-side
+- Stock availability indicator
+- Product details/description in a tabbed or accordion section
+- Reviews section at the bottom
 
-### Files
+## 3. Fix Location Detection (IP-based Geolocation)
 
-| File | Action |
-|------|--------|
-| `supabase/functions/get-analytics/index.ts` | Create — edge function fetching analytics |
-| `src/pages/admin/AdminDashboard.tsx` | Modify — add analytics section above existing sales dashboard |
+**File: `src/hooks/useLocale.ts`**
+- Current approach uses `Intl.DateTimeFormat().resolvedOptions().timeZone` which has a limited mapping and misses many countries (e.g., Canada)
+- Replace with a free IP geolocation API call (e.g., `https://ipapi.co/json/` or `https://ip-api.com/json/`) to detect the user's actual country
+- Fall back to timezone-based detection if the API call fails
+- Cache the result in localStorage to avoid repeated API calls
 
-### Edge Function Details
+## 4. Verified Buyer Review System on Product Pages
 
-- Accepts `{ startDate, endDate, granularity }` via POST
-- Verifies the caller is an authenticated admin using the JWT + `has_role` check
-- Calls the Lovable analytics endpoint with the project ID (`0dcababf-37ff-4237-bd5e-9900c8f1432b`) and `LOVABLE_API_KEY`
-- Returns structured JSON: `{ stats, timeseries, breakdowns }`
+**Database**: The `reviews` table already exists with RLS policies that restrict reviews to purchasers of delivered orders. A unique constraint on `(user_id, product_id)` is needed if not already present.
 
-### Dashboard UI
+**Migration needed**: Add unique constraint on `reviews(user_id, product_id)` if missing.
 
-The analytics section will render at the top of AdminDashboard with a "Site Analytics" heading, styled with the same card/border pattern used throughout the dashboard. The visitor trend will use a `LineChart` (matching the screenshot's line graph). Breakdown tables will use colored horizontal bars with percentage-based widths.
+**File: `src/pages/ProductDetailPage.tsx`** (or new component `src/components/product/ProductReviews.tsx`)
+- Fetch reviews for the current product with user profile info (full_name, avatar_url)
+- Display average rating and rating breakdown (5-star bar chart)
+- Show individual reviews with star rating, comment, date, and "Verified Purchase" badge
+- If the logged-in user has a delivered order for this product and hasn't reviewed yet, show a review form (star picker + text area)
+- The existing RLS policy already enforces verified-purchase-only inserts
+
+## 5. Vendor Variant Image Assignment (Clarification)
+
+The current vendor "Add Product" page already supports defining variant option types (Color, Size, etc.) with values, and auto-generates variant combinations with individual price/stock/SKU fields. The variants system already works — each variant combination appears as a row. No structural changes needed to the vendor form; the existing flow handles the described use case (uploading 3 belt types with different colors/sizes).
+
+---
+
+## Technical Details
+
+### Files to Create
+- `src/components/product/ProductReviews.tsx` — Review display + submission component
+
+### Files to Modify
+- `src/pages/ProductDetailPage.tsx` — Add Buy Now button, redesign layout, integrate reviews
+- `src/hooks/useLocale.ts` — Switch to IP-based geolocation with fallback
+
+### Database Migration
+- Add unique constraint: `ALTER TABLE reviews ADD CONSTRAINT reviews_user_product_unique UNIQUE (user_id, product_id);` (if not already present)
+
+### Dependencies
+- No new packages needed; uses existing `react-query`, `sonner`, `lucide-react`, `recharts` (for rating bars)
 
