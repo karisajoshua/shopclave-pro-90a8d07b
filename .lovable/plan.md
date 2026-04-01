@@ -1,87 +1,114 @@
 
 
-# Plan: Vendor Product Edit, Variant Image Switching, and Review Fix
+# Plan: Product Page Redesign, Social Sharing, Seller Follow, and Checkout Overhaul
 
 ## Summary
-Three fixes: (1) Add edit product capability to vendor dashboard, (2) Link variant images so selecting a color switches the product gallery, (3) Fix the review system so customers can actually submit reviews.
+Fix the blank screen bug on Add to Cart / Buy Now, redesign the product page to a 3-column layout (gallery+description left, buy box center, seller info right), add social sharing, implement a seller follow system with follower counts, and redesign checkout to a stepped flow like the Jumia reference.
 
 ---
 
-## 1. Vendor Product Edit
+## 1. Fix Blank Screen on Buy Now / Add to Cart
 
-**Current state**: VendorProducts page only has delete/status toggle — no edit button. AddProductPage only creates new products.
+**Root cause**: The `handleBuyNow` calls `addItem` in a loop then immediately `navigate("/checkout")`. React batches the `setItems` calls, so when CheckoutPage mounts, `items` may still be empty, triggering `navigate("/cart")` which shows an empty cart page (appears blank). Also, the CheckoutPage does `navigate("/cart")` and `navigate("/auth")` during render (not in useEffect), causing render-time side effects.
 
-**Approach**: Create a new `EditProductPage` that loads existing product data and allows updating all fields (name, description, price, category, images, variants, video). Add an edit button to VendorProducts and register the route.
+**Fix**:
+- In `ProductDetailPage.tsx`: Change `handleBuyNow` to call `addItem` once with the correct quantity rather than looping, and use a small timeout or pass state via navigate
+- In `CheckoutPage.tsx`: Move the redirect logic into `useEffect` to prevent render-time navigation. Add a loading state while checking.
+- In `CartContext.tsx`: Add a `addItemWithQuantity` method that accepts quantity parameter to avoid the loop issue
 
-### Files
-- **Create** `src/pages/vendor/EditProductPage.tsx` — Clone of AddProductPage but pre-populates from existing product, uses `.update()` instead of `.insert()`, handles existing images alongside new uploads, and updates/replaces variants
-- **Modify** `src/pages/vendor/VendorProducts.tsx` — Add an Edit (Pencil) button linking to `/vendor/products/edit/:id`
-- **Modify** `src/App.tsx` — Add route `products/edit/:id` under vendor layout
+## 2. Redesign Product Page Layout (3-Column)
 
-## 2. Variant Image Switching (Color Selection Changes Gallery)
+**File: `src/pages/ProductDetailPage.tsx`**
 
-**Current state**: `product_variants` has no image reference. The gallery shows all product images regardless of selected variant.
+New layout: `grid lg:grid-cols-[1fr_340px_300px]`
+- **Left column**: Product gallery + description below it + reviews
+- **Center column**: Title, rating, price, variant selectors, quantity, Add to Cart, Buy Now buttons
+- **Right column** (like reference image):
+  - "Delivery & Returns" section with user's detected country
+  - Seller Information card with store name, follower count, "Follow" button
+  - Seller Performance metrics (derived from review averages)
+  - Social sharing buttons
 
-**Approach**: Add an `image_url` column to `product_variants` so vendors can assign a specific image to each variant. On the product detail page, when a color variant is selected and has an `image_url`, scroll the gallery to that image or show it as the active image.
+## 3. Social Media Sharing
 
-### Database Migration
+**In `ProductDetailPage.tsx`**:
+- Add share buttons for WhatsApp, Facebook, Twitter/X, and copy link
+- Use native `navigator.share()` on mobile as fallback
+- Generate share URL from `window.location.href`
+- No external packages needed — use direct share URLs (e.g., `https://wa.me/?text=...`, `https://twitter.com/intent/tweet?url=...`)
+
+## 4. Seller Follow System
+
+**Database migration**:
 ```sql
-ALTER TABLE product_variants ADD COLUMN image_url text;
-```
+CREATE TABLE public.vendor_follows (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  vendor_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, vendor_id)
+);
+ALTER TABLE public.vendor_follows ENABLE ROW LEVEL SECURITY;
 
-### Files
-- **Modify** `src/pages/vendor/AddProductPage.tsx` — Add optional image upload per variant row
-- **Modify** `src/pages/vendor/EditProductPage.tsx` (new file) — Same variant image support
-- **Modify** `src/pages/ProductDetailPage.tsx` — When a color option is selected, find the matching variant's `image_url` and set it as the active gallery image
-- **Modify** `src/components/product/ProductGallery.tsx` — Accept an `activeImageUrl` prop that forces a specific image to display
+-- Users can see their own follows
+CREATE POLICY "Users can view own follows" ON public.vendor_follows
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
-## 3. Fix Review System
+-- Users can follow vendors
+CREATE POLICY "Users can follow vendors" ON public.vendor_follows
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
-Two bugs preventing reviews from working:
+-- Users can unfollow
+CREATE POLICY "Users can unfollow" ON public.vendor_follows
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
-**Bug A — Profile fetching fails due to RLS**: The `ProductReviews` component fetches profiles for review authors using `.in("user_id", userIds)`, but the `profiles` RLS only allows users to see their *own* profile. Non-admin users see empty reviewer names.
-
-**Fix**: Create a `profiles_public` view (or add an RLS policy allowing SELECT on profiles for authenticated users — limited to `full_name` and `avatar_url`). Simplest: add a public SELECT policy on profiles that only exposes `full_name` and `avatar_url`, or create a security-definer function to fetch public profile data.
-
-**Bug B — canReview query may fail**: The query uses `orders!inner(status, user_id)` on `order_items`, but `order_items` RLS requires the user to own the order or be the vendor. This should work for the buyer since "Users can view own order items" policy checks `orders.user_id = auth.uid()`. However, the join syntax `orders!inner(...)` might not work correctly without a foreign key. Need to verify and potentially rewrite as a simpler two-step query.
-
-### Database Migration
-```sql
--- Option: Create a security definer function to get public profile info
-CREATE OR REPLACE FUNCTION public.get_public_profiles(user_ids uuid[])
-RETURNS TABLE(user_id uuid, full_name text, avatar_url text)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
-AS $$
-  SELECT p.user_id, p.full_name, p.avatar_url
-  FROM public.profiles p
-  WHERE p.user_id = ANY(user_ids);
+-- Public follower count function
+CREATE OR REPLACE FUNCTION public.get_vendor_follower_count(v_id uuid)
+RETURNS integer LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT count(*)::integer FROM public.vendor_follows WHERE vendor_id = v_id;
 $$;
 ```
 
-### Files
-- **Modify** `src/components/product/ProductReviews.tsx`:
-  - Use `rpc('get_public_profiles', { user_ids: [...] })` instead of direct profiles query
-  - Simplify `canReview` check: first query user's orders with delivered status, then check if any order_item has the current product_id
+**Product page**: Show follower count and Follow/Unfollow button in seller info section.
+
+**Vendor dashboard**: Show follower count on the vendor dashboard header and VendorDashboard page.
+
+## 5. Checkout Page Redesign (Stepped Flow)
+
+**File: `src/pages/CheckoutPage.tsx`**
+
+Redesign to match the Jumia reference with 3 steps:
+1. **Customer Address** — Show saved address or form to enter, with "Change" button
+2. **Delivery Details** — Show delivery estimate, shipment items grouped by vendor
+3. **Payment Method** — M-Pesa, Card, COD options
+
+Right sidebar: **Order Summary** with item totals, delivery fees, total, and "Confirm Order" button.
+
+Move redirect logic to `useEffect`. Pre-fill address from `addresses` table if user has a saved address.
+
+## 6. Vendor Edit Products (Already Implemented)
+
+The edit functionality already exists (`EditProductPage.tsx` with route `/vendor/products/edit/:id` and edit buttons in `VendorProducts.tsx`). No changes needed — will verify it works correctly.
 
 ---
 
 ## Technical Details
 
-### New Route
-- `/vendor/products/edit/:id` → `EditProductPage`
-
-### Database Changes
-1. `ALTER TABLE product_variants ADD COLUMN image_url text;`
-2. `CREATE FUNCTION get_public_profiles(...)` — security definer for public profile data
-
 ### Files to Create
-- `src/pages/vendor/EditProductPage.tsx`
+- None (all changes in existing files)
 
 ### Files to Modify
-- `src/pages/vendor/VendorProducts.tsx` (add edit button)
-- `src/App.tsx` (add edit route)
-- `src/pages/vendor/AddProductPage.tsx` (variant image upload field)
-- `src/pages/ProductDetailPage.tsx` (variant image switching)
-- `src/components/product/ProductGallery.tsx` (accept forced active image)
-- `src/components/product/ProductReviews.tsx` (fix profile fetch + canReview logic)
+- `src/pages/ProductDetailPage.tsx` — 3-column layout, social sharing, seller info, follow button
+- `src/pages/CheckoutPage.tsx` — Stepped flow redesign
+- `src/contexts/CartContext.tsx` — Add `addItemWithQuantity` method
+- `src/components/vendor/VendorLayout.tsx` — Show follower count in header
+- `src/pages/vendor/VendorDashboard.tsx` — Show follower count
+
+### Database Migration
+- Create `vendor_follows` table with RLS
+- Create `get_vendor_follower_count` function
+
+### No New Dependencies
+- Social sharing uses direct URL schemes
+- All UI built with existing shadcn components
 
