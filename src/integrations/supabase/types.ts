@@ -611,6 +611,27 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_follows: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           banner_url: string | null
@@ -748,6 +769,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_vendor_follower_count: { Args: { v_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

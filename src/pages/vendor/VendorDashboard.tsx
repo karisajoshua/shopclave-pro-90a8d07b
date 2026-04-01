@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext } from "react-router-dom";
-import { DollarSign, ShoppingBag, Package, TrendingUp } from "lucide-react";
+import { DollarSign, ShoppingBag, Package, TrendingUp, Users } from "lucide-react";
 
 const VendorDashboard = () => {
   const { user } = useAuth();
@@ -26,11 +26,19 @@ const VendorDashboard = () => {
     enabled: !!vendor,
   });
 
+  const { data: followerCount = 0 } = useQuery({
+    queryKey: ["vendor-followers", vendor?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_vendor_follower_count", { v_id: vendor.id });
+      return data || 0;
+    },
+    enabled: !!vendor,
+  });
+
   const totalRevenue = orderItems?.reduce((sum, i: any) => sum + Number(i.price) * i.quantity, 0) || 0;
   const totalCommission = orderItems?.reduce((sum, i: any) => sum + Number(i.commission_amount), 0) || 0;
   const netEarnings = totalRevenue - totalCommission;
 
-  // Top selling products
   const topProducts = (() => {
     const map: Record<string, { name: string; units: number; revenue: number }> = {};
     orderItems?.forEach((i: any) => {
@@ -48,12 +56,13 @@ const VendorDashboard = () => {
     { label: "Orders", value: orderItems?.length || 0, icon: ShoppingBag, color: "text-primary" },
     { label: "Products", value: products?.length || 0, icon: Package, color: "text-warning" },
     { label: "Net Earnings", value: `KSh ${netEarnings.toLocaleString()}`, icon: TrendingUp, color: "text-success" },
+    { label: "Followers", value: followerCount, icon: Users, color: "text-primary" },
   ];
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Overview</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {stats.map((stat) => (
           <div key={stat.label} className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
