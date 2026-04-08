@@ -110,7 +110,6 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Delivery date estimate
   const deliveryStart = new Date();
   deliveryStart.setDate(deliveryStart.getDate() + 3);
   const deliveryEnd = new Date();
@@ -119,18 +118,15 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
 
   return (
     <div className="space-y-4">
-      {/* Delivery & Returns */}
       <div className="bg-card rounded-lg border border-border p-4 space-y-4">
         <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Delivery & Returns</h3>
         <Separator />
-
         <div className="flex items-center gap-2 text-sm">
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground">
             Deliver to <span className="font-medium text-foreground">{country.name}</span>
           </span>
         </div>
-
         <div className="flex gap-3">
           <Truck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div>
@@ -140,9 +136,7 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
             </p>
           </div>
         </div>
-
         <Separator />
-
         <div className="flex gap-3">
           <RotateCcw className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div>
@@ -152,11 +146,9 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
         </div>
       </div>
 
-      {/* Seller Information */}
       <div className="bg-card rounded-lg border border-border p-4 space-y-3">
         <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Seller Information</h3>
         <Separator />
-
         <div className="flex items-center justify-between">
           <div>
             <Link to={`/search?vendor=${vendor.id}`} className="font-semibold text-sm text-primary hover:underline">
@@ -176,9 +168,7 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
             {isFollowing ? "Following" : "Follow"}
           </Button>
         </div>
-
         <Separator />
-
         <h4 className="text-xs font-semibold text-muted-foreground">Seller Performance</h4>
         <div className="space-y-1.5">
           {[
@@ -211,7 +201,7 @@ const ProductDetailPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, vendors(id, store_name), product_images(url, position), categories(name, slug)")
+        .select("*, vendors(id, store_name), product_images(url, position, variant_id), categories(name, slug)")
         .eq("slug", slug!)
         .single();
       return data;
@@ -285,6 +275,29 @@ const ProductDetailPage = () => {
     ? Math.round(((Number(product.compare_at_price) - Number(displayPrice)) / Number(product.compare_at_price)) * 100)
     : null;
 
+  // Compute gallery images based on selected variant
+  const galleryImages = useMemo(() => {
+    if (!product) return [barakazIcon];
+    const allImages = product.product_images || [];
+    
+    // If a variant is selected, check for variant-specific images
+    if (selectedVariant) {
+      const variantImages = allImages
+        .filter((img: any) => img.variant_id === selectedVariant.id)
+        .sort((a: any, b: any) => a.position - b.position)
+        .map((i: any) => i.url);
+      if (variantImages.length > 0) return variantImages;
+    }
+    
+    // Fallback to product-level images (no variant_id)
+    const productImages = allImages
+      .filter((img: any) => !img.variant_id)
+      .sort((a: any, b: any) => a.position - b.position)
+      .map((i: any) => i.url);
+    
+    return productImages.length > 0 ? productImages : [barakazIcon];
+  }, [product, selectedVariant]);
+
   if (isLoading) {
     return (
       <MarketplaceLayout>
@@ -314,10 +327,6 @@ const ProductDetailPage = () => {
     );
   }
 
-  const images = product.product_images?.length
-    ? product.product_images.sort((a: any, b: any) => a.position - b.position).map((i: any) => i.url)
-    : [barakazIcon];
-
   const buildCartItem = () => {
     const variantLabel = hasVariants
       ? Object.entries(selectedOptions).map(([k, v]) => `${k}: ${v}`).join(", ")
@@ -326,7 +335,7 @@ const ProductDetailPage = () => {
       productId: product.id,
       name: product.name,
       price: Number(displayPrice),
-      image: images[0],
+      image: galleryImages[0],
       vendorId: product.vendor_id,
       vendorName: (product.vendors as any)?.store_name || "Unknown Seller",
       variantId: selectedVariant?.id || undefined,
@@ -343,8 +352,7 @@ const ProductDetailPage = () => {
   const handleBuyNow = () => {
     const item = buildCartItem();
     addItem(item, quantity);
-    // Small delay to allow state to persist to localStorage
-    setTimeout(() => navigate("/checkout"), 50);
+    navigate("/checkout", { state: { fromBuyNow: true } });
   };
 
   const scrollToReviews = () => {
@@ -381,30 +389,32 @@ const ProductDetailPage = () => {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* 3-Column Layout */}
+        {/* 3-Column Layout - using CSS order for mobile reordering */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px_280px] gap-6 lg:gap-8">
-          {/* LEFT: Gallery + Description */}
-          <div className="space-y-6">
+          {/* Gallery - order 1 on mobile, natural on desktop */}
+          <div className="order-1 lg:order-none lg:row-span-2 space-y-6">
             <ProductGallery
-              images={images}
+              images={galleryImages}
               videoUrl={(product as any).video_url}
               productName={product.name}
-              forcedImageUrl={selectedVariant?.image_url || null}
+              forcedImageUrl={null}
             />
 
-            {/* Description */}
-            {product.description && (
-              <div className="bg-card rounded-lg border border-border p-4">
-                <h3 className="font-semibold mb-2">{t("product.description")}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {product.description}
-                </p>
-              </div>
-            )}
+            {/* Description - hidden on mobile, shown on desktop below gallery */}
+            <div className="hidden lg:block">
+              {product.description && (
+                <div className="bg-card rounded-lg border border-border p-4">
+                  <h3 className="font-semibold mb-2">{t("product.description")}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {product.description}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* CENTER: Product Info + Buy Box */}
-          <div className="space-y-4">
+          {/* CENTER: Product Info + Buy Box - order 2 on mobile */}
+          <div className="order-2 lg:order-none space-y-4">
             {/* Title */}
             <h1 className="font-display text-lg md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
               {product.name}
@@ -530,8 +540,20 @@ const ProductDetailPage = () => {
             <SocialShare url={shareUrl} title={product.name} />
           </div>
 
-          {/* RIGHT: Delivery + Seller Info */}
-          <div className="lg:sticky lg:top-20 lg:self-start">
+          {/* Description on mobile only - order 3 */}
+          <div className="order-3 lg:hidden">
+            {product.description && (
+              <div className="bg-card rounded-lg border border-border p-4">
+                <h3 className="font-semibold mb-2">{t("product.description")}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: Delivery + Seller Info - order 4 on mobile, hidden on mobile (shown separately below) */}
+          <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start">
             {product.vendors && (
               <SellerInfoSidebar
                 vendor={product.vendors}
@@ -542,7 +564,7 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
-        {/* Mobile: show seller info below on smaller screens */}
+        {/* Mobile: show seller info below */}
         <div className="lg:hidden mt-6">
           {product.vendors && (
             <SellerInfoSidebar

@@ -24,16 +24,16 @@ interface VariantRow {
   price: string;
   stock: string;
   sku: string;
-  imageUrl: string;
-  imageFile?: File;
-  imagePreview?: string;
+  imageFiles: File[];
+  imagePreviews: string[];
+  existingImageUrls: string[];
 }
 
 interface ImageFile {
   file?: File;
   url: string;
   preview: string;
-  dbId?: string; // existing product_images row id
+  dbId?: string;
 }
 
 function generateCombinations(optionTypes: OptionType[]): Record<string, string>[] {
@@ -82,7 +82,7 @@ const EditProductPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, product_images(id, url, position), product_variants(*)")
+        .select("*, product_images(id, url, position, variant_id), product_variants(*)")
         .eq("id", productId!)
         .single();
       return data;
@@ -112,8 +112,9 @@ const EditProductPage = () => {
     });
     setVideoUrl(product.video_url || "");
 
-    // Load existing images
+    // Load existing product-level images (no variant_id)
     const existingImages: ImageFile[] = (product.product_images || [])
+      .filter((img: any) => !img.variant_id)
       .sort((a: any, b: any) => a.position - b.position)
       .map((img: any) => ({ url: img.url, preview: img.url, dbId: img.id }));
     setImages(existingImages);
@@ -122,7 +123,6 @@ const EditProductPage = () => {
     const existingVariants = product.product_variants || [];
     if (existingVariants.length > 0) {
       setHasVariants(true);
-      // Extract option types from variants
       const types: Record<string, Set<string>> = {};
       existingVariants.forEach((v: any) => {
         const opts = v.variant_options as Record<string, string>;
@@ -132,14 +132,25 @@ const EditProductPage = () => {
         });
       });
       setOptionTypes(Object.entries(types).map(([name, vals]) => ({ name, values: Array.from(vals) })));
-      setVariantRows(existingVariants.map((v: any) => ({
-        id: v.id,
-        options: v.variant_options as Record<string, string>,
-        price: v.price ? String(v.price) : "",
-        stock: String(v.stock),
-        sku: v.sku || "",
-        imageUrl: v.image_url || "",
-      })));
+      
+      // Get variant images from product_images
+      const allProductImages = product.product_images || [];
+      setVariantRows(existingVariants.map((v: any) => {
+        const variantImgs = allProductImages
+          .filter((img: any) => img.variant_id === v.id)
+          .sort((a: any, b: any) => a.position - b.position)
+          .map((img: any) => img.url);
+        return {
+          id: v.id,
+          options: v.variant_options as Record<string, string>,
+          price: v.price ? String(v.price) : "",
+          stock: String(v.stock),
+          sku: v.sku || "",
+          imageFiles: [],
+          imagePreviews: [],
+          existingImageUrls: variantImgs.length > 0 ? variantImgs : (v.image_url ? [v.image_url] : []),
+        };
+      }));
     }
   }, [product]);
 
@@ -193,13 +204,17 @@ const EditProductPage = () => {
     return result;
   };
 
-  const uploadVariantImage = async (file: File, prodId: string): Promise<string> => {
-    const ext = file.name.split(".").pop();
-    const path = `${prodId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file);
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-    return urlData.publicUrl;
+  const uploadVariantImages = async (files: File[], prodId: string): Promise<string[]> => {
+    const urls: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop();
+      const path = `${prodId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    }
+    return urls;
   };
 
   const regenerateVariants = (opts: OptionType[]) => {
@@ -208,7 +223,7 @@ const EditProductPage = () => {
       return combos.map(options => {
         const key = JSON.stringify(options);
         const existing = prev.find(r => JSON.stringify(r.options) === key);
-        return existing || { options, price: "", stock: "0", sku: "", imageUrl: "" };
+        return existing || { options, price: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [], existingImageUrls: [] };
       });
     });
   };
@@ -253,10 +268,31 @@ const EditProductPage = () => {
   };
 
   const handleVariantImageSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     const next = [...variantRows];
-    next[idx] = { ...next[idx], imageFile: file, imagePreview: URL.createObjectURL(file) };
+    const newFiles = [...next[idx].imageFiles, ...files];
+    const newPreviews = [...next[idx].imagePreviews, ...files.map(f => URL.createObjectURL(f))];
+    next[idx] = { ...next[idx], imageFiles: newFiles, imagePreviews: newPreviews };
+    setVariantRows(next);
+    if (variantFileRefs.current[idx]) variantFileRefs.current[idx]!.value = "";
+  };
+
+  const removeVariantImage = (variantIdx: number, imgIdx: number, isExisting: boolean) => {
+    const next = [...variantRows];
+    if (isExisting) {
+      next[variantIdx] = {
+        ...next[variantIdx],
+        existingImageUrls: next[variantIdx].existingImageUrls.filter((_, i) => i !== imgIdx),
+      };
+    } else {
+      const adjustedIdx = imgIdx - next[variantIdx].existingImageUrls.length;
+      next[variantIdx] = {
+        ...next[variantIdx],
+        imageFiles: next[variantIdx].imageFiles.filter((_, i) => i !== adjustedIdx),
+        imagePreviews: next[variantIdx].imagePreviews.filter((_, i) => i !== adjustedIdx),
+      };
+    }
     setVariantRows(next);
   };
 
@@ -280,9 +316,9 @@ const EditProductPage = () => {
       }).eq("id", productId);
       if (error) throw error;
 
-      // Handle images: delete old, insert new
+      // Handle product-level images: delete old, insert new
       const uploadedImages = await uploadImages(productId);
-      // Delete all old product_images rows, then re-insert
+      // Delete all old product_images rows (they'll be re-created)
       await supabase.from("product_images").delete().eq("product_id", productId);
       if (uploadedImages.length > 0) {
         const imageRows = uploadedImages.map((img, idx) => ({
@@ -297,23 +333,33 @@ const EditProductPage = () => {
       // Handle variants: delete old, insert new
       await supabase.from("product_variants").delete().eq("product_id", productId);
       if (hasVariants && variantRows.length > 0) {
-        const variants = [];
         for (const v of variantRows) {
-          let imgUrl = v.imageUrl || null;
-          if (v.imageFile) {
-            imgUrl = await uploadVariantImage(v.imageFile, productId);
-          }
-          variants.push({
+          // Upload new files
+          const newUrls = v.imageFiles.length > 0 ? await uploadVariantImages(v.imageFiles, productId) : [];
+          const allUrls = [...v.existingImageUrls, ...newUrls];
+          const firstImgUrl = allUrls[0] || null;
+
+          const { data: variant, error: vErr } = await supabase.from("product_variants").insert({
             product_id: productId,
             variant_options: v.options,
             price: v.price ? parseFloat(v.price) : null,
             stock: parseInt(v.stock) || 0,
             sku: v.sku.trim() || null,
-            image_url: imgUrl,
-          });
+            image_url: firstImgUrl,
+          }).select("id").single();
+          if (vErr) throw vErr;
+
+          // Insert variant images into product_images
+          if (allUrls.length > 0 && variant) {
+            const variantImageRows = allUrls.map((url, idx) => ({
+              product_id: productId,
+              variant_id: variant.id,
+              url,
+              position: idx,
+            }));
+            await supabase.from("product_images").insert(variantImageRows);
+          }
         }
-        const { error: vErr } = await supabase.from("product_variants").insert(variants);
-        if (vErr) throw vErr;
       }
 
       toast.success("Product updated!");
@@ -501,61 +547,73 @@ const EditProductPage = () => {
               {variantRows.length > 0 && (
                 <div className="mt-4">
                   <Label className="text-sm font-medium mb-2 block">Variant Combinations ({variantRows.length})</Label>
-                  <div className="bg-card border border-border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-secondary">
-                          <tr>
-                            <th className="text-left p-2.5 font-medium">Variant</th>
-                            <th className="text-left p-2.5 font-medium">Price</th>
-                            <th className="text-left p-2.5 font-medium">Stock</th>
-                            <th className="text-left p-2.5 font-medium">SKU</th>
-                            <th className="text-left p-2.5 font-medium">Image</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {variantRows.map((row, idx) => (
-                            <tr key={idx} className="border-t border-border">
-                              <td className="p-2.5">
-                                <span className="text-xs font-medium">
-                                  {Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}
-                                </span>
-                              </td>
-                              <td className="p-2.5">
-                                <Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 w-24 text-xs" />
-                              </td>
-                              <td className="p-2.5">
-                                <Input type="number" min="0" value={row.stock} onChange={(e) => updateVariantRow(idx, "stock", e.target.value)} className="h-8 w-20 text-xs" />
-                              </td>
-                              <td className="p-2.5">
-                                <Input placeholder="Optional" value={row.sku} onChange={(e) => updateVariantRow(idx, "sku", e.target.value)} className="h-8 w-24 text-xs" />
-                              </td>
-                              <td className="p-2.5">
-                                <div className="flex items-center gap-1">
-                                  {(row.imagePreview || row.imageUrl) ? (
-                                    <img src={row.imagePreview || row.imageUrl} alt="" className="w-8 h-8 rounded object-cover border border-border" />
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    onClick={() => variantFileRefs.current[idx]?.click()}
-                                    className="h-8 w-8 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
-                                  >
-                                    <ImageIcon className="h-3.5 w-3.5" />
-                                  </button>
-                                  <input
-                                    ref={(el) => { variantFileRefs.current[idx] = el; }}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => handleVariantImageSelect(idx, e)}
-                                  />
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="space-y-3">
+                    {variantRows.map((row, idx) => (
+                      <div key={idx} className="bg-card border border-border rounded-lg p-3 space-y-3">
+                        <p className="text-xs font-semibold text-foreground">
+                          {Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Price</Label>
+                            <Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Stock</Label>
+                            <Input type="number" min="0" value={row.stock} onChange={(e) => updateVariantRow(idx, "stock", e.target.value)} className="h-8 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">SKU</Label>
+                            <Input placeholder="Optional" value={row.sku} onChange={(e) => updateVariantRow(idx, "sku", e.target.value)} className="h-8 text-xs" />
+                          </div>
+                        </div>
+                        {/* Variant Images */}
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground mb-1 block">Images</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {row.existingImageUrls.map((url, imgIdx) => (
+                              <div key={`existing-${imgIdx}`} className="relative w-12 h-12 rounded overflow-hidden border border-border bg-secondary group">
+                                <img src={url} alt="" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeVariantImage(idx, imgIdx, true)}
+                                  className="absolute top-0 right-0 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            ))}
+                            {row.imagePreviews.map((preview, imgIdx) => (
+                              <div key={`new-${imgIdx}`} className="relative w-12 h-12 rounded overflow-hidden border border-border bg-secondary group">
+                                <img src={preview} alt="" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeVariantImage(idx, row.existingImageUrls.length + imgIdx, false)}
+                                  className="absolute top-0 right-0 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => variantFileRefs.current[idx]?.click()}
+                              className="h-12 w-12 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                            >
+                              <ImageIcon className="h-4 w-4" />
+                            </button>
+                            <input
+                              ref={(el) => { variantFileRefs.current[idx] = el; }}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => handleVariantImageSelect(idx, e)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
