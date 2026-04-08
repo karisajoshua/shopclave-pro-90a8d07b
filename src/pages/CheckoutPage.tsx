@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,8 @@ const CheckoutPage = () => {
   const [activeStep, setActiveStep] = useState<Step>("address");
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
+  const location = useLocation();
+  const hasCheckedRef = useRef(false);
   const [address, setAddress] = useState({
     fullName: "",
     phone: "",
@@ -32,11 +34,14 @@ const CheckoutPage = () => {
     country: "Kenya",
   });
 
-  // Redirect in useEffect to avoid render-time navigation
+  // Redirect to cart if empty - but skip on first render if coming from Buy Now
   useEffect(() => {
-    if (items.length === 0) {
+    if (hasCheckedRef.current && items.length === 0) {
       navigate("/cart", { replace: true });
     }
+    // After first render, mark as checked
+    const timer = setTimeout(() => { hasCheckedRef.current = true; }, 500);
+    return () => clearTimeout(timer);
   }, [items.length, navigate]);
 
   useEffect(() => {

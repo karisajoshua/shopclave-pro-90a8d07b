@@ -347,6 +347,7 @@ export type Database = {
           position: number
           product_id: string
           url: string
+          variant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -354,6 +355,7 @@ export type Database = {
           position?: number
           product_id: string
           url: string
+          variant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -361,6 +363,7 @@ export type Database = {
           position?: number
           product_id?: string
           url?: string
+          variant_id?: string | null
         }
         Relationships: [
           {
@@ -368,6 +371,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_images_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
