@@ -532,21 +532,25 @@ const ProductDetailPage = () => {
 
           {/* RIGHT: Delivery + Seller Info */}
           <div className="lg:sticky lg:top-20 lg:self-start">
-            <SellerInfoSidebar
-              vendor={product.vendors}
-              productId={product.id}
-              country={country}
-            />
+            {product.vendors && (
+              <SellerInfoSidebar
+                vendor={product.vendors}
+                productId={product.id}
+                country={country}
+              />
+            )}
           </div>
         </div>
 
         {/* Mobile: show seller info below on smaller screens */}
         <div className="lg:hidden mt-6">
-          <SellerInfoSidebar
-            vendor={product.vendors}
-            productId={product.id}
-            country={country}
-          />
+          {product.vendors && (
+            <SellerInfoSidebar
+              vendor={product.vendors}
+              productId={product.id}
+              country={country}
+            />
+          )}
         </div>
 
         {/* Reviews Section */}
