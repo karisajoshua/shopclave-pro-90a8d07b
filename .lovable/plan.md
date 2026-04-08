@@ -1,114 +1,55 @@
 
 
-# Plan: Product Page Redesign, Social Sharing, Seller Follow, and Checkout Overhaul
+# Plan: Multi-Image Variants, Mobile Layout Fix, and Buy Now Fix
 
 ## Summary
-Fix the blank screen bug on Add to Cart / Buy Now, redesign the product page to a 3-column layout (gallery+description left, buy box center, seller info right), add social sharing, implement a seller follow system with follower counts, and redesign checkout to a stepped flow like the Jumia reference.
+Three changes: (1) Allow vendors to upload multiple images per variant, (2) Reorder mobile product page so buy box appears before description, (3) Fix blank screen on Buy Now/Add to Cart on mobile.
 
 ---
 
-## 1. Fix Blank Screen on Buy Now / Add to Cart
+## 1. Multiple Images Per Variant
 
-**Root cause**: The `handleBuyNow` calls `addItem` in a loop then immediately `navigate("/checkout")`. React batches the `setItems` calls, so when CheckoutPage mounts, `items` may still be empty, triggering `navigate("/cart")` which shows an empty cart page (appears blank). Also, the CheckoutPage does `navigate("/cart")` and `navigate("/auth")` during render (not in useEffect), causing render-time side effects.
+**Current state**: `VariantRow` has a single `imageFile`/`imagePreview`. The `product_variants` table has a single `image_url` column.
 
-**Fix**:
-- In `ProductDetailPage.tsx`: Change `handleBuyNow` to call `addItem` once with the correct quantity rather than looping, and use a small timeout or pass state via navigate
-- In `CheckoutPage.tsx`: Move the redirect logic into `useEffect` to prevent render-time navigation. Add a loading state while checking.
-- In `CartContext.tsx`: Add a `addItemWithQuantity` method that accepts quantity parameter to avoid the loop issue
-
-## 2. Redesign Product Page Layout (3-Column)
-
-**File: `src/pages/ProductDetailPage.tsx`**
-
-New layout: `grid lg:grid-cols-[1fr_340px_300px]`
-- **Left column**: Product gallery + description below it + reviews
-- **Center column**: Title, rating, price, variant selectors, quantity, Add to Cart, Buy Now buttons
-- **Right column** (like reference image):
-  - "Delivery & Returns" section with user's detected country
-  - Seller Information card with store name, follower count, "Follow" button
-  - Seller Performance metrics (derived from review averages)
-  - Social sharing buttons
-
-## 3. Social Media Sharing
-
-**In `ProductDetailPage.tsx`**:
-- Add share buttons for WhatsApp, Facebook, Twitter/X, and copy link
-- Use native `navigator.share()` on mobile as fallback
-- Generate share URL from `window.location.href`
-- No external packages needed — use direct share URLs (e.g., `https://wa.me/?text=...`, `https://twitter.com/intent/tweet?url=...`)
-
-## 4. Seller Follow System
+**Approach**: Change the variant image model from a single image to multiple images. Store variant images in the `product_images` table with a `variant_id` reference instead of a single `image_url` column on `product_variants`.
 
 **Database migration**:
 ```sql
-CREATE TABLE public.vendor_follows (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  vendor_id uuid NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(user_id, vendor_id)
-);
-ALTER TABLE public.vendor_follows ENABLE ROW LEVEL SECURITY;
-
--- Users can see their own follows
-CREATE POLICY "Users can view own follows" ON public.vendor_follows
-  FOR SELECT TO authenticated USING (auth.uid() = user_id);
-
--- Users can follow vendors
-CREATE POLICY "Users can follow vendors" ON public.vendor_follows
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-
--- Users can unfollow
-CREATE POLICY "Users can unfollow" ON public.vendor_follows
-  FOR DELETE TO authenticated USING (auth.uid() = user_id);
-
--- Public follower count function
-CREATE OR REPLACE FUNCTION public.get_vendor_follower_count(v_id uuid)
-RETURNS integer LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT count(*)::integer FROM public.vendor_follows WHERE vendor_id = v_id;
-$$;
+ALTER TABLE product_images ADD COLUMN variant_id uuid REFERENCES product_variants(id) ON DELETE CASCADE;
 ```
 
-**Product page**: Show follower count and Follow/Unfollow button in seller info section.
+**Files to modify**:
+- `src/pages/vendor/AddProductPage.tsx` — Change `VariantRow` to support `imageFiles: File[]` and `imagePreviews: string[]`. Replace single image upload button with multi-image upload per variant row. On submit, upload all variant images to `product_images` with `variant_id` set.
+- `src/pages/vendor/EditProductPage.tsx` — Same multi-image support for variants when editing.
+- `src/pages/ProductDetailPage.tsx` — When a color variant is selected, filter `product_images` by `variant_id` to show only that variant's images in the gallery. Fall back to product-level images (where `variant_id` is null) if the variant has no images.
 
-**Vendor dashboard**: Show follower count on the vendor dashboard header and VendorDashboard page.
+## 2. Mobile Layout: Buy Box Before Description
 
-## 5. Checkout Page Redesign (Stepped Flow)
+**Current state**: The 3-column grid collapses to a single column on mobile. Order is: gallery + description (left col) -> buy box (center col) -> seller info (right col). This means description appears before price/buttons on mobile.
 
-**File: `src/pages/CheckoutPage.tsx`**
+**Fix in `src/pages/ProductDetailPage.tsx`**: Restructure the mobile layout using CSS `order` classes:
+- On mobile (`lg:` breakpoint), reorder so the flow is: Gallery -> Buy Box (title, price, variants, buttons) -> Description -> Seller Info -> Reviews
+- Use `order-1`, `order-2`, `order-3` on mobile with `lg:order-none` to restore desktop order
+- Alternatively, split the left column into two divs (gallery and description) and use responsive ordering
 
-Redesign to match the Jumia reference with 3 steps:
-1. **Customer Address** — Show saved address or form to enter, with "Change" button
-2. **Delivery Details** — Show delivery estimate, shipment items grouped by vendor
-3. **Payment Method** — M-Pesa, Card, COD options
+## 3. Fix Blank Screen on Buy Now (Mobile)
 
-Right sidebar: **Order Summary** with item totals, delivery fees, total, and "Confirm Order" button.
+**Root cause**: The `useEffect` in `CheckoutPage.tsx` runs on mount and sees `items.length === 0` before React has re-rendered with the updated cart state from `addItem`. Even though `saveCart` writes to localStorage and `addItem` updates state, the navigation happens via `setTimeout` 50ms later — but `CheckoutPage` mounts, reads the initial state, and redirects to `/cart` before the state update propagates.
 
-Move redirect logic to `useEffect`. Pre-fill address from `addresses` table if user has a saved address.
-
-## 6. Vendor Edit Products (Already Implemented)
-
-The edit functionality already exists (`EditProductPage.tsx` with route `/vendor/products/edit/:id` and edit buttons in `VendorProducts.tsx`). No changes needed — will verify it works correctly.
+**Fix**:
+- In `CheckoutPage.tsx`: Instead of redirecting when `items.length === 0` on first render, add a guard that skips the first render cycle. Use a ref to track if the component just mounted and only redirect after a brief delay, or check localStorage directly as a fallback.
+- Better approach: Pass a flag via `navigate("/checkout", { state: { fromBuyNow: true } })` and skip the empty-cart redirect when that flag is present for the first render.
 
 ---
 
 ## Technical Details
 
-### Files to Create
-- None (all changes in existing files)
+### Database Migration
+- Add `variant_id` column to `product_images` table
 
 ### Files to Modify
-- `src/pages/ProductDetailPage.tsx` — 3-column layout, social sharing, seller info, follow button
-- `src/pages/CheckoutPage.tsx` — Stepped flow redesign
-- `src/contexts/CartContext.tsx` — Add `addItemWithQuantity` method
-- `src/components/vendor/VendorLayout.tsx` — Show follower count in header
-- `src/pages/vendor/VendorDashboard.tsx` — Show follower count
-
-### Database Migration
-- Create `vendor_follows` table with RLS
-- Create `get_vendor_follower_count` function
-
-### No New Dependencies
-- Social sharing uses direct URL schemes
-- All UI built with existing shadcn components
+- `src/pages/vendor/AddProductPage.tsx` — Multi-image per variant
+- `src/pages/vendor/EditProductPage.tsx` — Multi-image per variant  
+- `src/pages/ProductDetailPage.tsx` — Mobile layout reorder + variant image filtering
+- `src/pages/CheckoutPage.tsx` — Fix redirect race condition
 
