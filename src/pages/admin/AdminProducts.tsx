@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2 } from "lucide-react";
+import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import CountdownTimer from "@/components/shared/CountdownTimer";
 
 interface EditProduct {
   id: string;
@@ -26,6 +27,9 @@ const AdminProducts = () => {
   const [editVideoUrl, setEditVideoUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dealProduct, setDealProduct] = useState<{ id: string; name: string; deal_ends_at: string | null } | null>(null);
+  const [dealDate, setDealDate] = useState("");
+  const [dealTime, setDealTime] = useState("");
 
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
