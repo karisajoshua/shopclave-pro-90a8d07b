@@ -461,6 +461,11 @@ const ProductDetailPage = () => {
 
             <Separator />
 
+            {/* Countdown Timer */}
+            {(product as any).deal_ends_at && new Date((product as any).deal_ends_at).getTime() > Date.now() && (
+              <CountdownTimer endsAt={(product as any).deal_ends_at} />
+            )}
+
             {/* Price */}
             <div>
               {discountPct && (
