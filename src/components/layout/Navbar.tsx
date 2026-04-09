@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "@/contexts/TranslationContext";
 import SidebarMenu from "./MegaMenu";
+import SearchSuggestions from "./SearchSuggestions";
 import barakazLogo from "@/assets/barakaz-logo.png";
 import {
   DropdownMenu,
@@ -21,11 +22,13 @@ const Navbar = () => {
   const { totalItems } = useCart();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const { country, languages } = useLocale();
   const { language, setLanguage, t } = useTranslation();
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
+      setSuggestionsOpen(false);
       window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
     }
   };
@@ -74,12 +77,13 @@ const Navbar = () => {
 
           {/* === MOBILE SEARCH ROW === */}
           <div className="md:hidden px-3 pb-2">
-            <div className="flex w-full">
+            <div className="flex w-full relative">
               <Input
                 placeholder={t("nav.search")}
                 className="h-10 rounded-l-md rounded-r-none bg-white text-foreground border-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--marketplace-orange))] flex-1"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setSuggestionsOpen(true); }}
+                onFocus={() => setSuggestionsOpen(true)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
               <button
@@ -88,6 +92,7 @@ const Navbar = () => {
               >
                 <Search className="h-5 w-5 text-primary-foreground" />
               </button>
+              <SearchSuggestions query={searchQuery} visible={suggestionsOpen} onClose={() => setSuggestionsOpen(false)} />
             </div>
           </div>
 
@@ -118,7 +123,8 @@ const Navbar = () => {
                   placeholder={t("nav.search")}
                   className="h-10 rounded-l-md rounded-r-none bg-white text-foreground border-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--marketplace-orange))] pr-10"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setSuggestionsOpen(true); }}
+                  onFocus={() => setSuggestionsOpen(true)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />
                 <button
@@ -127,6 +133,7 @@ const Navbar = () => {
                 >
                   <Search className="h-5 w-5 text-primary-foreground" />
                 </button>
+                <SearchSuggestions query={searchQuery} visible={suggestionsOpen} onClose={() => setSuggestionsOpen(false)} />
               </div>
             </div>
 
