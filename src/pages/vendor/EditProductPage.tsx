@@ -156,20 +156,17 @@ const EditProductPage = () => {
 
   const categoryOptions = (() => {
     if (!categories) return [];
-    const topLevel = categories.filter((c: any) => !c.parent_id);
-    const result: { id: string; label: string }[] = [];
-    topLevel.forEach((top: any) => {
-      result.push({ id: top.id, label: top.name });
-      const children = categories.filter((c: any) => c.parent_id === top.id);
-      children.forEach((child: any) => {
-        result.push({ id: child.id, label: `  └ ${child.name}` });
-        const grandchildren = categories.filter((c: any) => c.parent_id === child.id);
-        grandchildren.forEach((gc: any) => {
-          result.push({ id: gc.id, label: `    └ ${gc.name}` });
-        });
-      });
-    });
-    return result;
+    const buildTree = (parentId: string | null, depth: number): { id: string; label: string }[] => {
+      const children = categories.filter((c: any) => c.parent_id === parentId);
+      const result: { id: string; label: string }[] = [];
+      for (const child of children) {
+        const prefix = depth > 0 ? '  '.repeat(depth) + '└ ' : '';
+        result.push({ id: child.id, label: prefix + child.name });
+        result.push(...buildTree(child.id, depth + 1));
+      }
+      return result;
+    };
+    return buildTree(null, 0);
   })();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,33 +185,33 @@ const EditProductPage = () => {
   };
 
   const uploadImages = async (prodId: string): Promise<{ url: string; dbId?: string }[]> => {
-    const result: { url: string; dbId?: string }[] = [];
-    for (const img of images) {
+    const uploadPromises = images.map(async (img) => {
       if (img.file) {
         const ext = img.file.name.split(".").pop();
-        const path = `${prodId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `${prodId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error } = await supabase.storage.from("product-images").upload(path, img.file);
         if (error) throw error;
         const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-        result.push({ url: urlData.publicUrl });
+        return { url: urlData.publicUrl };
       } else if (img.url) {
-        result.push({ url: img.url, dbId: img.dbId });
+        return { url: img.url, dbId: img.dbId };
       }
-    }
-    return result;
+      return null;
+    });
+    const results = await Promise.all(uploadPromises);
+    return results.filter((r): r is NonNullable<typeof r> => !!r);
   };
 
   const uploadVariantImages = async (files: File[], prodId: string): Promise<string[]> => {
-    const urls: string[] = [];
-    for (const file of files) {
+    const uploadPromises = files.map(async (file) => {
       const ext = file.name.split(".").pop();
-      const path = `${prodId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `${prodId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("product-images").upload(path, file);
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-      urls.push(urlData.publicUrl);
-    }
-    return urls;
+      return urlData.publicUrl;
+    });
+    return Promise.all(uploadPromises);
   };
 
   const regenerateVariants = (opts: OptionType[]) => {
@@ -333,8 +330,7 @@ const EditProductPage = () => {
       // Handle variants: delete old, insert new
       await supabase.from("product_variants").delete().eq("product_id", productId);
       if (hasVariants && variantRows.length > 0) {
-        for (const v of variantRows) {
-          // Upload new files
+        await Promise.all(variantRows.map(async (v) => {
           const newUrls = v.imageFiles.length > 0 ? await uploadVariantImages(v.imageFiles, productId) : [];
           const allUrls = [...v.existingImageUrls, ...newUrls];
           const firstImgUrl = allUrls[0] || null;
@@ -349,7 +345,6 @@ const EditProductPage = () => {
           }).select("id").single();
           if (vErr) throw vErr;
 
-          // Insert variant images into product_images
           if (allUrls.length > 0 && variant) {
             const variantImageRows = allUrls.map((url, idx) => ({
               product_id: productId,
@@ -359,7 +354,7 @@ const EditProductPage = () => {
             }));
             await supabase.from("product_images").insert(variantImageRows);
           }
-        }
+        }));
       }
 
       toast.success("Product updated!");

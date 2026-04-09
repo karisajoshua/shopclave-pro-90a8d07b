@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import CountdownTimer from "@/components/shared/CountdownTimer";
 
 interface ProductCardProps {
   id: string;
@@ -16,10 +17,11 @@ interface ProductCardProps {
   vendorId: string;
   vendorName: string;
   slug: string;
+  dealEndsAt?: string | null;
 }
 
 const ProductCard = ({
-  id, name, price, compareAtPrice, image, rating = 0, reviewCount = 0, vendorId, vendorName, slug,
+  id, name, price, compareAtPrice, image, rating = 0, reviewCount = 0, vendorId, vendorName, slug, dealEndsAt,
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
@@ -51,6 +53,11 @@ const ProductCard = ({
         {discount > 0 && (
           <span className="absolute top-2 left-2 bg-marketplace-badge text-primary-foreground text-xs font-bold px-2 py-0.5 rounded">
             -{discount}%
+          </span>
+        )}
+        {dealEndsAt && new Date(dealEndsAt).getTime() > Date.now() && (
+          <span className="absolute bottom-2 left-2">
+            <CountdownTimer endsAt={dealEndsAt} variant="badge" />
           </span>
         )}
       </div>

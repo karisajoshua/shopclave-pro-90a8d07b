@@ -46,6 +46,7 @@ const SearchPage = () => {
     slug: p.slug,
     rating: 4.5,
     reviewCount: 0,
+    dealEndsAt: p.deal_ends_at || null,
   }));
 
   return (

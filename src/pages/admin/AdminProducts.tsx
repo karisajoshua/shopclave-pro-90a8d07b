@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2 } from "lucide-react";
+import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import CountdownTimer from "@/components/shared/CountdownTimer";
 
 interface EditProduct {
   id: string;
@@ -26,6 +27,9 @@ const AdminProducts = () => {
   const [editVideoUrl, setEditVideoUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dealProduct, setDealProduct] = useState<{ id: string; name: string; deal_ends_at: string | null } | null>(null);
+  const [dealDate, setDealDate] = useState("");
+  const [dealTime, setDealTime] = useState("");
 
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
@@ -153,11 +157,23 @@ const AdminProducts = () => {
                 <td className="p-3">{p.stock}</td>
                 <td className="p-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{p.status}</span>
+                  {(p as any).deal_ends_at && new Date((p as any).deal_ends_at).getTime() > Date.now() && (
+                    <CountdownTimer endsAt={(p as any).deal_ends_at} variant="badge" />
+                  )}
                 </td>
                 <td className="p-3">
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" className="h-7" title="Edit images & video" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7" title="Set deal timer"
+                      onClick={() => {
+                        setDealProduct({ id: p.id, name: p.name, deal_ends_at: (p as any).deal_ends_at || null });
+                        const existing = (p as any).deal_ends_at ? new Date((p as any).deal_ends_at) : null;
+                        setDealDate(existing ? existing.toISOString().slice(0, 10) : "");
+                        setDealTime(existing ? existing.toISOString().slice(11, 16) : "");
+                      }}>
+                      <Clock className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7" title={p.featured ? "Unfeature" : "Feature"}
                       onClick={() => updateProduct.mutate({ id: p.id, updates: { featured: !p.featured } })}>
@@ -245,6 +261,55 @@ const AdminProducts = () => {
               <Button variant="outline" className="flex-1" onClick={() => setEditProduct(null)}>Cancel</Button>
               <Button className="flex-1 font-semibold" disabled={saving} onClick={handleSaveEdit}>
                 {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deal Timer Dialog */}
+      <Dialog open={!!dealProduct} onOpenChange={(open) => !open && setDealProduct(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" /> Deal Timer: {dealProduct?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>End Date</Label>
+              <Input type="date" value={dealDate} onChange={(e) => setDealDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>End Time</Label>
+              <Input type="time" value={dealTime} onChange={(e) => setDealTime(e.target.value)} />
+            </div>
+            {dealProduct?.deal_ends_at && new Date(dealProduct.deal_ends_at).getTime() > Date.now() && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Current timer:</Label>
+                <CountdownTimer endsAt={dealProduct.deal_ends_at} variant="badge" />
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              {dealProduct?.deal_ends_at && (
+                <Button variant="destructive" size="sm" onClick={async () => {
+                  await supabase.from("products").update({ deal_ends_at: null } as any).eq("id", dealProduct!.id);
+                  queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+                  toast.success("Deal timer removed");
+                  setDealProduct(null);
+                }}>
+                  Remove Timer
+                </Button>
+              )}
+              <Button className="flex-1 font-semibold" onClick={async () => {
+                if (!dealDate || !dealTime) { toast.error("Please set both date and time"); return; }
+                const dealEndsAt = new Date(`${dealDate}T${dealTime}`).toISOString();
+                await supabase.from("products").update({ deal_ends_at: dealEndsAt } as any).eq("id", dealProduct!.id);
+                queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+                toast.success("Deal timer set!");
+                setDealProduct(null);
+              }}>
+                Set Timer
               </Button>
             </div>
           </div>
