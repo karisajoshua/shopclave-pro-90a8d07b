@@ -199,7 +199,7 @@ const EditProductPage = () => {
       return null;
     });
     const results = await Promise.all(uploadPromises);
-    return results.filter((r): r is { url: string; dbId?: string } => !!r);
+    return results.filter((r): r is NonNullable<typeof r> => !!r);
   };
 
   const uploadVariantImages = async (files: File[], prodId: string): Promise<string[]> => {
