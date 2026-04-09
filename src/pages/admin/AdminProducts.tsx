@@ -157,11 +157,23 @@ const AdminProducts = () => {
                 <td className="p-3">{p.stock}</td>
                 <td className="p-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{p.status}</span>
+                  {(p as any).deal_ends_at && new Date((p as any).deal_ends_at).getTime() > Date.now() && (
+                    <CountdownTimer endsAt={(p as any).deal_ends_at} variant="badge" />
+                  )}
                 </td>
                 <td className="p-3">
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" className="h-7" title="Edit images & video" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7" title="Set deal timer"
+                      onClick={() => {
+                        setDealProduct({ id: p.id, name: p.name, deal_ends_at: (p as any).deal_ends_at || null });
+                        const existing = (p as any).deal_ends_at ? new Date((p as any).deal_ends_at) : null;
+                        setDealDate(existing ? existing.toISOString().slice(0, 10) : "");
+                        setDealTime(existing ? existing.toISOString().slice(11, 16) : "");
+                      }}>
+                      <Clock className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7" title={p.featured ? "Unfeature" : "Feature"}
                       onClick={() => updateProduct.mutate({ id: p.id, updates: { featured: !p.featured } })}>
