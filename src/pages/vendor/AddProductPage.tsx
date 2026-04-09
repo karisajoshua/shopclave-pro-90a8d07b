@@ -84,20 +84,17 @@ const AddProductPage = () => {
 
   const categoryOptions = (() => {
     if (!categories) return [];
-    const topLevel = categories.filter((c: any) => !c.parent_id);
-    const result: { id: string; label: string }[] = [];
-    topLevel.forEach((top: any) => {
-      result.push({ id: top.id, label: top.name });
-      const children = categories.filter((c: any) => c.parent_id === top.id);
-      children.forEach((child: any) => {
-        result.push({ id: child.id, label: `  └ ${child.name}` });
-        const grandchildren = categories.filter((c: any) => c.parent_id === child.id);
-        grandchildren.forEach((gc: any) => {
-          result.push({ id: gc.id, label: `    └ ${gc.name}` });
-        });
-      });
-    });
-    return result;
+    const buildTree = (parentId: string | null, depth: number): { id: string; label: string }[] => {
+      const children = categories.filter((c: any) => c.parent_id === parentId);
+      const result: { id: string; label: string }[] = [];
+      for (const child of children) {
+        const prefix = depth > 0 ? '  '.repeat(depth) + '└ ' : '';
+        result.push({ id: child.id, label: prefix + child.name });
+        result.push(...buildTree(child.id, depth + 1));
+      }
+      return result;
+    };
+    return buildTree(null, 0);
   })();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,20 +113,21 @@ const AddProductPage = () => {
   };
 
   const uploadImages = async (productId: string): Promise<string[]> => {
-    const urls: string[] = [];
-    for (const img of images) {
+    const uploadPromises = images.map(async (img) => {
       if (img.file) {
         const ext = img.file.name.split(".").pop();
-        const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error } = await supabase.storage.from("product-images").upload(path, img.file);
         if (error) throw error;
         const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-        urls.push(urlData.publicUrl);
+        return urlData.publicUrl;
       } else if (img.url) {
-        urls.push(img.url);
+        return img.url;
       }
-    }
-    return urls;
+      return null;
+    });
+    const results = await Promise.all(uploadPromises);
+    return results.filter((u): u is string => !!u);
   };
 
   const regenerateVariants = (opts: OptionType[]) => {
@@ -166,16 +164,15 @@ const AddProductPage = () => {
   };
 
   const uploadVariantImages = async (files: File[], productId: string): Promise<string[]> => {
-    const urls: string[] = [];
-    for (const file of files) {
+    const uploadPromises = files.map(async (file) => {
       const ext = file.name.split(".").pop();
-      const path = `${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("product-images").upload(path, file);
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-      urls.push(urlData.publicUrl);
-    }
-    return urls;
+      return urlData.publicUrl;
+    });
+    return Promise.all(uploadPromises);
   };
 
   const addOptionType = () => {
@@ -260,13 +257,13 @@ const AddProductPage = () => {
         }
       }
 
-      // Insert variants + variant images
+      // Insert variants + variant images (parallel upload per variant)
       if (hasVariants && variantRows.length > 0 && product) {
-        for (const v of variantRows) {
-          // Insert variant first to get its ID
-          const firstImgUrl = v.imageFiles.length > 0
-            ? (await uploadVariantImages([v.imageFiles[0]], product.id))[0]
-            : null;
+        await Promise.all(variantRows.map(async (v) => {
+          const allUrls = v.imageFiles.length > 0
+            ? await uploadVariantImages(v.imageFiles, product.id)
+            : [];
+          const firstImgUrl = allUrls[0] || null;
 
           const { data: variant, error: vErr } = await supabase.from("product_variants").insert({
             product_id: product.id,
@@ -278,22 +275,16 @@ const AddProductPage = () => {
           }).select("id").single();
           if (vErr) throw vErr;
 
-          // Upload remaining variant images into product_images with variant_id
-          if (v.imageFiles.length > 0 && variant) {
-            const allUrls = firstImgUrl
-              ? [firstImgUrl, ...(await uploadVariantImages(v.imageFiles.slice(1), product.id))]
-              : [];
-            if (allUrls.length > 0) {
-              const variantImageRows = allUrls.map((url, idx) => ({
-                product_id: product.id,
-                variant_id: variant.id,
-                url,
-                position: idx,
-              }));
-              await supabase.from("product_images").insert(variantImageRows);
-            }
+          if (allUrls.length > 0 && variant) {
+            const variantImageRows = allUrls.map((url, idx) => ({
+              product_id: product.id,
+              variant_id: variant.id,
+              url,
+              position: idx,
+            }));
+            await supabase.from("product_images").insert(variantImageRows);
           }
-        }
+        }));
       }
 
       toast.success("Product added!");
