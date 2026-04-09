@@ -266,6 +266,55 @@ const AdminProducts = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Deal Timer Dialog */}
+      <Dialog open={!!dealProduct} onOpenChange={(open) => !open && setDealProduct(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" /> Deal Timer: {dealProduct?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>End Date</Label>
+              <Input type="date" value={dealDate} onChange={(e) => setDealDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>End Time</Label>
+              <Input type="time" value={dealTime} onChange={(e) => setDealTime(e.target.value)} />
+            </div>
+            {dealProduct?.deal_ends_at && new Date(dealProduct.deal_ends_at).getTime() > Date.now() && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Current timer:</Label>
+                <CountdownTimer endsAt={dealProduct.deal_ends_at} variant="badge" />
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              {dealProduct?.deal_ends_at && (
+                <Button variant="destructive" size="sm" onClick={async () => {
+                  await supabase.from("products").update({ deal_ends_at: null } as any).eq("id", dealProduct!.id);
+                  queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+                  toast.success("Deal timer removed");
+                  setDealProduct(null);
+                }}>
+                  Remove Timer
+                </Button>
+              )}
+              <Button className="flex-1 font-semibold" onClick={async () => {
+                if (!dealDate || !dealTime) { toast.error("Please set both date and time"); return; }
+                const dealEndsAt = new Date(`${dealDate}T${dealTime}`).toISOString();
+                await supabase.from("products").update({ deal_ends_at: dealEndsAt } as any).eq("id", dealProduct!.id);
+                queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+                toast.success("Deal timer set!");
+                setDealProduct(null);
+              }}>
+                Set Timer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
