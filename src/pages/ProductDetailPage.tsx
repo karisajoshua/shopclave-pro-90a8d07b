@@ -275,18 +275,41 @@ const ProductDetailPage = () => {
     ? Math.round(((Number(product.compare_at_price) - Number(displayPrice)) / Number(product.compare_at_price)) * 100)
     : null;
 
-  // Compute gallery images based on selected variant
+  // Compute gallery images based on selected color (show all images for that color across sizes)
   const galleryImages = useMemo(() => {
     if (!product) return [barakazIcon];
     const allImages = product.product_images || [];
     
-    // If a variant is selected, check for variant-specific images
-    if (selectedVariant) {
-      const variantImages = allImages
-        .filter((img: any) => img.variant_id === selectedVariant.id)
-        .sort((a: any, b: any) => a.position - b.position)
-        .map((i: any) => i.url);
-      if (variantImages.length > 0) return variantImages;
+    if (hasVariants && variants?.length && Object.keys(selectedOptions).length > 0) {
+      // Find the color-like option key
+      const colorKey = Object.keys(optionTypes).find(k => 
+        k.toLowerCase().includes('col') || k.toLowerCase().includes('colour')
+      );
+      
+      if (colorKey && selectedOptions[colorKey]) {
+        // Get all variant IDs that share the same color
+        const matchingVariantIds = variants
+          .filter((v: any) => {
+            const opts = v.variant_options as Record<string, string>;
+            return opts[colorKey] === selectedOptions[colorKey];
+          })
+          .map((v: any) => v.id);
+        
+        const variantImages = allImages
+          .filter((img: any) => matchingVariantIds.includes(img.variant_id))
+          .sort((a: any, b: any) => a.position - b.position)
+          .map((i: any) => i.url);
+        if (variantImages.length > 0) return variantImages;
+      }
+      
+      // Fallback: try specific variant
+      if (selectedVariant) {
+        const variantImages = allImages
+          .filter((img: any) => img.variant_id === selectedVariant.id)
+          .sort((a: any, b: any) => a.position - b.position)
+          .map((i: any) => i.url);
+        if (variantImages.length > 0) return variantImages;
+      }
     }
     
     // Fallback to product-level images (no variant_id)
@@ -296,7 +319,7 @@ const ProductDetailPage = () => {
       .map((i: any) => i.url);
     
     return productImages.length > 0 ? productImages : [barakazIcon];
-  }, [product, selectedVariant]);
+  }, [product, selectedVariant, selectedOptions, variants, optionTypes, hasVariants]);
 
   if (isLoading) {
     return (

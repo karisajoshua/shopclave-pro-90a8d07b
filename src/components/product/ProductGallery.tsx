@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play } from "lucide-react";
 import barakazIcon from "@/assets/barakaz-icon.png";
 
 function getEmbedUrl(url: string): string | null {
-  // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
   return null;
@@ -24,6 +22,12 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: Produ
   const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const [activeIndex, setActiveIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
+
+  // Reset activeIndex when images change (e.g. switching color variant)
+  useEffect(() => {
+    setActiveIndex(0);
+    setShowVideo(false);
+  }, [images]);
 
   // When forcedImageUrl changes, find its index or show it directly
   const displayImage = (() => {
