@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Star, ShoppingCart, Minus, Plus, Store, MapPin, ChevronRight, Zap, ShieldCheck, Truck, RotateCcw, Share2, Heart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
+import CountdownTimer from "@/components/shared/CountdownTimer";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -204,7 +205,7 @@ const ProductDetailPage = () => {
         .select("*, vendors(id, store_name), product_images(url, position, variant_id), categories(name, slug)")
         .eq("slug", slug!)
         .single();
-      return data;
+      return data as any;
     },
     enabled: !!slug,
   });
