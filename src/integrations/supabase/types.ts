@@ -88,6 +88,42 @@ export type Database = {
           },
         ]
       }
+      cookie_consents: {
+        Row: {
+          analytics: boolean
+          created_at: string
+          essential: boolean
+          id: string
+          ip_country: string | null
+          marketing: boolean
+          preferences: boolean
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          analytics?: boolean
+          created_at?: string
+          essential?: boolean
+          id?: string
+          ip_country?: string | null
+          marketing?: boolean
+          preferences?: boolean
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          analytics?: boolean
+          created_at?: string
+          essential?: boolean
+          id?: string
+          ip_country?: string | null
+          marketing?: boolean
+          preferences?: boolean
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
