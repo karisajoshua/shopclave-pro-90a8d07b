@@ -650,7 +650,8 @@ const RelatedProducts = ({ categoryId, currentProductId }: { categoryId: string 
               price={p.price}
               compareAtPrice={p.compare_at_price}
               image={imgs[0]?.url || "/placeholder.svg"}
-              vendor={(p.vendors as any)?.store_name || ""}
+              vendorId={p.vendor_id}
+              vendorName={(p.vendors as any)?.store_name || ""}
               dealEndsAt={p.deal_ends_at}
             />
           );
