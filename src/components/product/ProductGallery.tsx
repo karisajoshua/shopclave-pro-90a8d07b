@@ -23,19 +23,17 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: Produ
   const [activeIndex, setActiveIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
 
-  // Reset activeIndex when images change (e.g. switching color variant)
   useEffect(() => {
     setActiveIndex(0);
     setShowVideo(false);
   }, [images]);
 
-  // When forcedImageUrl changes, find its index or show it directly
   const displayImage = (() => {
     if (showVideo) return null;
     if (forcedImageUrl) {
       const idx = allImages.indexOf(forcedImageUrl);
       if (idx >= 0) return allImages[idx];
-      return forcedImageUrl; // variant image not in main gallery
+      return forcedImageUrl;
     }
     return allImages[activeIndex] || barakazIcon;
   })();
@@ -44,49 +42,93 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: Produ
 
   return (
     <div>
-      {/* Main display */}
-      <div className="aspect-square rounded-lg overflow-hidden bg-secondary border border-border">
-        {showVideo && embedUrl ? (
-          <iframe
-            src={embedUrl}
-            className="w-full h-full"
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowFullScreen
-            title={`${productName} video`}
-          />
-        ) : (
-          <img src={displayImage || barakazIcon} alt={productName} className="w-full h-full object-cover" />
+      {/* Desktop: thumbnails left + main image right */}
+      <div className="hidden md:flex gap-3">
+        {totalItems > 1 && (
+          <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-1">
+            {allImages.map((img, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setActiveIndex(i); setShowVideo(false); }}
+                className={`w-16 h-16 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 transition-colors ${
+                  !showVideo && activeIndex === i ? "border-primary" : "border-border"
+                }`}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+            {embedUrl && (
+              <button
+                type="button"
+                onClick={() => setShowVideo(true)}
+                className={`w-16 h-16 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 flex items-center justify-center transition-colors ${
+                  showVideo ? "border-primary" : "border-border"
+                }`}
+              >
+                <Play className="h-6 w-6 text-primary" />
+              </button>
+            )}
+          </div>
         )}
-      </div>
-
-      {/* Thumbnails */}
-      {totalItems > 1 && (
-        <div className="flex gap-2 mt-3 overflow-x-auto">
-          {allImages.map((img, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => { setActiveIndex(i); setShowVideo(false); }}
-              className={`w-16 h-16 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 transition-colors ${
-                !showVideo && activeIndex === i ? "border-primary" : "border-border"
-              }`}
-            >
-              <img src={img} alt="" className="w-full h-full object-cover" />
-            </button>
-          ))}
-          {embedUrl && (
-            <button
-              type="button"
-              onClick={() => setShowVideo(true)}
-              className={`w-16 h-16 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 flex items-center justify-center transition-colors ${
-                showVideo ? "border-primary" : "border-border"
-              }`}
-            >
-              <Play className="h-6 w-6 text-primary" />
-            </button>
+        <div className="flex-1 aspect-square rounded-lg overflow-hidden bg-secondary border border-border">
+          {showVideo && embedUrl ? (
+            <iframe
+              src={embedUrl}
+              className="w-full h-full"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              title={`${productName} video`}
+            />
+          ) : (
+            <img src={displayImage || barakazIcon} alt={productName} className="w-full h-full object-cover" />
           )}
         </div>
-      )}
+      </div>
+
+      {/* Mobile: main image on top, thumbnails below horizontally */}
+      <div className="md:hidden">
+        <div className="aspect-square rounded-lg overflow-hidden bg-secondary border border-border">
+          {showVideo && embedUrl ? (
+            <iframe
+              src={embedUrl}
+              className="w-full h-full"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              title={`${productName} video`}
+            />
+          ) : (
+            <img src={displayImage || barakazIcon} alt={productName} className="w-full h-full object-cover" />
+          )}
+        </div>
+        {totalItems > 1 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto">
+            {allImages.map((img, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setActiveIndex(i); setShowVideo(false); }}
+                className={`w-14 h-14 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 transition-colors ${
+                  !showVideo && activeIndex === i ? "border-primary" : "border-border"
+                }`}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+            {embedUrl && (
+              <button
+                type="button"
+                onClick={() => setShowVideo(true)}
+                className={`w-14 h-14 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 flex items-center justify-center transition-colors ${
+                  showVideo ? "border-primary" : "border-border"
+                }`}
+              >
+                <Play className="h-5 w-5 text-primary" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
