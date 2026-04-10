@@ -41,6 +41,8 @@ import AdminBulkImport from "./pages/admin/AdminBulkImport";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
+import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
+import CookieConsent from "./components/shared/CookieConsent";
 
 // Vendor
 import VendorLayout from "./components/vendor/VendorLayout";
@@ -99,6 +101,7 @@ const App = () => (
                   <Route path="categories" element={<AdminCategories />} />
                   <Route path="bulk-import" element={<AdminBulkImport />} />
                   <Route path="withdrawals" element={<AdminWithdrawals />} />
+                  <Route path="analytics" element={<AdminAnalyticsPage />} />
                   <Route path="notifications" element={<AdminNotifications />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
@@ -118,6 +121,7 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <CookieConsent />
             </CartProvider>
           </AuthProvider>
         </TranslationProvider>
