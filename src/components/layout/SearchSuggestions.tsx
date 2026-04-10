@@ -15,6 +15,7 @@ interface Suggestion {
   name: string;
   slug: string;
   image?: string;
+  description?: string;
 }
 
 const SearchSuggestions = ({ query, visible, onClose }: SearchSuggestionsProps) => {
@@ -33,7 +34,7 @@ const SearchSuggestions = ({ query, visible, onClose }: SearchSuggestionsProps) 
       const term = `%${query.trim()}%`;
       const [catRes, prodRes] = await Promise.all([
         supabase.from("categories").select("id, name, slug").ilike("name", term).limit(4),
-        supabase.from("products").select("id, name, slug, product_images(url, position)").eq("status", "active").ilike("name", term).limit(5),
+        supabase.from("products").select("id, name, slug, description, product_images(url, position)").eq("status", "active").ilike("name", term).limit(5),
       ]);
 
       const cats: Suggestion[] = (catRes.data || []).map((c: any) => ({
@@ -41,7 +42,8 @@ const SearchSuggestions = ({ query, visible, onClose }: SearchSuggestionsProps) 
       }));
       const prods: Suggestion[] = (prodRes.data || []).map((p: any) => {
         const imgs = (p.product_images || []).sort((a: any, b: any) => a.position - b.position);
-        return { type: "product", id: p.id, name: p.name, slug: p.slug, image: imgs[0]?.url };
+        const desc = p.description ? (p.description.length > 80 ? p.description.slice(0, 80) + "…" : p.description) : undefined;
+        return { type: "product", id: p.id, name: p.name, slug: p.slug, image: imgs[0]?.url, description: desc };
       });
       setSuggestions([...cats, ...prods]);
     }, 300);
@@ -94,7 +96,12 @@ const SearchSuggestions = ({ query, visible, onClose }: SearchSuggestionsProps) 
               ) : (
                 <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
-              <span className="truncate">{s.name}</span>
+              <div className="min-w-0 flex-1">
+                <span className="truncate block">{s.name}</span>
+                {s.description && (
+                  <span className="text-xs text-muted-foreground truncate block">{s.description}</span>
+                )}
+              </div>
             </button>
           ))}
         </div>
