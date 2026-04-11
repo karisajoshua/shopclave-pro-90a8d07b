@@ -610,6 +610,29 @@ const ProductDetailPage = () => {
 
         {/* Related Products */}
         <RelatedProducts categoryId={product.category_id} currentProductId={product.id} />
+
+        {/* Spacer for floating bar on mobile */}
+        <div className="h-20 md:hidden" />
+      </div>
+
+      {/* Floating Add to Cart / Buy Now bar on mobile */}
+      <div className="fixed bottom-14 left-0 right-0 z-40 md:hidden bg-card border-t border-border px-4 py-2 flex gap-3 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+        <Button
+          className="flex-1 font-semibold gap-2 h-11"
+          onClick={handleAddToCart}
+          disabled={hasVariants && !selectedVariant}
+        >
+          <ShoppingCart className="h-4 w-4" />
+          {t("product.addToCart")}
+        </Button>
+        <Button
+          className="flex-1 font-semibold gap-2 h-11 bg-[hsl(var(--marketplace-orange))] hover:bg-[hsl(var(--marketplace-orange))]/90 text-white"
+          onClick={handleBuyNow}
+          disabled={hasVariants && !selectedVariant}
+        >
+          <Zap className="h-4 w-4" />
+          Buy Now
+        </Button>
       </div>
     </MarketplaceLayout>
   );
