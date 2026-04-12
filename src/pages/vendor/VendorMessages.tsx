@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, MessageCircle, User } from "lucide-react";
+import { Send, MessageCircle, User, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,23 +25,28 @@ const VendorMessages = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("chat_messages")
-        .select("conversation_id, sender_id, message, created_at, is_read")
+        .select("conversation_id, sender_id, message, created_at, is_read, product_id")
         .eq("vendor_id", vendor.id)
         .order("created_at", { ascending: false });
 
       if (!data) return [];
 
       // Group by conversation
-      const convMap = new Map<string, { lastMessage: any; unreadCount: number; userId: string }>();
+      const convMap = new Map<string, { lastMessage: any; unreadCount: number; userId: string; productId: string | null; messageCount: number }>();
       data.forEach((msg) => {
         const convId = msg.conversation_id;
         if (!convMap.has(convId)) {
-          const userId = convId.split("_")[0]; // user_id is first part
-          convMap.set(convId, { lastMessage: msg, unreadCount: 0, userId });
+          const userId = convId.split("_")[0];
+          convMap.set(convId, { lastMessage: msg, unreadCount: 0, userId, productId: msg.product_id, messageCount: 0 });
         }
+        const conv = convMap.get(convId)!;
+        conv.messageCount++;
         if (!msg.is_read && msg.sender_id !== user?.id) {
-          const conv = convMap.get(convId)!;
           conv.unreadCount++;
+        }
+        // Capture product_id from any message in the conversation
+        if (msg.product_id && !conv.productId) {
+          conv.productId = msg.product_id;
         }
       });
 
@@ -50,25 +55,28 @@ const VendorMessages = () => {
       const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: userIds });
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
+      // Get product names for conversations that reference a product
+      const productIds = [...new Set([...convMap.values()].map(c => c.productId).filter(Boolean))] as string[];
+      let productMap = new Map<string, { name: string; slug: string }>();
+      if (productIds.length > 0) {
+        const { data: products } = await supabase.from("products").select("id, name, slug").in("id", productIds);
+        productMap = new Map((products || []).map((p: any) => [p.id, { name: p.name, slug: p.slug }]));
+      }
+
       return [...convMap.entries()].map(([id, conv]) => ({
         id,
         ...conv,
         profile: profileMap.get(conv.userId),
+        product: conv.productId ? productMap.get(conv.productId) : null,
       }));
     },
     enabled: !!vendor,
   });
 
-  // Get product reference for current conversation
-  const conversationProduct = messages.find(m => m.product_id)?.product_id;
-  const { data: productRef } = useQuery({
-    queryKey: ["chat-product", conversationProduct],
-    queryFn: async () => {
-      const { data } = await supabase.from("products").select("name, slug").eq("id", conversationProduct!).single();
-      return data;
-    },
-    enabled: !!conversationProduct,
-  });
+  // Derive product info from selected conversation
+  const selectedConv = conversations.find((c: any) => c.id === selectedConversation);
+  const selectedProduct = selectedConv?.product;
+  const selectedProductId = selectedConv?.productId;
 
   // Load messages for selected conversation
   useEffect(() => {
@@ -102,6 +110,7 @@ const VendorMessages = () => {
         filter: `conversation_id=eq.${selectedConversation}`,
       }, (payload) => {
         setMessages((prev) => [...prev, payload.new]);
+        queryClient.invalidateQueries({ queryKey: ["vendor-conversations"] });
       })
       .subscribe();
 
@@ -116,12 +125,16 @@ const VendorMessages = () => {
     if (!newMessage.trim() || !user || !selectedConversation) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("chat_messages").insert({
+      const payload: any = {
         conversation_id: selectedConversation,
         sender_id: user.id,
         vendor_id: vendor.id,
         message: newMessage.trim(),
-      });
+      };
+      // Preserve product reference on every reply in a product thread
+      if (selectedProductId) payload.product_id = selectedProductId;
+
+      const { error } = await supabase.from("chat_messages").insert(payload);
       if (error) throw error;
       setNewMessage("");
       queryClient.invalidateQueries({ queryKey: ["vendor-conversations"] });
@@ -159,13 +172,20 @@ const VendorMessages = () => {
                     <span className="text-sm font-medium truncate">
                       {conv.profile?.full_name || "Customer"}
                     </span>
-                    {conv.unreadCount > 0 && (
-                      <Badge className="text-[10px] h-5 px-1.5">{conv.unreadCount}</Badge>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {conv.unreadCount > 0 && (
+                        <Badge className="text-[10px] h-5 px-1.5">{conv.unreadCount}</Badge>
+                      )}
+                    </div>
                   </div>
+                  {conv.product && (
+                    <p className="text-[10px] text-primary truncate flex items-center gap-1">
+                      <Package className="h-3 w-3" /> {conv.product.name}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage.message}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {new Date(conv.lastMessage.created_at).toLocaleDateString()}
+                    {conv.messageCount} message{conv.messageCount !== 1 ? "s" : ""} · {new Date(conv.lastMessage.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -181,14 +201,20 @@ const VendorMessages = () => {
             </div>
           ) : (
             <>
-              {productRef && (
+              {selectedProduct && (
                 <div className="px-4 py-2 border-b border-border">
-                  <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground">
-                    Re: <a href={`/product/${productRef.slug}`} className="font-medium text-primary hover:underline">{productRef.name}</a>
+                  <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    Re: <a href={`/product/${selectedProduct.slug}`} className="font-medium text-primary hover:underline">{selectedProduct.name}</a>
                   </div>
                 </div>
               )}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {messages.length > 0 && (
+                  <p className="text-[10px] text-center text-muted-foreground mb-2">
+                    {messages.length} message{messages.length !== 1 ? "s" : ""}
+                  </p>
+                )}
                 {messages.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
                   return (
