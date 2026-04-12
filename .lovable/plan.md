@@ -1,30 +1,75 @@
 
 
-# Plan: Product Reference on Vendor Side + Message Count Badge in Sidebar
+# Product Description Tabs + Multi-Step Add Product Form
 
-## Changes
+## Part 1: Product Detail — Subdivided Description Section
 
-### 1. VendorSidebar — Show unread message count badge on "Messages" nav item
-- Convert `VendorSidebar` to query `chat_messages` for unread count where `vendor_id` matches and `sender_id != user.id` and `is_read = false`
-- Display a red badge with the count next to the "Messages" label
-- Use `useAuth` to get user ID and a lightweight query for the vendor's unread count
+Currently, the description is rendered as a single `<p>` block. Replace it with a tabbed section containing:
 
-### 2. VendorMessages — Product reference as clickable link (already partially there)
-- The product reference header (line 204-211) already shows a clickable link — this is working correctly in the code
-- The conversation list (line 181-185) shows product name but NOT as a link — will keep it as text in the list (clicking opens the conversation)
-- Ensure the product reference in the chat header is prominent and clearly clickable
+- **Description** — the product description text
+- **Specifications** — parsed from description or a future dedicated field; for now show key-value pairs if the description contains structured data, otherwise show a "No specifications" placeholder
+- **Reviews** — move the existing `ProductReviews` component into this tab
+- **Shipping & Returns** — static info about delivery and return policy
 
-### 3. ChatDialog (client side) — Make product reference a clickable link
-- Line 151-155: Change `<span>` to an `<a>` tag linking to `/product/{slug}` so the product name is clickable
-- Need to pass `productSlug` prop or derive it — since we have `productId`, we can construct the link using the product slug passed as a prop
+Implementation: Create a `ProductDescriptionTabs` component using the existing `Tabs` UI component. Use it in both the desktop and mobile description blocks in `ProductDetailPage.tsx`.
 
-### Files to modify
-- `src/components/vendor/VendorSidebar.tsx` — Add unread message count badge
-- `src/components/shared/ChatDialog.tsx` — Make product reference a clickable link (add `productSlug` prop)
-- `src/pages/vendor/VendorMessages.tsx` — Ensure product link in chat header is visible and working (already in place, minor styling enhancement)
+### Files
+- `src/components/product/ProductDescriptionTabs.tsx` — new component with 4 tabs
+- `src/pages/ProductDetailPage.tsx` — replace the description `<div>` blocks with the new tabs component; move reviews into the tabs
 
-### Technical details
-- VendorSidebar will need access to vendor ID. It will query `chat_messages` with a `useQuery` hook filtered by unread status. This requires knowing the vendor — will fetch it via `useAuth` + vendors table lookup.
-- The badge will show the total unread count and auto-refresh via the query's refetch interval or realtime subscription.
-- ChatDialog already receives `productName` — will add optional `productSlug` prop for the link target. The caller (ProductDetailPage) already has the product slug available.
+---
+
+## Part 2: Multi-Step Add Product Form with Cascading Categories
+
+Replace the current single-page `AddProductPage` with a multi-step wizard:
+
+### Step 1: Category Selection (cascading dropdowns)
+- Level 1: Show top-level categories (parent_id is null) — e.g., Electronics, Fashion, Automotive
+- Level 2: After L1 selection, load children of that category
+- Level 3: After L2 selection, load children of L2 (if any exist)
+- Each level only appears after the previous is selected
+- Visual breadcrumb of selected path: "Automotive > Car Parts > Tyres"
+
+### Step 2: Product Details (dynamic based on category)
+- Product Name*, Description* (with 850 char counter), Condition (New/Used)
+- Category-specific fields based on selected category (future extensibility — for now, show common fields)
+- Make/Brand dropdown (if applicable)
+
+### Step 3: Pricing & Stock
+- Price*, Compare at Price, Bulk Price (expandable optional section)
+- Stock Quantity, SKU
+- Delivery options dropdown
+
+### Step 4: Images & Media
+- Multi-image upload (existing logic)
+- Video URL input
+- Image reordering
+
+### Step 5: Variants (optional)
+- Toggle to enable variants
+- Existing variant option types + auto-generated rows logic (keep current implementation)
+
+### Step 6: Review & Submit
+- Summary of all entered data
+- Seller info (pre-filled from vendor profile): name, phone
+- Status selection (Active/Draft)
+- "Post Ad" button (green, full width)
+
+### Navigation
+- Step indicator bar at the top showing progress
+- Next/Back buttons
+- Validation per step before allowing next
+- Mobile-first responsive layout
+
+### Files
+- `src/pages/vendor/AddProductPage.tsx` — full rewrite as multi-step form
+- No database changes needed — uses existing `categories` table with `parent_id` for hierarchy
+
+## Technical Notes
+- Categories already have a `parent_id` column supporting the 3-level hierarchy
+- The cascading dropdown queries `categories` filtered by `parent_id`
+- Character counter on description uses controlled input with `maxLength={850}`
+- Step state managed with `useState` for current step index
+- Each step is a separate section rendered conditionally
+- Form data accumulated across steps in a single state object
 
