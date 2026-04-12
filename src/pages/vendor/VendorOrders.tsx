@@ -119,7 +119,7 @@ const VendorOrders = () => {
                         size="sm"
                         variant="outline"
                         className="h-7 text-xs"
-                        onClick={() => updateStatus.mutate({ id: item.id, status: next })}
+                        onClick={() => updateStatus.mutate({ id: item.id, status: next, productName: (item.products as any)?.name, orderId: item.order_id })}
                       >
                         Mark {next}
                       </Button>
@@ -167,7 +167,7 @@ const VendorOrders = () => {
                     size="sm"
                     variant="outline"
                     className="h-7 text-xs"
-                    onClick={() => updateStatus.mutate({ id: item.id, status: next })}
+                    onClick={() => updateStatus.mutate({ id: item.id, status: next, productName: (item.products as any)?.name, orderId: item.order_id })}
                   >
                     Mark as {next}
                   </Button>
