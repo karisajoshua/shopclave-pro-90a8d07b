@@ -2,12 +2,13 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart } from "lucide-react";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo, useEffect } from "react";
 import CountdownTimer from "@/components/shared/CountdownTimer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import { useTranslation } from "@/contexts/TranslationContext";
 import { useLocale } from "@/hooks/useLocale";
 import ProductGallery from "@/components/product/ProductGallery";
 import ProductReviews from "@/components/product/ProductReviews";
+import ChatDialog from "@/components/shared/ChatDialog";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import {
   Breadcrumb,
@@ -78,7 +80,7 @@ const trackEvent = async (vendorId: string, productId: string, eventType: string
 };
 
 // Seller info sidebar component - now with contact details for classifieds model
-const SellerInfoSidebar = ({ vendor, productId }: { vendor: any; productId: string }) => {
+const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; productId: string; onChatOpen: () => void }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -195,6 +197,10 @@ const SellerInfoSidebar = ({ vendor, productId }: { vendor: any; productId: stri
               <span className="truncate">{vendor.website}</span>
             </Button>
           )}
+          <Button variant="outline" className="w-full justify-start gap-2 border-primary/30 text-primary" onClick={onChatOpen}>
+            <MessageCircle className="h-4 w-4" />
+            Chat Now
+          </Button>
         </div>
 
         {!vendor.phone && !vendor.whatsapp && (
