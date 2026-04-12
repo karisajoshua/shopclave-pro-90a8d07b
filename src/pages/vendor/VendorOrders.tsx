@@ -25,15 +25,28 @@ const VendorOrders = () => {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, productName, orderId }: { id: string; status: string; productName?: string; orderId?: string }) => {
       const { error } = await supabase.from("order_items").update({ status }).eq("id", id);
       if (error) throw error;
+
+      // Notify customer about status change
+      if (orderId) {
+        const { data: order } = await supabase.from("orders").select("user_id").eq("id", orderId).single();
+        if (order?.user_id) {
+          await supabase.from("notifications").insert({
+            recipient_id: order.user_id,
+            title: "Order Update",
+            message: `Your order${productName ? ` for "${productName}"` : ""} has been marked as ${status}`,
+            type: "order",
+          });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-orders"] });
       toast.success("Status updated");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message || "Failed to update status"),
   });
 
   const statusColor = (s: string) => {
