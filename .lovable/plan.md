@@ -1,17 +1,27 @@
 
 
-# Fix: Add to Cart / Buy Now Buttons Disappearing
+# Fix: Order Placement Edge Function Errors
 
-## Root Cause
-Line 322: `const displayStock = hasVariants ? (selectedVariant?.stock ?? 0) : product?.stock;`
+## Root Causes
 
-When `hasVariants` is true but `selectedVariant` is `null` (during initial render before auto-selection completes, or during option changes), `displayStock` evaluates to `0`, causing the conditional on line 563 `{(displayStock ?? 0) > 0 && ...}` to hide the buttons.
+1. **Wrong env var in edge function**: The `create-order` function uses `Deno.env.get("SUPABASE_PUBLISHABLE_KEY")` (line 48), but in the Deno edge function runtime the anon key is available as `SUPABASE_ANON_KEY`. This causes authentication to fail silently.
 
-## Fix
-1. **Change `displayStock` fallback** in `ProductDetailPage.tsx` line 322: when `hasVariants` is true but no variant is selected, fall back to `product?.stock` instead of `0`
-2. **Show buttons even when stock is unknown**: change the conditional to also show buttons when stock is `undefined`/`null` (not yet loaded), only hiding them when stock is explicitly `0`
-3. Apply the same logic to the **floating mobile bar** (line 652)
+2. **Payment method validation mismatch**: The checkout page allows selecting `"vendor_payment"` (line 316), but the edge function Zod schema only accepts `["mpesa", "card", "cod"]` (line 26). This causes a 400 validation error.
 
-## Files to Modify
-- `src/pages/ProductDetailPage.tsx` — Fix stock fallback and conditional rendering
+3. **Expired auth session**: The console shows `Invalid Refresh Token` — the user's session expired. The app should handle this gracefully by redirecting to login instead of showing a generic error.
+
+## Changes
+
+### File: `supabase/functions/create-order/index.ts`
+- **Line 26**: Add `"vendor_payment"` to the `payment_method` enum: `z.enum(["mpesa", "card", "cod", "vendor_payment"])`
+- **Line 48**: Change `SUPABASE_PUBLISHABLE_KEY` to `SUPABASE_ANON_KEY`
+- Add `console.error` logging in the catch block so errors appear in edge function logs for debugging
+
+### File: `src/pages/CheckoutPage.tsx`
+- In `handlePlaceOrder`, check if the user session is valid before calling the edge function. If not, redirect to `/auth` with a toast message like "Please sign in again"
+
+## Technical Details
+- The env var fix is critical — without it, the Supabase client can't authenticate the user JWT
+- Adding `"vendor_payment"` to the Zod enum aligns the edge function validation with the checkout UI options
+- These are small targeted fixes — no database changes needed
 
