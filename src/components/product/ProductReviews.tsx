@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 interface ProductReviewsProps {
   productId: string;
+  embedded?: boolean;
 }
 
 const StarRating = ({
@@ -37,7 +38,7 @@ const StarRating = ({
   </div>
 );
 
-const ProductReviews = ({ productId }: ProductReviewsProps) => {
+const ProductReviews = ({ productId, embedded = false }: ProductReviewsProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newRating, setNewRating] = useState(0);
@@ -138,8 +139,8 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
   }));
 
   return (
-    <div id="reviews-section" className="border-t border-border pt-8 mt-8">
-      <h2 className="font-display text-xl font-bold mb-6">Customer Reviews</h2>
+    <div id="reviews-section" className={embedded ? "p-4" : "border-t border-border pt-8 mt-8"}>
+      <h2 className={`font-display font-bold mb-6 ${embedded ? "text-lg" : "text-xl"}`}>Customer Reviews</h2>
 
       <div className="grid md:grid-cols-[280px_1fr] gap-8">
         {/* Summary */}
