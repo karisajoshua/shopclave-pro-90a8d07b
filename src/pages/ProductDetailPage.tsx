@@ -559,6 +559,54 @@ const ProductDetailPage = () => {
 
             <Separator />
 
+            {/* Add to Cart / Buy Now */}
+            {(displayStock ?? 0) > 0 && (
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 font-semibold h-11"
+                  onClick={() => {
+                    const img = galleryImages[0] || barakazIcon;
+                    addItem({
+                      productId: product.id,
+                      name: product.name,
+                      price: Number(displayPrice),
+                      image: img,
+                      vendorId: product.vendor_id,
+                      vendorName: vendor?.store_name || "",
+                      variantId: selectedVariant?.id,
+                      variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
+                    });
+                    toast.success("Added to cart!");
+                  }}
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  Add to Cart
+                </Button>
+                <Button
+                  className="flex-1 font-semibold h-11"
+                  onClick={() => {
+                    const img = galleryImages[0] || barakazIcon;
+                    addItem({
+                      productId: product.id,
+                      name: product.name,
+                      price: Number(displayPrice),
+                      image: img,
+                      vendorId: product.vendor_id,
+                      vendorName: vendor?.store_name || "",
+                      variantId: selectedVariant?.id,
+                      variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
+                    });
+                    navigate("/checkout");
+                  }}
+                >
+                  Buy Now
+                </Button>
+              </div>
+            )}
+
+            <Separator />
+
             {/* Social Share */}
             <SocialShare url={shareUrl} title={product.name} />
           </div>
@@ -578,7 +626,7 @@ const ProductDetailPage = () => {
           {/* RIGHT: Seller Info */}
           <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start">
             {vendor && (
-              <SellerInfoSidebar vendor={vendor} productId={product.id} />
+              <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
             )}
           </div>
         </div>
@@ -586,7 +634,7 @@ const ProductDetailPage = () => {
         {/* Mobile: show seller info below */}
         <div className="lg:hidden mt-6">
           {vendor && (
-            <SellerInfoSidebar vendor={vendor} productId={product.id} />
+            <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
           )}
         </div>
 
