@@ -648,30 +648,71 @@ const ProductDetailPage = () => {
         <div className="h-20 md:hidden" />
       </div>
 
-      {/* Floating Contact Seller bar on mobile */}
-      <div className="fixed bottom-14 left-0 right-0 z-40 md:hidden bg-card border-t border-border px-4 py-2 flex gap-3 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      {/* Floating bar on mobile - Add to Cart + Buy Now */}
+      <div className="fixed bottom-14 left-0 right-0 z-40 md:hidden bg-card border-t border-border px-4 py-2 flex gap-2 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+        <Button
+          variant="outline"
+          className="flex-1 font-semibold gap-1.5 h-11 text-xs"
+          onClick={() => {
+            const img = galleryImages[0] || barakazIcon;
+            addItem({
+              productId: product.id,
+              name: product.name,
+              price: Number(displayPrice),
+              image: img,
+              vendorId: product.vendor_id,
+              vendorName: vendor?.store_name || "",
+              variantId: selectedVariant?.id,
+              variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
+            });
+            toast.success("Added to cart!");
+          }}
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Cart
+        </Button>
+        <Button
+          className="flex-1 font-semibold h-11 text-xs"
+          onClick={() => {
+            const img = galleryImages[0] || barakazIcon;
+            addItem({
+              productId: product.id,
+              name: product.name,
+              price: Number(displayPrice),
+              image: img,
+              vendorId: product.vendor_id,
+              vendorName: vendor?.store_name || "",
+              variantId: selectedVariant?.id,
+              variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
+            });
+            navigate("/checkout");
+          }}
+        >
+          Buy Now
+        </Button>
         {vendor?.phone && (
-          <Button
-            className="flex-1 font-semibold gap-2 h-11"
-            onClick={handleCallMobile}
-          >
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={handleCallMobile}>
             <Phone className="h-4 w-4" />
-            Call Seller
           </Button>
         )}
         {vendor?.whatsapp && (
-          <Button
-            className="flex-1 font-semibold gap-2 h-11 bg-green-600 hover:bg-green-700 text-white"
-            onClick={handleWhatsAppMobile}
-          >
+          <Button size="icon" className="h-11 w-11 shrink-0 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppMobile}>
             <MessageCircle className="h-4 w-4" />
-            WhatsApp
           </Button>
         )}
-        {!vendor?.phone && !vendor?.whatsapp && (
-          <p className="flex-1 text-center text-sm text-muted-foreground self-center">No contact info</p>
-        )}
       </div>
+
+      {/* Chat Dialog */}
+      {vendor && (
+        <ChatDialog
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          vendorId={vendor.id}
+          vendorName={vendor.store_name}
+          productId={product.id}
+          productName={product.name}
+        />
+      )}
     </MarketplaceLayout>
   );
 };
