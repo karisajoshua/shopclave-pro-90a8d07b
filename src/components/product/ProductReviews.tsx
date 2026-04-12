@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 interface ProductReviewsProps {
   productId: string;
+  embedded?: boolean;
 }
 
 const StarRating = ({
