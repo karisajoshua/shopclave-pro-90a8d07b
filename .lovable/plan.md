@@ -1,27 +1,49 @@
 
 
-# Fix: Order Placement Edge Function Errors
+# Fix: Vendor Order Actions & Chat Product Reference
 
-## Root Causes
+## Issues Found
 
-1. **Wrong env var in edge function**: The `create-order` function uses `Deno.env.get("SUPABASE_PUBLISHABLE_KEY")` (line 48), but in the Deno edge function runtime the anon key is available as `SUPABASE_ANON_KEY`. This causes authentication to fail silently.
+### 1. Vendor Order Action Button Error
+The notifications table RLS only allows **admins** to insert notifications. When any non-admin action tries to create a notification (e.g., chat messages), it fails. This also likely causes issues if the order status update code path tries to notify. Additionally, better error logging is needed to surface the actual error.
 
-2. **Payment method validation mismatch**: The checkout page allows selecting `"vendor_payment"` (line 316), but the edge function Zod schema only accepts `["mpesa", "card", "cod"]` (line 26). This causes a 400 validation error.
+**Fix**: Add an RLS policy allowing authenticated users to insert notifications where they are the sender or the recipient context is valid. Also add a notification to the customer when the vendor updates order status.
 
-3. **Expired auth session**: The console shows `Invalid Refresh Token` — the user's session expired. The app should handle this gracefully by redirecting to login instead of showing a generic error.
+### 2. Chat Product Reference Not Shown to Vendor
+The `product_id` is saved in `chat_messages` but `VendorMessages.tsx` never fetches or displays the product name. Vendors see messages without knowing which product the customer is asking about.
+
+**Fix**: In VendorMessages, fetch product info alongside messages and display a product reference badge at the top of each conversation and inline with the first message that references a product.
+
+---
 
 ## Changes
 
-### File: `supabase/functions/create-order/index.ts`
-- **Line 26**: Add `"vendor_payment"` to the `payment_method` enum: `z.enum(["mpesa", "card", "cod", "vendor_payment"])`
-- **Line 48**: Change `SUPABASE_PUBLISHABLE_KEY` to `SUPABASE_ANON_KEY`
-- Add `console.error` logging in the catch block so errors appear in edge function logs for debugging
+### Database Migration
+- Add RLS policy on `notifications` to allow authenticated users to insert notifications (not just admins):
+  ```sql
+  CREATE POLICY "Authenticated users can insert notifications"
+  ON public.notifications FOR INSERT TO authenticated
+  WITH CHECK (true);
+  ```
 
-### File: `src/pages/CheckoutPage.tsx`
-- In `handlePlaceOrder`, check if the user session is valid before calling the edge function. If not, redirect to `/auth` with a toast message like "Please sign in again"
+### File: `src/pages/vendor/VendorOrders.tsx`
+- Add a notification to the customer when vendor updates order status (e.g., "Your order for [product] has been marked as shipped")
+- Improve error handling in the mutation
 
-## Technical Details
-- The env var fix is critical — without it, the Supabase client can't authenticate the user JWT
-- Adding `"vendor_payment"` to the Zod enum aligns the edge function validation with the checkout UI options
-- These are small targeted fixes — no database changes needed
+### File: `src/pages/vendor/VendorMessages.tsx`
+- Update message query to include product info: `.select("*, products(name, slug)")`
+- Show a product reference card at the top of the chat when a product_id exists on any message in the conversation
+- Display product name as a clickable badge in the conversation header
+
+### File: `src/components/shared/ChatDialog.tsx`
+- When the first message in a conversation is about a product, automatically prepend a system-style message showing which product the user is inquiring about
+- Ensure `product_id` is always sent with the first message when initiated from a product page
+
+## Files to Modify
+- `src/pages/vendor/VendorOrders.tsx` — Add customer notification on status change
+- `src/pages/vendor/VendorMessages.tsx` — Fetch and display product reference
+- `src/components/shared/ChatDialog.tsx` — Show product context in messages
+
+## Database Migration
+- Add notification INSERT policy for authenticated users
 
