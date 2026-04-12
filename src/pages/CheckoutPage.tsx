@@ -84,12 +84,26 @@ const CheckoutPage = () => {
   }
 
   // Group items by vendor
+  const vendorIds = [...new Set(items.map(i => i.vendorId))];
   const vendorGroups = items.reduce((acc, item) => {
     const key = item.vendorId;
     if (!acc[key]) acc[key] = { vendorName: item.vendorName, items: [] };
     acc[key].items.push(item);
     return acc;
   }, {} as Record<string, { vendorName: string; items: typeof items }>);
+
+  // Fetch vendor payment details
+  const { data: vendorPaymentDetails } = useQuery({
+    queryKey: ["vendor-payment-details", vendorIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendors")
+        .select("id, store_name, payment_details")
+        .in("id", vendorIds);
+      return data || [];
+    },
+    enabled: vendorIds.length > 0,
+  });
 
   const deliveryFee = 200;
   const grandTotal = totalPrice + deliveryFee;
@@ -292,27 +306,50 @@ const CheckoutPage = () => {
                 <div className="px-4 pb-4">
                   <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
                     <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                      <RadioGroupItem value="mpesa" id="mpesa" />
-                      <Label htmlFor="mpesa" className="cursor-pointer flex-1">
-                        <span className="font-medium text-sm">M-Pesa</span>
-                        <p className="text-xs text-muted-foreground">Pay via M-Pesa mobile money</p>
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                      <RadioGroupItem value="card" id="card" />
-                      <Label htmlFor="card" className="cursor-pointer flex-1">
-                        <span className="font-medium text-sm">Card Payment</span>
-                        <p className="text-xs text-muted-foreground">Visa, Mastercard</p>
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
                       <RadioGroupItem value="cod" id="cod" />
                       <Label htmlFor="cod" className="cursor-pointer flex-1">
-                        <span className="font-medium text-sm">Cash on Delivery</span>
-                        <p className="text-xs text-muted-foreground">Pay when you receive</p>
+                        <span className="font-medium text-sm">Pay on Delivery</span>
+                        <p className="text-xs text-muted-foreground">Pay when you receive your order</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                      <RadioGroupItem value="vendor_payment" id="vendor_payment" />
+                      <Label htmlFor="vendor_payment" className="cursor-pointer flex-1">
+                        <span className="font-medium text-sm">Pay Vendor Directly</span>
+                        <p className="text-xs text-muted-foreground">M-Pesa or Bank transfer to vendor</p>
                       </Label>
                     </div>
                   </RadioGroup>
+
+                  {/* Show vendor payment details when vendor_payment selected */}
+                  {paymentMethod === "vendor_payment" && vendorPaymentDetails && vendorPaymentDetails.length > 0 && (
+                    <div className="mt-3 space-y-3">
+                      {vendorPaymentDetails.map((v: any) => {
+                        const pd = v.payment_details as any || {};
+                        const hasDetails = pd.mpesa_number || pd.bank_name || pd.custom_instructions;
+                        if (!hasDetails) return (
+                          <div key={v.id} className="p-3 rounded-lg bg-muted/50 border border-border">
+                            <p className="text-sm font-medium">{v.store_name}</p>
+                            <p className="text-xs text-muted-foreground">No payment details provided. Contact vendor directly.</p>
+                          </div>
+                        );
+                        return (
+                          <div key={v.id} className="p-3 rounded-lg bg-muted/50 border border-border space-y-1">
+                            <p className="text-sm font-semibold">{v.store_name}</p>
+                            {pd.mpesa_number && (
+                              <p className="text-xs"><span className="text-muted-foreground">M-Pesa:</span> <span className="font-medium">{pd.mpesa_number}</span></p>
+                            )}
+                            {pd.bank_name && (
+                              <p className="text-xs"><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{pd.bank_name} — {pd.bank_account}</span></p>
+                            )}
+                            {pd.custom_instructions && (
+                              <p className="text-xs text-muted-foreground italic">{pd.custom_instructions}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   <Button
                     className="w-full mt-4 font-semibold h-12 text-base"
