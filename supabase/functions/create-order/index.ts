@@ -23,7 +23,7 @@ const OrderSchema = z.object({
     city: z.string().min(1).max(100),
     country: z.string().min(1).max(100),
   }),
-  payment_method: z.enum(["mpesa", "card", "cod"]),
+  payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
 });
 
 Deno.serve(async (req) => {
