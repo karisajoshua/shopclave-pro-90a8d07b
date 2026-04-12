@@ -77,7 +77,7 @@ const SearchSuggestions = ({ query, visible, onClose }: SearchSuggestionsProps) 
               className="w-full flex items-center gap-2 px-3 py-2 hover:bg-secondary text-sm text-left transition-colors"
             >
               <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="truncate">{s.name}</span>
+              <span className="truncate font-bold">{s.name}</span>
             </button>
           ))}
         </div>
