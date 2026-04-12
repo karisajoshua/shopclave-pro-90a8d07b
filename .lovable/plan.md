@@ -1,126 +1,124 @@
 
 
-# Plan: Pivot to Jiji-Style Listing/Classifieds Business Model
+# Plan: Direct-to-Vendor Orders, In-App Chat, and Vendor Upgrades
 
 ## Summary
-Transform the marketplace from a transactional model (platform handles orders/payments) to a **listing/classifieds model** where vendors pay subscription fees for visibility, handle their own orders/logistics/payments, and customers contact vendors directly. The platform earns from vendor listing fees, not transaction commissions.
-
----
-
-## Hero Banner Size
-
-The current hero banner renders at **full container width** (max ~1280px) with padding. The actual visible area is:
-- **Desktop**: approximately **1200 x 400 pixels** (safe area for text/imagery)
-- **Mobile**: approximately **375 x 280 pixels**
-
-**Recommended banner image size**: **1400 x 450px** (2x for retina: **2800 x 900px**). This gives enough bleed for all screen sizes. We will update the hero to support actual uploaded banner images instead of just gradients.
+Five major changes: (1) Restore Add to Cart / Buy Now buttons with orders going directly to vendors, (2) Let vendors add payment details customers see at checkout, (3) Add an in-app chat system between buyers and vendors, (4) Let vendors self-upgrade subscription tiers, (5) Admin can monitor all chats.
 
 ---
 
 ## 1. Database Changes
 
-### Add vendor contact fields
+### Add vendor payment details
 ```sql
-ALTER TABLE public.vendors
-  ADD COLUMN phone text,
-  ADD COLUMN phone2 text,
-  ADD COLUMN website text,
-  ADD COLUMN whatsapp text;
+ALTER TABLE public.vendors ADD COLUMN payment_details jsonb DEFAULT '{}';
 ```
+This stores vendor-specific payment info (M-Pesa till/paybill, bank details) shown to customers at checkout.
 
-### Create subscription plans table
+### Create chat messages table
 ```sql
-CREATE TABLE public.vendor_subscriptions (
+CREATE TABLE public.chat_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  vendor_id uuid NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
-  plan_name text NOT NULL DEFAULT 'free',
-  max_listings integer NOT NULL DEFAULT 5,
-  price numeric NOT NULL DEFAULT 0,
-  started_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz,
-  status text NOT NULL DEFAULT 'active',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.vendor_subscriptions ENABLE ROW LEVEL SECURITY;
--- Vendors can read their own, admins can read all
-```
-
-### Create vendor_views tracking table (for admin stats)
-```sql
-CREATE TABLE public.vendor_analytics (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id text NOT NULL,
+  sender_id uuid NOT NULL,
   vendor_id uuid NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
   product_id uuid REFERENCES products(id) ON DELETE SET NULL,
-  event_type text NOT NULL DEFAULT 'view',
+  message text NOT NULL,
+  is_read boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE public.vendor_analytics ENABLE ROW LEVEL SECURITY;
--- Anyone can insert (track views), vendors see own, admins see all
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+-- conversation_id = "{user_id}_{vendor_id}" for easy grouping
+-- RLS: users can read/write own conversations, vendors can read/write their vendor conversations, admins can read all
 ```
 
-## 2. Remove Cart/Checkout Flow from Product Pages
+Enable realtime for chat_messages.
+
+### Subscription plans table (already exists)
+No schema change needed — vendors will use the existing `vendor_subscriptions` table with a self-serve upgrade UI.
+
+---
+
+## 2. Product Detail Page — Restore Buy Now + Add to Cart + Chat Now
 
 **File: `src/pages/ProductDetailPage.tsx`**
-- Replace "Add to Cart" and "Buy Now" buttons with **"Contact Seller"** buttons: Call, WhatsApp, Website link
-- Show vendor phone number, WhatsApp, website prominently on the product page
-- Remove the floating mobile buy bar, replace with floating "Call Seller" / "WhatsApp" bar
-- Track product views by inserting into `vendor_analytics`
+- Add back "Add to Cart" and "Buy Now" buttons in the center product info section (after variant selectors)
+- Add "Chat Now" button in the SellerInfoSidebar below WhatsApp button
+- Keep existing Call/WhatsApp/Website contact buttons
+- Floating mobile bar: Add to Cart + Buy Now (restore) alongside Call/WhatsApp
+- "Buy Now" adds to cart and navigates to checkout
+- Chat Now opens in-app chat dialog/page
 
-## 3. Vendor Settings: Add Contact Info
+## 3. Checkout Page — Show Vendor Payment Details
+
+**File: `src/pages/CheckoutPage.tsx`**
+- In the payment step, fetch vendor payment details for each vendor in the cart
+- Display vendor-specific payment instructions (e.g., M-Pesa till number, bank account) grouped by vendor
+- Payment method defaults to "Pay on Delivery" with option to see vendor payment details
+- Orders still go through the existing `create-order` edge function — orders are vendor-scoped
+
+## 4. Vendor Settings — Payment Details
 
 **File: `src/pages/vendor/VendorSettings.tsx`**
-- Add fields: Phone, Phone 2, WhatsApp number, Website URL
-- These are saved to the new vendor columns
+- Add a "Payment Details" section where vendors can enter:
+  - M-Pesa Till/Paybill number
+  - Bank name + account number
+  - Custom payment instructions
+- Saved to the `payment_details` jsonb column
 
-## 4. Vendor Registration: Collect Contact Info
+## 5. Vendor Subscription Upgrade
 
-**File: `src/pages/VendorRegisterPage.tsx`**
-- Add phone number (required) and optional website/WhatsApp fields during registration
+**File: `src/pages/vendor/VendorDashboard.tsx`** (or new `VendorSubscription.tsx`)
+- Show current plan with upgrade options
+- Display available tiers (fetched from platform_settings or hardcoded initially)
+- "Request Upgrade" button that creates a notification to admin
+- Admin approves and updates the subscription via AdminSubscriptions page
 
-## 5. Admin Vendor Analytics Dashboard
+## 6. In-App Chat System
 
-**File: `src/pages/admin/AdminVendors.tsx`** (enhance)
-- Show per-vendor stats: total product views, total contact clicks, listing count, subscription status
-- Query from `vendor_analytics` table
+### New Files:
+- `src/pages/vendor/VendorMessages.tsx` — Vendor inbox showing all customer conversations, unread indicators
+- `src/components/shared/ChatDialog.tsx` — Reusable chat component (modal or inline) for sending/receiving messages
 
-**File: `src/pages/admin/AdminSubscriptions.tsx`** (new)
-- Manage subscription plans and vendor subscription status
-- View which vendors are on which plans, expiry dates
+### Product Detail Page:
+- "Chat Now" button opens ChatDialog with the vendor, pre-filled with product context
 
-## 6. Vendor Dashboard Updates
+### Vendor Sidebar:
+- Add "Messages" nav item to VendorSidebar
 
-**File: `src/pages/vendor/VendorDashboard.tsx`**
-- Replace revenue/commission metrics with: Product Views, Contact Clicks, Active Listings vs Max Listings, Subscription Status
-- Show subscription expiry warning
+### Vendor Notifications:
+- When a new chat message arrives, insert a notification for the vendor
 
-## 7. Hero Banner: Support Custom Images
+## 7. Admin Chat Monitoring
 
-**File: `src/components/marketplace/HeroBanner.tsx`**
-- Update slides to support an optional `image` field (URL) that renders as a full-width background image instead of a gradient
-- Admin can set banner images via platform settings
+### New File:
+- `src/pages/admin/AdminMessages.tsx` — View all conversations, filter by replied/unreplied status, read-only view of messages
 
-## 8. Cleanup
+### Admin Sidebar:
+- Add "Messages" nav item
 
-- Remove or hide the cart-based checkout flow references where they conflict with the new model (keep the cart system intact as it may be useful later, but hide "Add to Cart" on product pages)
-- The existing orders/order_items tables stay for potential future use but are not exposed in the new vendor flow
+### App.tsx:
+- Add routes: `/vendor/messages`, `/admin/messages`
 
 ---
 
 ## Files to Create
-- `src/pages/admin/AdminSubscriptions.tsx`
+- `src/components/shared/ChatDialog.tsx`
+- `src/pages/vendor/VendorMessages.tsx`
+- `src/pages/admin/AdminMessages.tsx`
 
 ## Files to Modify
-- `src/pages/ProductDetailPage.tsx` — Contact seller buttons, remove buy flow, track views
-- `src/pages/vendor/VendorSettings.tsx` — Add contact fields
-- `src/pages/VendorRegisterPage.tsx` — Add phone/WhatsApp fields
-- `src/pages/vendor/VendorDashboard.tsx` — Listing-model metrics
-- `src/pages/admin/AdminVendors.tsx` — Per-vendor analytics
-- `src/components/marketplace/HeroBanner.tsx` — Support banner images
-- `src/App.tsx` — Add subscription admin route
-- `src/components/admin/AdminSidebar.tsx` — Add Subscriptions nav item
+- `src/pages/ProductDetailPage.tsx` — Restore cart/buy buttons + add Chat Now
+- `src/pages/CheckoutPage.tsx` — Show vendor payment details
+- `src/pages/vendor/VendorSettings.tsx` — Add payment details fields
+- `src/pages/vendor/VendorDashboard.tsx` — Subscription upgrade UI
+- `src/components/vendor/VendorSidebar.tsx` — Add Messages nav
+- `src/components/admin/AdminSidebar.tsx` — Add Messages nav
+- `src/App.tsx` — Add new routes
+- `src/components/marketplace/ProductCard.tsx` — Restore Add to Cart button (already present)
 
 ## Database Migration
-- Add columns to `vendors` table (phone, phone2, website, whatsapp)
-- Create `vendor_subscriptions` table
-- Create `vendor_analytics` table
+- Add `payment_details` column to `vendors`
+- Create `chat_messages` table with RLS policies
+- Enable realtime on `chat_messages`
 
