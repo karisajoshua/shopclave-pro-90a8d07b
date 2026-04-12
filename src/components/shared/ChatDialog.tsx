@@ -142,6 +142,11 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
         )}
 
         <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[400px] space-y-2 py-2">
+          {productName && messages.length === 0 && (
+            <div className="text-xs text-center bg-muted/50 rounded p-2 text-muted-foreground">
+              Inquiring about: <span className="font-medium text-foreground">{productName}</span>
+            </div>
+          )}
           {messages.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
               Start a conversation with {vendorName}

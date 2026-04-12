@@ -59,6 +59,17 @@ const VendorMessages = () => {
     enabled: !!vendor,
   });
 
+  // Get product reference for current conversation
+  const conversationProduct = messages.find(m => m.product_id)?.product_id;
+  const { data: productRef } = useQuery({
+    queryKey: ["chat-product", conversationProduct],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("name, slug").eq("id", conversationProduct!).single();
+      return data;
+    },
+    enabled: !!conversationProduct,
+  });
+
   // Load messages for selected conversation
   useEffect(() => {
     if (!selectedConversation) return;
@@ -170,6 +181,13 @@ const VendorMessages = () => {
             </div>
           ) : (
             <>
+              {productRef && (
+                <div className="px-4 py-2 border-b border-border">
+                  <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground">
+                    Re: <a href={`/product/${productRef.slug}`} className="font-medium text-primary hover:underline">{productRef.name}</a>
+                  </div>
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {messages.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
