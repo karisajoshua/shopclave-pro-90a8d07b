@@ -711,6 +711,7 @@ const ProductDetailPage = () => {
           vendorName={vendor.store_name}
           productId={product.id}
           productName={product.name}
+          productSlug={product.slug}
         />
       )}
     </MarketplaceLayout>

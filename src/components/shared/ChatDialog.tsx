@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Send, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
 interface ChatDialogProps {
   open: boolean;
@@ -15,9 +16,10 @@ interface ChatDialogProps {
   vendorName: string;
   productId?: string;
   productName?: string;
+  productSlug?: string;
 }
 
-const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, productName }: ChatDialogProps) => {
+const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, productName, productSlug }: ChatDialogProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -150,7 +152,13 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
 
         {productName && (
           <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground">
-            Re: <span className="font-medium text-foreground">{productName}</span>
+            Re: {productSlug ? (
+              <Link to={`/product/${productSlug}`} className="font-medium text-primary hover:underline" onClick={() => onOpenChange(false)}>
+                {productName}
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground">{productName}</span>
+            )}
           </div>
         )}
 
