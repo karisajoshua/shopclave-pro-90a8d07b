@@ -660,6 +660,52 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_analytics: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          product_id: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          product_id?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          product_id?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_analytics_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_analytics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_analytics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_follows: {
         Row: {
           created_at: string
@@ -681,6 +727,57 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          max_listings: number
+          plan_name: string
+          price: number
+          started_at: string
+          status: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          max_listings?: number
+          plan_name?: string
+          price?: number
+          started_at?: string
+          status?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          max_listings?: number
+          plan_name?: string
+          price?: number
+          started_at?: string
+          status?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_subscriptions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_subscriptions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           banner_url: string | null
@@ -688,11 +785,15 @@ export type Database = {
           created_at: string
           id: string
           logo_url: string | null
+          phone: string | null
+          phone2: string | null
           status: string
           store_description: string | null
           store_name: string
           updated_at: string
           user_id: string
+          website: string | null
+          whatsapp: string | null
         }
         Insert: {
           banner_url?: string | null
@@ -700,11 +801,15 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          phone?: string | null
+          phone2?: string | null
           status?: string
           store_description?: string | null
           store_name: string
           updated_at?: string
           user_id: string
+          website?: string | null
+          whatsapp?: string | null
         }
         Update: {
           banner_url?: string | null
@@ -712,11 +817,15 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          phone?: string | null
+          phone2?: string | null
           status?: string
           store_description?: string | null
           store_name?: string
           updated_at?: string
           user_id?: string
+          website?: string | null
+          whatsapp?: string | null
         }
         Relationships: []
       }
