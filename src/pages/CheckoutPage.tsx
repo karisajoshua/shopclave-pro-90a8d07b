@@ -132,6 +132,14 @@ const CheckoutPage = () => {
   const handlePlaceOrder = async () => {
     setLoading(true);
     try {
+      // Check session validity before placing order
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error("Your session has expired. Please sign in again.");
+        navigate("/auth", { replace: true });
+        return;
+      }
+
       const orderPayload = {
         items: items.map((item) => ({
           product_id: item.productId,
@@ -154,7 +162,12 @@ const CheckoutPage = () => {
       toast.success("Order placed successfully!");
       navigate(`/order-confirmation/${data.order_id}`);
     } catch (err: any) {
-      toast.error(err.message || "Failed to place order");
+      if (err.message?.includes("Refresh Token") || err.message?.includes("Unauthorized")) {
+        toast.error("Your session has expired. Please sign in again.");
+        navigate("/auth", { replace: true });
+      } else {
+        toast.error(err.message || "Failed to place order");
+      }
     } finally {
       setLoading(false);
     }
