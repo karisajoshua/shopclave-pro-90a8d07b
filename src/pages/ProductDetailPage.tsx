@@ -17,6 +17,7 @@ import { useTranslation } from "@/contexts/TranslationContext";
 import { useLocale } from "@/hooks/useLocale";
 import ProductGallery from "@/components/product/ProductGallery";
 import ProductReviews from "@/components/product/ProductReviews";
+import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs";
 import ChatDialog from "@/components/shared/ChatDialog";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import {
@@ -457,14 +458,7 @@ const ProductDetailPage = () => {
               forcedImageUrl={null}
             />
             <div className="hidden lg:block">
-              {product.description && (
-                <div className="bg-card rounded-lg border border-border p-4">
-                  <h3 className="font-semibold mb-2">{t("product.description")}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {product.description}
-                  </p>
-                </div>
-              )}
+              <ProductDescriptionTabs description={product.description} productId={product.id} />
             </div>
           </div>
 
@@ -611,16 +605,9 @@ const ProductDetailPage = () => {
             <SocialShare url={shareUrl} title={product.name} />
           </div>
 
-          {/* Description on mobile only */}
+          {/* Description tabs on mobile */}
           <div className="order-3 lg:hidden">
-            {product.description && (
-              <div className="bg-card rounded-lg border border-border p-4">
-                <h3 className="font-semibold mb-2">{t("product.description")}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {product.description}
-                </p>
-              </div>
-            )}
+            <ProductDescriptionTabs description={product.description} productId={product.id} />
           </div>
 
           {/* RIGHT: Seller Info */}
@@ -638,8 +625,7 @@ const ProductDetailPage = () => {
           )}
         </div>
 
-        {/* Reviews Section */}
-        <ProductReviews productId={product.id} />
+        {/* Reviews are now inside the tabs */}
 
         {/* Related Products */}
         <RelatedProducts categoryId={product.category_id} currentProductId={product.id} />
