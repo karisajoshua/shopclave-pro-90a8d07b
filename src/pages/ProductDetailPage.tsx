@@ -233,8 +233,11 @@ const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [chatOpen, setChatOpen] = useState(false);
   const { t } = useTranslation();
   const { country, formatPrice } = useLocale();
+  const { addItem } = useCart();
+  const { user } = useAuth();
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
