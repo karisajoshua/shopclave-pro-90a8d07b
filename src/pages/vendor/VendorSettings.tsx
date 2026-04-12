@@ -20,7 +20,9 @@ const VendorSettings = () => {
     phone2: vendor.phone2 || "",
     whatsapp: vendor.whatsapp || "",
     website: vendor.website || "",
+    payment_details: vendor.payment_details || {},
   });
+  const paymentDetails = form.payment_details as any;
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -76,6 +78,43 @@ const VendorSettings = () => {
         <div>
           <Label>Website (Optional)</Label>
           <Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://yourstore.com" />
+        </div>
+
+        <h3 className="font-semibold pt-2 border-t border-border">Payment Details</h3>
+        <p className="text-xs text-muted-foreground">Customers will see these payment instructions at checkout.</p>
+
+        <div>
+          <Label>M-Pesa Till/Paybill Number</Label>
+          <Input
+            value={paymentDetails.mpesa_number || ""}
+            onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, mpesa_number: e.target.value } })}
+            placeholder="e.g., Till 123456 or Paybill 654321"
+          />
+        </div>
+        <div>
+          <Label>Bank Name</Label>
+          <Input
+            value={paymentDetails.bank_name || ""}
+            onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, bank_name: e.target.value } })}
+            placeholder="e.g., KCB, Equity"
+          />
+        </div>
+        <div>
+          <Label>Bank Account Number</Label>
+          <Input
+            value={paymentDetails.bank_account || ""}
+            onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, bank_account: e.target.value } })}
+            placeholder="Account number"
+          />
+        </div>
+        <div>
+          <Label>Custom Payment Instructions</Label>
+          <Textarea
+            value={paymentDetails.custom_instructions || ""}
+            onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, custom_instructions: e.target.value } })}
+            placeholder="Any additional payment instructions for customers..."
+            rows={2}
+          />
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full">
