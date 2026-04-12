@@ -319,7 +319,7 @@ const ProductDetailPage = () => {
   }, [variants, selectedOptions, hasVariants]);
 
   const displayPrice = selectedVariant?.price ?? product?.price;
-  const displayStock = hasVariants ? (selectedVariant?.stock ?? 0) : product?.stock;
+  const displayStock = hasVariants ? (selectedVariant?.stock ?? product?.stock) : product?.stock;
 
   const discountPct = product?.compare_at_price && Number(product.compare_at_price) > Number(displayPrice)
     ? Math.round(((Number(product.compare_at_price) - Number(displayPrice)) / Number(product.compare_at_price)) * 100)
@@ -560,7 +560,7 @@ const ProductDetailPage = () => {
             <Separator />
 
             {/* Add to Cart / Buy Now */}
-            {(displayStock ?? 0) > 0 && (
+            {(displayStock === undefined || displayStock === null || displayStock > 0) && (
               <div className="flex gap-3">
                 <Button
                   variant="outline"
