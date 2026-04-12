@@ -2,12 +2,11 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, ShoppingCart, Minus, Plus, Store, MapPin, ChevronRight, Zap, ShieldCheck, Truck, RotateCcw, Share2, Heart, Users } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle } from "lucide-react";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import CountdownTimer from "@/components/shared/CountdownTimer";
-import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,8 +66,19 @@ const SocialShare = ({ url, title }: { url: string; title: string }) => {
   );
 };
 
-// Seller info sidebar component
-const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; productId: string; country: any }) => {
+// Track analytics event
+const trackEvent = async (vendorId: string, productId: string, eventType: string) => {
+  try {
+    await supabase.from("vendor_analytics").insert({
+      vendor_id: vendorId,
+      product_id: productId,
+      event_type: eventType,
+    });
+  } catch {}
+};
+
+// Seller info sidebar component - now with contact details for classifieds model
+const SellerInfoSidebar = ({ vendor, productId }: { vendor: any; productId: string }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -112,45 +122,31 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
     onError: (e: any) => toast.error(e.message),
   });
 
-  const deliveryStart = new Date();
-  deliveryStart.setDate(deliveryStart.getDate() + 3);
-  const deliveryEnd = new Date();
-  deliveryEnd.setDate(deliveryEnd.getDate() + 7);
-  const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { day: "2-digit", month: "short" });
+  const handleCall = () => {
+    trackEvent(vendor.id, productId, "call_click");
+    window.open(`tel:${vendor.phone}`, "_self");
+  };
+
+  const handleWhatsApp = () => {
+    trackEvent(vendor.id, productId, "whatsapp_click");
+    const msg = encodeURIComponent("Hi, I'm interested in your product on Barakaz.");
+    window.open(`https://wa.me/${vendor.whatsapp?.replace(/[^0-9+]/g, "")}?text=${msg}`, "_blank");
+  };
+
+  const handleWebsite = () => {
+    trackEvent(vendor.id, productId, "website_click");
+    let url = vendor.website;
+    if (url && !url.startsWith("http")) url = "https://" + url;
+    window.open(url, "_blank");
+  };
 
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-lg border border-border p-4 space-y-4">
-        <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Delivery & Returns</h3>
-        <Separator />
-        <div className="flex items-center gap-2 text-sm">
-          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground">
-            Deliver to <span className="font-medium text-foreground">{country.name}</span>
-          </span>
-        </div>
-        <div className="flex gap-3">
-          <Truck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium">Door Delivery</p>
-            <p className="text-xs text-muted-foreground">
-              Delivery between {fmtDate(deliveryStart)} and {fmtDate(deliveryEnd)}
-            </p>
-          </div>
-        </div>
-        <Separator />
-        <div className="flex gap-3">
-          <RotateCcw className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium">Return Policy</p>
-            <p className="text-xs text-muted-foreground">Easy Return, Quick Refund. <Link to="/return-policy" className="text-primary hover:underline">Details</Link></p>
-          </div>
-        </div>
-      </div>
-
+      {/* Contact Seller Card */}
       <div className="bg-card rounded-lg border border-border p-4 space-y-3">
-        <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Seller Information</h3>
+        <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Contact Seller</h3>
         <Separator />
+
         <div className="flex items-center justify-between">
           <div>
             <Link to={`/search?vendor=${vendor.id}`} className="font-semibold text-sm text-primary hover:underline">
@@ -170,11 +166,49 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
             {isFollowing ? "Following" : "Follow"}
           </Button>
         </div>
+
         <Separator />
-        <h4 className="text-xs font-semibold text-muted-foreground">Seller Performance</h4>
+
+        {/* Contact buttons */}
+        <div className="space-y-2">
+          {vendor.phone && (
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={handleCall}>
+              <Phone className="h-4 w-4 text-primary" />
+              <span className="truncate">{vendor.phone}</span>
+            </Button>
+          )}
+          {vendor.phone2 && (
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { trackEvent(vendor.id, productId, "call_click"); window.open(`tel:${vendor.phone2}`, "_self"); }}>
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span className="truncate">{vendor.phone2}</span>
+            </Button>
+          )}
+          {vendor.whatsapp && (
+            <Button className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsApp}>
+              <MessageCircle className="h-4 w-4" />
+              Chat on WhatsApp
+            </Button>
+          )}
+          {vendor.website && (
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={handleWebsite}>
+              <Globe className="h-4 w-4 text-primary" />
+              <span className="truncate">{vendor.website}</span>
+            </Button>
+          )}
+        </div>
+
+        {!vendor.phone && !vendor.whatsapp && (
+          <p className="text-xs text-muted-foreground text-center py-2">No contact info available</p>
+        )}
+      </div>
+
+      {/* Seller Performance */}
+      <div className="bg-card rounded-lg border border-border p-4 space-y-3">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Seller Performance</h4>
+        <Separator />
         <div className="space-y-1.5">
           {[
-            { label: "Shipping speed", value: "Excellent" },
+            { label: "Response Time", value: "Fast" },
             { label: "Quality Score", value: "Good" },
             { label: "Customer Rating", value: "Excellent" },
           ].map((item) => (
@@ -192,8 +226,6 @@ const SellerInfoSidebar = ({ vendor, productId, country }: { vendor: any; produc
 const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { addItem } = useCart();
-  const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const { t } = useTranslation();
   const { country, formatPrice } = useLocale();
@@ -203,13 +235,20 @@ const ProductDetailPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, vendors(id, store_name), product_images(url, position, variant_id), categories(name, slug)")
+        .select("*, vendors(id, store_name, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug)")
         .eq("slug", slug!)
         .single();
       return data as any;
     },
     enabled: !!slug,
   });
+
+  // Track product view
+  useEffect(() => {
+    if (product?.id && product?.vendor_id) {
+      trackEvent(product.vendor_id, product.id, "view");
+    }
+  }, [product?.id]);
 
   const { data: variants } = useQuery({
     queryKey: ["product-variants", product?.id],
@@ -277,19 +316,16 @@ const ProductDetailPage = () => {
     ? Math.round(((Number(product.compare_at_price) - Number(displayPrice)) / Number(product.compare_at_price)) * 100)
     : null;
 
-  // Compute gallery images based on selected color (show all images for that color across sizes)
   const galleryImages = useMemo(() => {
     if (!product) return [barakazIcon];
     const allImages = product.product_images || [];
     
     if (hasVariants && variants?.length && Object.keys(selectedOptions).length > 0) {
-      // Find the color-like option key
       const colorKey = Object.keys(optionTypes).find(k => 
         k.toLowerCase().includes('col') || k.toLowerCase().includes('colour')
       );
       
       if (colorKey && selectedOptions[colorKey]) {
-        // Get all variant IDs that share the same color
         const matchingVariantIds = variants
           .filter((v: any) => {
             const opts = v.variant_options as Record<string, string>;
@@ -304,7 +340,6 @@ const ProductDetailPage = () => {
         if (variantImages.length > 0) return variantImages;
       }
       
-      // Fallback: try specific variant
       if (selectedVariant) {
         const variantImages = allImages
           .filter((img: any) => img.variant_id === selectedVariant.id)
@@ -314,7 +349,6 @@ const ProductDetailPage = () => {
       }
     }
     
-    // Fallback to product-level images (no variant_id)
     const productImages = allImages
       .filter((img: any) => !img.variant_id)
       .sort((a: any, b: any) => a.position - b.position)
@@ -352,39 +386,28 @@ const ProductDetailPage = () => {
     );
   }
 
-  const buildCartItem = () => {
-    const variantLabel = hasVariants
-      ? Object.entries(selectedOptions).map(([k, v]) => `${k}: ${v}`).join(", ")
-      : undefined;
-    return {
-      productId: product.id,
-      name: product.name,
-      price: Number(displayPrice),
-      image: galleryImages[0],
-      vendorId: product.vendor_id,
-      vendorName: (product.vendors as any)?.store_name || "Unknown Seller",
-      variantId: selectedVariant?.id || undefined,
-      variantLabel,
-    };
-  };
-
-  const handleAddToCart = () => {
-    const item = buildCartItem();
-    addItem(item, quantity);
-    toast.success(`${product.name} added to cart`);
-  };
-
-  const handleBuyNow = () => {
-    const item = buildCartItem();
-    addItem(item, quantity);
-    navigate("/checkout", { state: { fromBuyNow: true } });
-  };
-
   const scrollToReviews = () => {
     document.getElementById("reviews-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+
+  const vendor = product.vendors as any;
+
+  const handleCallMobile = () => {
+    if (vendor?.phone) {
+      trackEvent(vendor.id, product.id, "call_click");
+      window.open(`tel:${vendor.phone}`, "_self");
+    }
+  };
+
+  const handleWhatsAppMobile = () => {
+    if (vendor?.whatsapp) {
+      trackEvent(vendor.id, product.id, "whatsapp_click");
+      const msg = encodeURIComponent("Hi, I'm interested in your product on Barakaz.");
+      window.open(`https://wa.me/${vendor.whatsapp.replace(/[^0-9+]/g, "")}?text=${msg}`, "_blank");
+    }
+  };
 
   return (
     <MarketplaceLayout>
@@ -414,9 +437,9 @@ const ProductDetailPage = () => {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* 3-Column Layout - using CSS order for mobile reordering */}
+        {/* 3-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px_280px] gap-6 lg:gap-8">
-          {/* Gallery - order 1 on mobile, natural on desktop */}
+          {/* Gallery */}
           <div className="order-1 lg:order-none lg:row-span-2 space-y-6">
             <ProductGallery
               images={galleryImages}
@@ -424,8 +447,6 @@ const ProductDetailPage = () => {
               productName={product.name}
               forcedImageUrl={null}
             />
-
-            {/* Description - hidden on mobile, shown on desktop below gallery */}
             <div className="hidden lg:block">
               {product.description && (
                 <div className="bg-card rounded-lg border border-border p-4">
@@ -438,9 +459,8 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* CENTER: Product Info + Buy Box - order 2 on mobile */}
+          {/* CENTER: Product Info */}
           <div className="order-2 lg:order-none space-y-4">
-            {/* Title */}
             <h1 className="font-display text-lg md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
               {product.name}
             </h1>
@@ -528,49 +548,13 @@ const ProductDetailPage = () => {
               </p>
             </div>
 
-            {/* Quantity + Buttons */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Qty:</span>
-                <div className="flex items-center border border-border rounded-lg">
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-10 text-center font-medium text-sm">{quantity}</span>
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setQuantity(quantity + 1)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <Button
-                className="w-full font-semibold gap-2 h-11"
-                size="lg"
-                onClick={handleAddToCart}
-                disabled={hasVariants && !selectedVariant}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {t("product.addToCart")}
-              </Button>
-
-              <Button
-                className="w-full font-semibold gap-2 h-11 bg-[hsl(var(--marketplace-orange))] hover:bg-[hsl(var(--marketplace-orange))]/90 text-white"
-                size="lg"
-                onClick={handleBuyNow}
-                disabled={hasVariants && !selectedVariant}
-              >
-                <Zap className="h-5 w-5" />
-                Buy Now
-              </Button>
-            </div>
-
             <Separator />
 
             {/* Social Share */}
             <SocialShare url={shareUrl} title={product.name} />
           </div>
 
-          {/* Description on mobile only - order 3 */}
+          {/* Description on mobile only */}
           <div className="order-3 lg:hidden">
             {product.description && (
               <div className="bg-card rounded-lg border border-border p-4">
@@ -582,26 +566,18 @@ const ProductDetailPage = () => {
             )}
           </div>
 
-          {/* RIGHT: Delivery + Seller Info - order 4 on mobile, hidden on mobile (shown separately below) */}
+          {/* RIGHT: Seller Info */}
           <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start">
-            {product.vendors && (
-              <SellerInfoSidebar
-                vendor={product.vendors}
-                productId={product.id}
-                country={country}
-              />
+            {vendor && (
+              <SellerInfoSidebar vendor={vendor} productId={product.id} />
             )}
           </div>
         </div>
 
         {/* Mobile: show seller info below */}
         <div className="lg:hidden mt-6">
-          {product.vendors && (
-            <SellerInfoSidebar
-              vendor={product.vendors}
-              productId={product.id}
-              country={country}
-            />
+          {vendor && (
+            <SellerInfoSidebar vendor={vendor} productId={product.id} />
           )}
         </div>
 
@@ -615,24 +591,29 @@ const ProductDetailPage = () => {
         <div className="h-20 md:hidden" />
       </div>
 
-      {/* Floating Add to Cart / Buy Now bar on mobile */}
+      {/* Floating Contact Seller bar on mobile */}
       <div className="fixed bottom-14 left-0 right-0 z-40 md:hidden bg-card border-t border-border px-4 py-2 flex gap-3 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-        <Button
-          className="flex-1 font-semibold gap-2 h-11"
-          onClick={handleAddToCart}
-          disabled={hasVariants && !selectedVariant}
-        >
-          <ShoppingCart className="h-4 w-4" />
-          {t("product.addToCart")}
-        </Button>
-        <Button
-          className="flex-1 font-semibold gap-2 h-11 bg-[hsl(var(--marketplace-orange))] hover:bg-[hsl(var(--marketplace-orange))]/90 text-white"
-          onClick={handleBuyNow}
-          disabled={hasVariants && !selectedVariant}
-        >
-          <Zap className="h-4 w-4" />
-          Buy Now
-        </Button>
+        {vendor?.phone && (
+          <Button
+            className="flex-1 font-semibold gap-2 h-11"
+            onClick={handleCallMobile}
+          >
+            <Phone className="h-4 w-4" />
+            Call Seller
+          </Button>
+        )}
+        {vendor?.whatsapp && (
+          <Button
+            className="flex-1 font-semibold gap-2 h-11 bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleWhatsAppMobile}
+          >
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
+          </Button>
+        )}
+        {!vendor?.phone && !vendor?.whatsapp && (
+          <p className="flex-1 text-center text-sm text-muted-foreground self-center">No contact info</p>
+        )}
       </div>
     </MarketplaceLayout>
   );

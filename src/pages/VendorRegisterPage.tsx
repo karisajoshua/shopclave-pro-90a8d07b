@@ -16,6 +16,9 @@ const VendorRegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
+  const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [website, setWebsite] = useState("");
 
   if (!user) {
     navigate("/auth");
@@ -28,18 +31,22 @@ const VendorRegisterPage = () => {
       toast.error("Store name is required");
       return;
     }
+    if (!phone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
     setLoading(true);
     try {
-      // Create vendor record
       const { error: vendorError } = await supabase.from("vendors").insert({
         user_id: user.id,
         store_name: storeName.trim(),
         store_description: storeDescription.trim() || null,
+        phone: phone.trim(),
+        whatsapp: whatsapp.trim() || null,
+        website: website.trim() || null,
         status: "pending",
       });
       if (vendorError) throw vendorError;
-
-      // Vendor role will be assigned by admin upon approval
 
       toast.success("Vendor application submitted! We'll review it shortly.");
       navigate("/account");
@@ -59,7 +66,7 @@ const VendorRegisterPage = () => {
               <Store className="h-7 w-7 text-primary" />
             </div>
             <h1 className="font-display text-2xl font-bold mb-2">Become a Seller</h1>
-            <p className="text-sm text-muted-foreground">Start selling on ShopZone marketplace</p>
+            <p className="text-sm text-muted-foreground">Start listing your products on Barakaz marketplace</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,6 +77,18 @@ const VendorRegisterPage = () => {
             <div>
               <Label>Store Description</Label>
               <Textarea value={storeDescription} onChange={(e) => setStoreDescription(e.target.value)} placeholder="Tell customers about your store..." rows={4} />
+            </div>
+            <div>
+              <Label>Phone Number *</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" required />
+            </div>
+            <div>
+              <Label>WhatsApp Number</Label>
+              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+254 7XX XXX XXX" />
+            </div>
+            <div>
+              <Label>Website (Optional)</Label>
+              <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://yourstore.com" />
             </div>
             <Button type="submit" className="w-full font-semibold" disabled={loading}>
               {loading ? "Submitting..." : "Submit Application"}
