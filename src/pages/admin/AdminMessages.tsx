@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageCircle, User, CheckCircle2, Clock } from "lucide-react";
+import { MessageCircle, User, CheckCircle2, Clock, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +14,7 @@ const AdminMessages = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("chat_messages")
-        .select("conversation_id, sender_id, vendor_id, message, created_at, is_read")
+        .select("conversation_id, sender_id, vendor_id, message, created_at, is_read, product_id")
         .order("created_at", { ascending: false });
 
       if (!data) return [];
@@ -25,6 +25,7 @@ const AdminMessages = () => {
         userId: string;
         lastMessage: any;
         vendorReplied: boolean;
+        productId: string | null;
       }>();
 
       data.forEach((msg) => {
@@ -38,12 +39,14 @@ const AdminMessages = () => {
             userId,
             lastMessage: msg,
             vendorReplied: false,
+            productId: msg.product_id,
           });
         }
-        convMap.get(convId)!.messages.push(msg);
+        const conv = convMap.get(convId)!;
+        conv.messages.push(msg);
+        if (msg.product_id && !conv.productId) conv.productId = msg.product_id;
       });
 
-      // Check if vendor has replied in each conversation
       const vendorIds = [...new Set([...convMap.values()].map(c => c.vendorId))];
       const { data: vendors } = await supabase
         .from("vendors")
@@ -54,6 +57,14 @@ const AdminMessages = () => {
       const userIds = [...new Set([...convMap.values()].map(c => c.userId))];
       const { data: profiles } = await supabase.rpc("get_public_profiles", { user_ids: userIds });
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+      // Fetch product names
+      const productIds = [...new Set([...convMap.values()].map(c => c.productId).filter(Boolean))] as string[];
+      let productMap = new Map<string, { name: string; slug: string }>();
+      if (productIds.length > 0) {
+        const { data: products } = await supabase.from("products").select("id, name, slug").in("id", productIds);
+        productMap = new Map((products || []).map((p: any) => [p.id, { name: p.name, slug: p.slug }]));
+      }
 
       return [...convMap.entries()].map(([id, conv]) => {
         const vendor = vendorMap.get(conv.vendorId);
@@ -66,6 +77,7 @@ const AdminMessages = () => {
           vendorName: vendor?.store_name || "Unknown",
           customerName: profileMap.get(conv.userId)?.full_name || "Customer",
           messageCount: conv.messages.length,
+          product: conv.productId ? productMap.get(conv.productId) : null,
         };
       });
     },
@@ -90,7 +102,6 @@ const AdminMessages = () => {
     enabled: !!selectedConversation,
   });
 
-  // Get vendor user_id for the selected conversation
   const selectedConv = conversations.find((c: any) => c.id === selectedConversation);
 
   return (
@@ -120,7 +131,6 @@ const AdminMessages = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] gap-4 h-[calc(100vh-300px)] min-h-[400px]">
-        {/* Conversation List */}
         <div className="bg-card rounded-lg border border-border overflow-y-auto">
           {filteredConversations.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">No conversations</p>
@@ -143,6 +153,11 @@ const AdminMessages = () => {
                     </Badge>
                   </div>
                   <p className="text-xs text-primary truncate">↔ {conv.vendorName}</p>
+                  {conv.product && (
+                    <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                      <Package className="h-3 w-3" /> {conv.product.name}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage.message}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {conv.messageCount} messages · {new Date(conv.lastMessage.created_at).toLocaleDateString()}
@@ -153,7 +168,6 @@ const AdminMessages = () => {
           ))}
         </div>
 
-        {/* Read-Only Chat */}
         <div className="bg-card rounded-lg border border-border flex flex-col">
           {!selectedConversation ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
@@ -161,15 +175,27 @@ const AdminMessages = () => {
             </div>
           ) : (
             <>
-              <div className="p-3 border-b border-border text-sm">
-                <span className="font-medium">{selectedConv?.customerName}</span>
-                <span className="text-muted-foreground"> ↔ </span>
-                <span className="font-medium text-primary">{selectedConv?.vendorName}</span>
-                <span className="text-muted-foreground text-xs ml-2">(Read-only)</span>
+              <div className="p-3 border-b border-border">
+                <div className="text-sm">
+                  <span className="font-medium">{selectedConv?.customerName}</span>
+                  <span className="text-muted-foreground"> ↔ </span>
+                  <span className="font-medium text-primary">{selectedConv?.vendorName}</span>
+                  <span className="text-muted-foreground text-xs ml-2">(Read-only)</span>
+                </div>
+                {selectedConv?.product && (
+                  <div className="text-xs bg-muted/50 rounded p-1.5 mt-1 text-muted-foreground flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    Re: <span className="font-medium text-foreground">{selectedConv.product.name}</span>
+                  </div>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {selectedMessages.length > 0 && (
+                  <p className="text-[10px] text-center text-muted-foreground mb-2">
+                    {selectedMessages.length} message{selectedMessages.length !== 1 ? "s" : ""}
+                  </p>
+                )}
                 {selectedMessages.map((msg: any) => {
-                  // Determine if the sender is the vendor
                   const conv = conversations.find((c: any) => c.id === selectedConversation);
                   const isVendor = conv && msg.sender_id !== conv.userId;
                   return (

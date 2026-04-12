@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Send, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 interface ChatDialogProps {
   open: boolean;
@@ -23,7 +24,12 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const conversationId = user ? `${user.id}_${vendorId}` : "";
+  // Product-specific conversation ID
+  const conversationId = user
+    ? productId
+      ? `${user.id}_${vendorId}_${productId}`
+      : `${user.id}_${vendorId}`
+    : "";
 
   useEffect(() => {
     if (!open || !conversationId) return;
@@ -38,7 +44,6 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
     };
     fetchMessages();
 
-    // Subscribe to realtime
     const channel = supabase
       .channel(`chat-${conversationId}`)
       .on("postgres_changes", {
@@ -81,6 +86,7 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
         vendor_id: vendorId,
         message: newMessage.trim(),
       };
+      // Always attach product_id if this is a product-specific thread
       if (productId) payload.product_id = productId;
 
       const { error } = await supabase.from("chat_messages").insert(payload);
@@ -133,6 +139,13 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
             <MessageCircle className="h-5 w-5 text-primary" />
             Chat with {vendorName}
           </DialogTitle>
+          <div className="flex items-center gap-2 mt-1">
+            {messages.length > 0 && (
+              <Badge variant="secondary" className="text-[10px]">
+                {messages.length} message{messages.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
         </DialogHeader>
 
         {productName && (
