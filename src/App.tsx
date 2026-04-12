@@ -42,6 +42,7 @@ import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import CookieConsent from "./components/shared/CookieConsent";
 
 // Vendor
@@ -102,6 +103,7 @@ const App = () => (
                   <Route path="bulk-import" element={<AdminBulkImport />} />
                   <Route path="withdrawals" element={<AdminWithdrawals />} />
                   <Route path="analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="subscriptions" element={<AdminSubscriptions />} />
                   <Route path="notifications" element={<AdminNotifications />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>

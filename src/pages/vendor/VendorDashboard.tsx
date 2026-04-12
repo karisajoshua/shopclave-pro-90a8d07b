@@ -1,11 +1,9 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext } from "react-router-dom";
-import { DollarSign, ShoppingBag, Package, TrendingUp, Users } from "lucide-react";
+import { Eye, MousePointer, Package, Users, AlertTriangle } from "lucide-react";
 
 const VendorDashboard = () => {
-  const { user } = useAuth();
   const { vendor } = useOutletContext<{ vendor: any }>();
 
   const { data: products } = useQuery({
@@ -17,11 +15,30 @@ const VendorDashboard = () => {
     enabled: !!vendor,
   });
 
-  const { data: orderItems } = useQuery({
-    queryKey: ["vendor-orders", vendor?.id],
+  const { data: analytics } = useQuery({
+    queryKey: ["vendor-analytics", vendor?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("order_items").select("*, orders(status, created_at), products(name)").eq("vendor_id", vendor.id).order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("vendor_analytics")
+        .select("event_type")
+        .eq("vendor_id", vendor.id);
       return data || [];
+    },
+    enabled: !!vendor,
+  });
+
+  const { data: subscription } = useQuery({
+    queryKey: ["vendor-subscription", vendor?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendor_subscriptions")
+        .select("*")
+        .eq("vendor_id", vendor.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
     },
     enabled: !!vendor,
   });
@@ -35,34 +52,43 @@ const VendorDashboard = () => {
     enabled: !!vendor,
   });
 
-  const totalRevenue = orderItems?.reduce((sum, i: any) => sum + Number(i.price) * i.quantity, 0) || 0;
-  const totalCommission = orderItems?.reduce((sum, i: any) => sum + Number(i.commission_amount), 0) || 0;
-  const netEarnings = totalRevenue - totalCommission;
+  const totalViews = analytics?.filter((a: any) => a.event_type === "view").length || 0;
+  const totalClicks = analytics?.filter((a: any) => ["call_click", "whatsapp_click", "website_click"].includes(a.event_type)).length || 0;
+  const activeListings = products?.filter((p: any) => p.status === "active").length || 0;
+  const maxListings = subscription?.max_listings ?? 5;
 
-  const topProducts = (() => {
-    const map: Record<string, { name: string; units: number; revenue: number }> = {};
-    orderItems?.forEach((i: any) => {
-      const pid = i.product_id;
-      if (!pid) return;
-      if (!map[pid]) map[pid] = { name: (i.products as any)?.name || "Unknown", units: 0, revenue: 0 };
-      map[pid].units += i.quantity;
-      map[pid].revenue += Number(i.price) * i.quantity;
-    });
-    return Object.values(map).sort((a, b) => b.units - a.units).slice(0, 5);
-  })();
+  const isExpiring = subscription?.expires_at && new Date(subscription.expires_at).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
 
   const stats = [
-    { label: "Revenue", value: `KSh ${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-success" },
-    { label: "Orders", value: orderItems?.length || 0, icon: ShoppingBag, color: "text-primary" },
-    { label: "Products", value: products?.length || 0, icon: Package, color: "text-warning" },
-    { label: "Net Earnings", value: `KSh ${netEarnings.toLocaleString()}`, icon: TrendingUp, color: "text-success" },
+    { label: "Product Views", value: totalViews, icon: Eye, color: "text-primary" },
+    { label: "Contact Clicks", value: totalClicks, icon: MousePointer, color: "text-success" },
+    { label: "Active Listings", value: `${activeListings} / ${maxListings}`, icon: Package, color: "text-warning" },
     { label: "Followers", value: followerCount, icon: Users, color: "text-primary" },
   ];
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Overview</h2>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+
+      {/* Subscription warning */}
+      {isExpiring && (
+        <div className="flex items-center gap-2 bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+          <span>Your subscription expires on {new Date(subscription!.expires_at!).toLocaleDateString()}. Contact admin to renew.</span>
+        </div>
+      )}
+
+      {/* Subscription info */}
+      <div className="bg-card rounded-lg border border-border p-4">
+        <p className="text-sm text-muted-foreground">
+          Plan: <span className="font-semibold text-foreground capitalize">{subscription?.plan_name || "Free"}</span>
+          {subscription?.expires_at && (
+            <> · Expires: <span className="font-medium">{new Date(subscription.expires_at).toLocaleDateString()}</span></>
+          )}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <div key={stat.label} className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -74,58 +100,29 @@ const VendorDashboard = () => {
         ))}
       </div>
 
-      {/* Top Selling Products */}
-      {topProducts.length > 0 && (
+      {/* Top Viewed Products */}
+      {products && products.length > 0 && (
         <div>
-          <h3 className="font-semibold mb-3">Top Selling Products</h3>
+          <h3 className="font-semibold mb-3">Your Products</h3>
           <div className="bg-card rounded-lg border border-border overflow-x-auto">
             <table className="w-full text-sm min-w-[400px]">
               <thead className="bg-secondary">
                 <tr>
                   <th className="text-left p-3 font-medium">#</th>
                   <th className="text-left p-3 font-medium">Product</th>
-                  <th className="text-left p-3 font-medium">Units Sold</th>
-                  <th className="text-left p-3 font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.map((p, idx) => (
-                  <tr key={idx} className="border-t border-border">
-                    <td className="p-3 text-muted-foreground">{idx + 1}</td>
-                    <td className="p-3 font-medium">{p.name}</td>
-                    <td className="p-3">{p.units}</td>
-                    <td className="p-3">KSh {p.revenue.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Orders */}
-      {orderItems && orderItems.length > 0 && (
-        <div>
-          <h3 className="font-semibold mb-3">Recent Orders</h3>
-          <div className="bg-card rounded-lg border border-border overflow-x-auto">
-            <table className="w-full text-sm min-w-[400px]">
-              <thead className="bg-secondary">
-                <tr>
-                  <th className="text-left p-3 font-medium">Product</th>
-                  <th className="text-left p-3 font-medium">Qty</th>
-                  <th className="text-left p-3 font-medium">Total</th>
+                  <th className="text-left p-3 font-medium">Price</th>
                   <th className="text-left p-3 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {orderItems.slice(0, 5).map((item: any) => (
-                  <tr key={item.id} className="border-t border-border">
-                    <td className="p-3 font-medium">{(item.products as any)?.name || "—"}</td>
-                    <td className="p-3">{item.quantity}</td>
-                    <td className="p-3">KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
+                {products.slice(0, 10).map((p: any, idx: number) => (
+                  <tr key={p.id} className="border-t border-border">
+                    <td className="p-3 text-muted-foreground">{idx + 1}</td>
+                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3">KSh {Number(p.price).toLocaleString()}</td>
                     <td className="p-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.status === "delivered" ? "bg-success/10 text-success" : item.status === "shipped" ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"}`}>
-                        {item.status}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                        {p.status}
                       </span>
                     </td>
                   </tr>
