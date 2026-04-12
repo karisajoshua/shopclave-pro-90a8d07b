@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home } from "lucide-react";
+import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
 import {
@@ -23,6 +23,7 @@ const items = [
   { title: "Orders", url: "/vendor/orders", icon: ShoppingBag },
   { title: "Earnings", url: "/vendor/earnings", icon: DollarSign },
   { title: "Notifications", url: "/vendor/notifications", icon: Bell },
+  { title: "Messages", url: "/vendor/messages", icon: MessageCircle },
   { title: "Store Settings", url: "/vendor/settings", icon: Settings },
 ];
 

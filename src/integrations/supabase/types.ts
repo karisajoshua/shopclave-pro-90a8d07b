@@ -88,6 +88,61 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          product_id: string | null
+          sender_id: string
+          vendor_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          product_id?: string | null
+          sender_id: string
+          vendor_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          product_id?: string | null
+          sender_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cookie_consents: {
         Row: {
           analytics: boolean
@@ -785,6 +840,7 @@ export type Database = {
           created_at: string
           id: string
           logo_url: string | null
+          payment_details: Json | null
           phone: string | null
           phone2: string | null
           status: string
@@ -801,6 +857,7 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          payment_details?: Json | null
           phone?: string | null
           phone2?: string | null
           status?: string
@@ -817,6 +874,7 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          payment_details?: Json | null
           phone?: string | null
           phone2?: string | null
           status?: string

@@ -55,7 +55,9 @@ import VendorEarnings from "./pages/vendor/VendorEarnings";
 import VendorNotifications from "./pages/vendor/VendorNotifications";
 import VendorSettings from "./pages/vendor/VendorSettings";
 import VendorBulkImport from "./pages/vendor/VendorBulkImport";
+import VendorMessages from "./pages/vendor/VendorMessages";
 import EditProductPage from "./pages/vendor/EditProductPage";
+import AdminMessages from "./pages/admin/AdminMessages";
 
 const queryClient = new QueryClient();
 
@@ -105,6 +107,7 @@ const App = () => (
                   <Route path="analytics" element={<AdminAnalyticsPage />} />
                   <Route path="subscriptions" element={<AdminSubscriptions />} />
                   <Route path="notifications" element={<AdminNotifications />} />
+                  <Route path="messages" element={<AdminMessages />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
 
@@ -117,6 +120,7 @@ const App = () => (
                   <Route path="orders" element={<VendorOrders />} />
                   <Route path="earnings" element={<VendorEarnings />} />
                   <Route path="notifications" element={<VendorNotifications />} />
+                  <Route path="messages" element={<VendorMessages />} />
                   <Route path="settings" element={<VendorSettings />} />
                   <Route path="bulk-import" element={<VendorBulkImport />} />
                 </Route>

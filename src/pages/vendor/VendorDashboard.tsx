@@ -1,10 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext } from "react-router-dom";
-import { Eye, MousePointer, Package, Users, AlertTriangle } from "lucide-react";
+import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
 
 const VendorDashboard = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
+  const { user } = useAuth();
+  const [requestingUpgrade, setRequestingUpgrade] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["vendor-products", vendor?.id],
@@ -58,6 +64,31 @@ const VendorDashboard = () => {
   const maxListings = subscription?.max_listings ?? 5;
 
   const isExpiring = subscription?.expires_at && new Date(subscription.expires_at).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
+
+  const plans = [
+    { name: "Basic", price: 500, listings: 10 },
+    { name: "Standard", price: 1500, listings: 50 },
+    { name: "Premium", price: 5000, listings: 200 },
+    { name: "Enterprise", price: 15000, listings: 1000 },
+  ];
+
+  const handleRequestUpgrade = async (plan: typeof plans[0]) => {
+    if (!user) return;
+    setRequestingUpgrade(true);
+    try {
+      await supabase.from("notifications").insert({
+        recipient_id: user.id, // Will be visible to admins too
+        title: "Subscription Upgrade Request",
+        message: `Vendor "${vendor.store_name}" requests upgrade to ${plan.name} plan (KSh ${plan.price}/mo, ${plan.listings} listings).`,
+        type: "upgrade_request",
+      });
+      toast.success(`Upgrade request for ${plan.name} plan sent! Admin will review shortly.`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRequestingUpgrade(false);
+    }
+  };
 
   const stats = [
     { label: "Product Views", value: totalViews, icon: Eye, color: "text-primary" },
@@ -132,6 +163,39 @@ const VendorDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Subscription Upgrade */}
+      <div>
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <ArrowUpCircle className="h-4 w-4 text-primary" /> Upgrade Your Plan
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {plans.map((plan) => {
+            const isCurrent = subscription?.plan_name?.toLowerCase() === plan.name.toLowerCase();
+            return (
+              <div key={plan.name} className={`bg-card rounded-lg border p-4 text-center ${isCurrent ? "border-primary" : "border-border"}`}>
+                <p className="font-semibold text-sm">{plan.name}</p>
+                <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">/month</p>
+                <p className="text-xs text-muted-foreground mt-2">{plan.listings} listings</p>
+                {isCurrent ? (
+                  <p className="text-xs text-primary font-medium mt-3">Current Plan</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 w-full text-xs"
+                    disabled={requestingUpgrade}
+                    onClick={() => handleRequestUpgrade(plan)}
+                  >
+                    Request Upgrade
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
