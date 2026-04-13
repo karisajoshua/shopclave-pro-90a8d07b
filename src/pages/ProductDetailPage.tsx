@@ -80,10 +80,26 @@ const trackEvent = async (vendorId: string, productId: string, eventType: string
   } catch {}
 };
 
+// Mask a phone number for unauthenticated users
+const maskPhone = (phone: string) => {
+  if (phone.length <= 4) return "****";
+  return phone.slice(0, 4) + phone.slice(4).replace(/[0-9]/g, "*");
+};
+
 // Seller info sidebar component - now with contact details for classifieds model
 const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; productId: string; onChatOpen: () => void }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const requireAuth = (action: () => void) => {
+    if (!user) {
+      toast.info("Please sign in to contact this seller");
+      navigate("/auth");
+      return;
+    }
+    action();
+  };
 
   const { data: followerCount = 0 } = useQuery({
     queryKey: ["vendor-followers", vendor.id],
@@ -110,7 +126,7 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      if (!user) { toast.error("Please log in to follow sellers"); return; }
+      if (!user) return;
       if (isFollowing) {
         await supabase.from("vendor_follows").delete().eq("user_id", user.id).eq("vendor_id", vendor.id);
       } else {
@@ -163,7 +179,7 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
             size="sm"
             variant={isFollowing ? "outline" : "default"}
             className="text-xs h-8 rounded-full px-4"
-            onClick={() => followMutation.mutate()}
+            onClick={() => requireAuth(() => followMutation.mutate())}
             disabled={followMutation.isPending}
           >
             {isFollowing ? "Following" : "Follow"}
@@ -175,30 +191,30 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
         {/* Contact buttons */}
         <div className="space-y-2">
           {vendor.phone && (
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={handleCall}>
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => requireAuth(handleCall)}>
               <Phone className="h-4 w-4 text-primary" />
-              <span className="truncate">{vendor.phone}</span>
+              <span className="truncate">{user ? vendor.phone : maskPhone(vendor.phone)}</span>
             </Button>
           )}
           {vendor.phone2 && (
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { trackEvent(vendor.id, productId, "call_click"); window.open(`tel:${vendor.phone2}`, "_self"); }}>
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => requireAuth(() => { trackEvent(vendor.id, productId, "call_click"); window.open(`tel:${vendor.phone2}`, "_self"); })}>
               <Phone className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{vendor.phone2}</span>
+              <span className="truncate">{user ? vendor.phone2 : maskPhone(vendor.phone2)}</span>
             </Button>
           )}
           {vendor.whatsapp && (
-            <Button className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsApp}>
+            <Button className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => requireAuth(handleWhatsApp)}>
               <MessageCircle className="h-4 w-4" />
               Chat on WhatsApp
             </Button>
           )}
           {vendor.website && (
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={handleWebsite}>
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => requireAuth(handleWebsite)}>
               <Globe className="h-4 w-4 text-primary" />
               <span className="truncate">{vendor.website}</span>
             </Button>
           )}
-          <Button variant="outline" className="w-full justify-start gap-2 border-primary/30 text-primary" onClick={onChatOpen}>
+          <Button variant="outline" className="w-full justify-start gap-2 border-primary/30 text-primary" onClick={() => requireAuth(onChatOpen)}>
             <MessageCircle className="h-4 w-4" />
             Chat Now
           </Button>
@@ -403,6 +419,15 @@ const ProductDetailPage = () => {
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const vendor = product.vendors as any;
+
+  const requireAuthMain = (action: () => void) => {
+    if (!user) {
+      toast.info("Please sign in to contact this seller");
+      navigate("/auth");
+      return;
+    }
+    action();
+  };
 
   const handleCallMobile = () => {
     if (vendor?.phone) {
@@ -674,12 +699,12 @@ const ProductDetailPage = () => {
           Buy Now
         </Button>
         {vendor?.phone && (
-          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={handleCallMobile}>
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => requireAuthMain(handleCallMobile)}>
             <Phone className="h-4 w-4" />
           </Button>
         )}
         {vendor?.whatsapp && (
-          <Button size="icon" className="h-11 w-11 shrink-0 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppMobile}>
+          <Button size="icon" className="h-11 w-11 shrink-0 bg-green-600 hover:bg-green-700 text-white" onClick={() => requireAuthMain(handleWhatsAppMobile)}>
             <MessageCircle className="h-4 w-4" />
           </Button>
         )}
