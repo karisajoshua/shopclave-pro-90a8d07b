@@ -518,53 +518,65 @@ export type Database = {
         Row: {
           category_id: string | null
           compare_at_price: number | null
+          condition: string
           created_at: string
           deal_ends_at: string | null
           description: string | null
           featured: boolean
           id: string
+          key_features: string[] | null
           name: string
           price: number
+          sku: string | null
           slug: string
           status: string
           stock: number
           updated_at: string
           vendor_id: string
           video_url: string | null
+          whats_in_box: string | null
         }
         Insert: {
           category_id?: string | null
           compare_at_price?: number | null
+          condition?: string
           created_at?: string
           deal_ends_at?: string | null
           description?: string | null
           featured?: boolean
           id?: string
+          key_features?: string[] | null
           name: string
           price: number
+          sku?: string | null
           slug: string
           status?: string
           stock?: number
           updated_at?: string
           vendor_id: string
           video_url?: string | null
+          whats_in_box?: string | null
         }
         Update: {
           category_id?: string | null
           compare_at_price?: number | null
+          condition?: string
           created_at?: string
           deal_ends_at?: string | null
           description?: string | null
           featured?: boolean
           id?: string
+          key_features?: string[] | null
           name?: string
           price?: number
+          sku?: string | null
           slug?: string
           status?: string
           stock?: number
           updated_at?: string
           vendor_id?: string
           video_url?: string | null
+          whats_in_box?: string | null
         }
         Relationships: [
           {
