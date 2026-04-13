@@ -10,6 +10,8 @@ export interface ProductMeta {
   stock?: number;
   vendor_name?: string;
   video_url?: string | null;
+  key_features?: string[] | null;
+  whats_in_box?: string | null;
 }
 
 interface ProductDescriptionTabsProps {
@@ -36,16 +38,21 @@ const SpecRow = ({ label, value }: { label: string; value: string | undefined | 
 );
 
 const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescriptionTabsProps) => {
-  // Extract bullet-style features from description if available
-  const features: string[] = [];
-  if (description) {
-    const lines = description.split("\n").map((l) => l.trim()).filter(Boolean);
-    for (const line of lines) {
-      if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*")) {
-        features.push(line.replace(/^[-•*]\s*/, ""));
+  // Use key_features from meta (independent field) — fallback to parsing description for legacy products
+  const features: string[] = meta?.key_features?.length ? meta.key_features : (() => {
+    const parsed: string[] = [];
+    if (description) {
+      const lines = description.split("\n").map((l) => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*")) {
+          parsed.push(line.replace(/^[-•*]\s*/, ""));
+        }
       }
     }
-  }
+    return parsed;
+  })();
+
+  const whatsInBox = meta?.whats_in_box || `1 x ${meta?.name || "Product"}`;
 
   return (
     <div className="space-y-6">
@@ -87,7 +94,7 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
               What's in the Box
             </h4>
             <p className="text-sm text-foreground">
-              1 x {meta?.name || "Product"}
+              {whatsInBox}
             </p>
           </div>
         </div>
