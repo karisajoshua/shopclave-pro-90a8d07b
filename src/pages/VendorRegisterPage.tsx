@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,8 +20,13 @@ const VendorRegisterPage = () => {
   const [whatsapp, setWhatsapp] = useState("");
   const [website, setWebsite] = useState("");
 
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth", { state: { from: "/vendor/register" } });
+    }
+  }, [user, navigate]);
+
   if (!user) {
-    navigate("/auth");
     return null;
   }
 
