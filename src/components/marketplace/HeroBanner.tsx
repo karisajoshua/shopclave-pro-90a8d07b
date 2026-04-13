@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import heroBanner1 from "@/assets/hero-banner-1.png";
 import heroBanner2 from "@/assets/hero-banner-2.png";
 import heroBanner3 from "@/assets/hero-banner-3.png";
+import heroBanner4 from "@/assets/hero-banner-4.png";
 
 const HERO_SLIDES = [
   {
@@ -17,6 +18,10 @@ const HERO_SLIDES = [
   {
     image: heroBanner3,
     link: "/search?category=home-garden",
+  },
+  {
+    image: heroBanner4,
+    link: "/search?category=electronics",
   },
 ];
 
