@@ -458,9 +458,6 @@ const ProductDetailPage = () => {
               forcedImageUrl={null}
             />
             <div className="hidden lg:block space-y-6">
-              {vendor && (
-                <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
-              )}
               <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name, sku: (product as any).sku, condition: (product as any).condition, key_features: (product as any).key_features, whats_in_box: (product as any).whats_in_box }} />
             </div>
           </div>
