@@ -457,7 +457,10 @@ const ProductDetailPage = () => {
               productName={product.name}
               forcedImageUrl={null}
             />
-            <div className="hidden lg:block">
+            <div className="hidden lg:block space-y-6">
+              {vendor && (
+                <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
+              )}
               <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name, sku: (product as any).sku, condition: (product as any).condition, key_features: (product as any).key_features, whats_in_box: (product as any).whats_in_box }} />
             </div>
           </div>
@@ -605,8 +608,11 @@ const ProductDetailPage = () => {
             <SocialShare url={shareUrl} title={product.name} />
           </div>
 
-          {/* Description tabs on mobile */}
-          <div className="order-3 lg:hidden">
+          {/* Mobile: Seller info + Description tabs */}
+          <div className="order-3 lg:hidden space-y-6">
+            {vendor && (
+              <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
+            )}
             <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name, sku: (product as any).sku, condition: (product as any).condition, key_features: (product as any).key_features, whats_in_box: (product as any).whats_in_box }} />
           </div>
 
@@ -618,12 +624,6 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
-        {/* Mobile: show seller info below */}
-        <div className="lg:hidden mt-6">
-          {vendor && (
-            <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
-          )}
-        </div>
 
         {/* Reviews are now inside the tabs */}
 
