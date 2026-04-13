@@ -1,26 +1,28 @@
 
 
-# Show Contact Seller to Signed-Out Users with Auth Prompts
+# Fix: Contact Seller Not Rendering — RLS Policy Missing
 
-## Summary
-The Contact Seller section will always be visible (signed in or not). For signed-out users: phone numbers are masked, and clicking any action (call, WhatsApp, chat, follow) prompts them to sign in or register.
+## Root Cause
+The `vendors` table has Row-Level Security policies that only allow admins and vendor owners to read vendor data. When a signed-out user (or regular customer) visits a product page, the Supabase join `vendors(...)` returns `null` because RLS blocks the read. This makes `vendor` falsy, so `{vendor && <SellerInfoSidebar ... />}` renders nothing.
 
-## Changes (single file: `src/pages/ProductDetailPage.tsx`)
+## Fix
 
-### SellerInfoSidebar updates
+### 1. Add a public read policy on the `vendors` table
+Create a migration that adds a SELECT policy allowing anyone (authenticated or anonymous) to read vendor records. This is appropriate because store name, phone, and other contact info are meant to be publicly visible on product pages.
 
-1. **Always render the section** -- remove any `user` guards that hide the component (currently it renders for all since it only checks `vendor`, so no structural change needed).
+```sql
+CREATE POLICY "Anyone can view vendors"
+ON public.vendors
+FOR SELECT
+TO anon, authenticated
+USING (true);
+```
 
-2. **Mask phone numbers when signed out**: Show e.g. `+234 80** *** ***` instead of the full number. Only reveal the real number to authenticated users.
+### 2. No code changes needed
+The existing `ProductDetailPage.tsx` code already handles the display correctly — it masks phone numbers for signed-out users and gates actions behind auth. The only issue is the missing RLS policy preventing the data from loading.
 
-3. **Gate all interactive actions behind auth check**:
-   - **Call / WhatsApp / Website / Chat Now / Follow**: If `!user`, show a toast or small dialog prompting "Please sign in to contact this seller" with a link to `/auth`. Do not execute the action.
-   - The buttons remain visible and clickable -- they just redirect to auth instead of performing the action.
-
-4. **Chat Now button** already has handling in `ChatDialog` for unauthenticated users (shows "Please log in" message). Keep that as a fallback but also add the pre-check in the sidebar button itself for consistency.
-
-### Implementation detail
-- Add a helper `requireAuth` that checks `user` and either shows a toast with "Sign in to continue" + navigates to `/auth`, or returns true to proceed.
-- Wrap `handleCall`, `handleWhatsApp`, `handleWebsite`, `onChatOpen`, and `followMutation.mutate()` calls with this guard.
-- For phone display: `user ? vendor.phone : vendor.phone?.replace(/(\d{4})(\d+)/, '$1** *** ***')`.
+## Technical Detail
+- The product query at line 264 does `select("*, vendors(...)")` which performs a join
+- Supabase applies RLS on the joined table too, so if the user's role can't read `vendors`, the join returns null
+- Adding the public read policy fixes this for all product pages globally
 
