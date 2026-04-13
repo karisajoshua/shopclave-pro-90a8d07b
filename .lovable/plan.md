@@ -1,75 +1,37 @@
 
 
-# Product Description Tabs + Multi-Step Add Product Form
+# Jumia-Style Boxed Sections for Product Detail
 
-## Part 1: Product Detail — Subdivided Description Section
+## What changes
+Replace the current tabbed `ProductDescriptionTabs` component with stacked, individually boxed sections — matching the Jumia layout from the reference screenshots.
 
-Currently, the description is rendered as a single `<p>` block. Replace it with a tabbed section containing:
+## Layout (top to bottom)
 
-- **Description** — the product description text
-- **Specifications** — parsed from description or a future dedicated field; for now show key-value pairs if the description contains structured data, otherwise show a "No specifications" placeholder
-- **Reviews** — move the existing `ProductReviews` component into this tab
-- **Shipping & Returns** — static info about delivery and return policy
+### Box 1: Product Details
+- Bordered card with "Product details" as the header (bold, with a bottom separator)
+- Renders the product description text with `whitespace-pre-line` to preserve formatting and bullet points
 
-Implementation: Create a `ProductDescriptionTabs` component using the existing `Tabs` UI component. Use it in both the desktop and mobile description blocks in `ProductDetailPage.tsx`.
+### Box 2: Specifications
+- Bordered card with "Specifications" header
+- Two-column grid inside:
+  - **KEY FEATURES** card (left) — bullet list extracted from description or placeholder
+  - **WHAT'S IN THE BOX** card (right) — placeholder for now (e.g., "1 x Product Name")
+- Below the grid: key-value rows for SKU, brand/model if available
 
-### Files
-- `src/components/product/ProductDescriptionTabs.tsx` — new component with 4 tabs
-- `src/pages/ProductDetailPage.tsx` — replace the description `<div>` blocks with the new tabs component; move reviews into the tabs
+### Box 3: Reviews
+- Bordered card with "Customer Reviews" header
+- Embeds the existing `ProductReviews` component
 
----
+### Box 4: Shipping & Returns
+- Bordered card with the existing delivery/returns/buyer protection info (icons + text)
 
-## Part 2: Multi-Step Add Product Form with Cascading Categories
+## Files to modify
+- `src/components/product/ProductDescriptionTabs.tsx` — full rewrite: replace `Tabs` with stacked `div` sections, each in its own bordered card. Add the two-column KEY FEATURES / WHAT'S IN THE BOX grid in the Specifications section.
+- No changes needed to `ProductDetailPage.tsx` — the component interface stays the same (`description`, `productId` props).
 
-Replace the current single-page `AddProductPage` with a multi-step wizard:
-
-### Step 1: Category Selection (cascading dropdowns)
-- Level 1: Show top-level categories (parent_id is null) — e.g., Electronics, Fashion, Automotive
-- Level 2: After L1 selection, load children of that category
-- Level 3: After L2 selection, load children of L2 (if any exist)
-- Each level only appears after the previous is selected
-- Visual breadcrumb of selected path: "Automotive > Car Parts > Tyres"
-
-### Step 2: Product Details (dynamic based on category)
-- Product Name*, Description* (with 850 char counter), Condition (New/Used)
-- Category-specific fields based on selected category (future extensibility — for now, show common fields)
-- Make/Brand dropdown (if applicable)
-
-### Step 3: Pricing & Stock
-- Price*, Compare at Price, Bulk Price (expandable optional section)
-- Stock Quantity, SKU
-- Delivery options dropdown
-
-### Step 4: Images & Media
-- Multi-image upload (existing logic)
-- Video URL input
-- Image reordering
-
-### Step 5: Variants (optional)
-- Toggle to enable variants
-- Existing variant option types + auto-generated rows logic (keep current implementation)
-
-### Step 6: Review & Submit
-- Summary of all entered data
-- Seller info (pre-filled from vendor profile): name, phone
-- Status selection (Active/Draft)
-- "Post Ad" button (green, full width)
-
-### Navigation
-- Step indicator bar at the top showing progress
-- Next/Back buttons
-- Validation per step before allowing next
-- Mobile-first responsive layout
-
-### Files
-- `src/pages/vendor/AddProductPage.tsx` — full rewrite as multi-step form
-- No database changes needed — uses existing `categories` table with `parent_id` for hierarchy
-
-## Technical Notes
-- Categories already have a `parent_id` column supporting the 3-level hierarchy
-- The cascading dropdown queries `categories` filtered by `parent_id`
-- Character counter on description uses controlled input with `maxLength={850}`
-- Step state managed with `useState` for current step index
-- Each step is a separate section rendered conditionally
-- Form data accumulated across steps in a single state object
+## Styling
+- Each section: `border border-border rounded-lg bg-card` with internal padding
+- Section headers: bold text with a bottom `Separator`
+- KEY FEATURES / WHAT'S IN THE BOX: side-by-side cards in a `grid grid-cols-1 md:grid-cols-2 gap-4` layout, each with its own border and uppercase header
+- Spacing between sections: `space-y-6`
 
