@@ -20,8 +20,13 @@ const VendorRegisterPage = () => {
   const [whatsapp, setWhatsapp] = useState("");
   const [website, setWebsite] = useState("");
 
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth", { state: { from: "/vendor/register" } });
+    }
+  }, [user, navigate]);
+
   if (!user) {
-    navigate("/auth");
     return null;
   }
 
