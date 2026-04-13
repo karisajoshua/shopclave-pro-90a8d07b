@@ -1,6 +1,5 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Truck, RotateCcw } from "lucide-react";
+import { ShieldCheck, Truck, RotateCcw, Package } from "lucide-react";
 import ProductReviews from "./ProductReviews";
 
 interface ProductDescriptionTabsProps {
@@ -8,58 +7,79 @@ interface ProductDescriptionTabsProps {
   productId: string;
 }
 
+const SectionBox = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="border border-border rounded-lg bg-card">
+    <div className="px-4 py-3">
+      <h3 className="font-display font-bold text-base">{title}</h3>
+    </div>
+    <Separator />
+    <div className="p-4">{children}</div>
+  </div>
+);
+
 const ProductDescriptionTabs = ({ description, productId }: ProductDescriptionTabsProps) => {
   return (
-    <div className="bg-card rounded-lg border border-border">
-      <Tabs defaultValue="description" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 gap-0">
-          <TabsTrigger
-            value="description"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-          >
-            Description
-          </TabsTrigger>
-          <TabsTrigger
-            value="specifications"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-          >
-            Specifications
-          </TabsTrigger>
-          <TabsTrigger
-            value="reviews"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-          >
-            Reviews
-          </TabsTrigger>
-          <TabsTrigger
-            value="shipping"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-          >
-            Shipping & Returns
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="description" className="mt-0 p-4">
-          {description ? (
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {description}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No description available.</p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="specifications" className="mt-0 p-4">
-          <p className="text-sm text-muted-foreground italic">
-            No specifications available for this product yet.
+    <div className="space-y-6">
+      {/* Product Details */}
+      <SectionBox title="Product details">
+        {description ? (
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            {description}
           </p>
-        </TabsContent>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">No description available.</p>
+        )}
+      </SectionBox>
 
-        <TabsContent value="reviews" className="mt-0 p-0">
-          <ProductReviews productId={productId} embedded />
-        </TabsContent>
+      {/* Specifications */}
+      <SectionBox title="Specifications">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="border border-border rounded-lg p-4">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
+              Key Features
+            </h4>
+            <ul className="space-y-2 text-sm text-foreground">
+              <li className="flex items-start gap-2">
+                <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <span>High quality product</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <span>Durable and long-lasting</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <span>Satisfaction guaranteed</span>
+              </li>
+            </ul>
+          </div>
+          <div className="border border-border rounded-lg p-4">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
+              What's in the Box
+            </h4>
+            <p className="text-sm text-foreground">1 x Product</p>
+          </div>
+        </div>
+        <div className="space-y-0">
+          <div className="flex border-t border-border py-2.5 text-sm">
+            <span className="w-1/3 text-muted-foreground font-medium">SKU</span>
+            <span className="text-foreground">—</span>
+          </div>
+          <div className="flex border-t border-border py-2.5 text-sm">
+            <span className="w-1/3 text-muted-foreground font-medium">Brand</span>
+            <span className="text-foreground">—</span>
+          </div>
+        </div>
+      </SectionBox>
 
-        <TabsContent value="shipping" className="mt-0 p-4 space-y-4">
+      {/* Reviews */}
+      <SectionBox title="Customer Reviews">
+        <ProductReviews productId={productId} embedded />
+      </SectionBox>
+
+      {/* Shipping & Returns */}
+      <SectionBox title="Shipping & Returns">
+        <div className="space-y-4">
           <div className="flex items-start gap-3">
             <Truck className="h-5 w-5 text-primary mt-0.5 shrink-0" />
             <div>
@@ -89,8 +109,8 @@ const ProductDescriptionTabs = ({ description, productId }: ProductDescriptionTa
               </p>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </SectionBox>
     </div>
   );
 };
