@@ -1,37 +1,52 @@
 
 
-# Jumia-Style Boxed Sections for Product Detail
+# Independent Product Fields + Edit Form Wizard + Auto-SKU
 
-## What changes
-Replace the current tabbed `ProductDescriptionTabs` component with stacked, individually boxed sections — matching the Jumia layout from the reference screenshots.
+## Problem Summary
+1. Key Features are parsed from the description text — editing description removes features
+2. Edit Product form is a basic single-page form, not matching the new multi-step Add Product wizard
+3. Products have no SKU column — need to add one with auto-generation
 
-## Layout (top to bottom)
+## Changes
 
-### Box 1: Product Details
-- Bordered card with "Product details" as the header (bold, with a bottom separator)
-- Renders the product description text with `whitespace-pre-line` to preserve formatting and bullet points
+### 1. Database Migration — Add columns to `products` table
+Add four new columns:
+- `sku` (text, nullable) — auto-generated if not provided
+- `key_features` (text[], nullable) — independent array of feature strings  
+- `condition` (text, default `'new'`) — New/Used
+- `whats_in_box` (text, nullable) — independent from description
 
-### Box 2: Specifications
-- Bordered card with "Specifications" header
-- Two-column grid inside:
-  - **KEY FEATURES** card (left) — bullet list extracted from description or placeholder
-  - **WHAT'S IN THE BOX** card (right) — placeholder for now (e.g., "1 x Product Name")
-- Below the grid: key-value rows for SKU, brand/model if available
+Also generate SKUs for all 19 existing products using a pattern like `SKU-{first 3 chars of name uppercased}-{short random}`.
 
-### Box 3: Reviews
-- Bordered card with "Customer Reviews" header
-- Embeds the existing `ProductReviews` component
+### 2. Update `AddProductPage.tsx`
+- Add `key_features` input (multi-line, one feature per line or add/remove UI)
+- Add `whats_in_box` text input
+- Save `sku`, `key_features`, `condition`, `whats_in_box` to the new columns on submit
+- Auto-generate SKU if vendor doesn't provide one (e.g., `SKU-{timestamp-short}`)
 
-### Box 4: Shipping & Returns
-- Bordered card with the existing delivery/returns/buyer protection info (icons + text)
+### 3. Rewrite `EditProductPage.tsx` as Multi-Step Wizard
+- Match the same 6-step structure as `AddProductPage`: Category → Details → Pricing → Media → Variants → Review
+- Pre-populate all fields from the existing product data
+- Include cascading category dropdowns, key features editor, condition, whats_in_box
+- Keep existing variant editing logic but restructure into the step format
+
+### 4. Update `ProductDescriptionTabs.tsx`
+- Read `key_features` from `meta` prop (from database) instead of parsing from description
+- Read `whats_in_box` from `meta` prop instead of hardcoding
+- Read `condition` and `sku` from `meta` prop
+
+### 5. Update `ProductDetailPage.tsx`
+- Pass the new fields (`key_features`, `condition`, `sku`, `whats_in_box`) from the product query into the `meta` prop
+
+## SKU Auto-Generation Logic
+Pattern: `SKU-{CATEGORY_PREFIX}-{TIMESTAMP_SHORT}`  
+Example: `SKU-ELC-7K3X2` (for Electronics category)  
+If no category: `SKU-GEN-7K3X2`
 
 ## Files to modify
-- `src/components/product/ProductDescriptionTabs.tsx` — full rewrite: replace `Tabs` with stacked `div` sections, each in its own bordered card. Add the two-column KEY FEATURES / WHAT'S IN THE BOX grid in the Specifications section.
-- No changes needed to `ProductDetailPage.tsx` — the component interface stays the same (`description`, `productId` props).
-
-## Styling
-- Each section: `border border-border rounded-lg bg-card` with internal padding
-- Section headers: bold text with a bottom `Separator`
-- KEY FEATURES / WHAT'S IN THE BOX: side-by-side cards in a `grid grid-cols-1 md:grid-cols-2 gap-4` layout, each with its own border and uppercase header
-- Spacing between sections: `space-y-6`
+- **Migration**: Add `sku`, `key_features`, `condition`, `whats_in_box` columns; backfill SKUs for existing products
+- `src/pages/vendor/AddProductPage.tsx` — Add key features, whats_in_box, condition fields; auto-generate SKU; save new columns
+- `src/pages/vendor/EditProductPage.tsx` — Full rewrite as multi-step wizard matching AddProductPage
+- `src/components/product/ProductDescriptionTabs.tsx` — Read features/condition/sku/whats_in_box from meta instead of parsing description
+- `src/pages/ProductDetailPage.tsx` — Pass new fields to ProductDescriptionTabs meta prop
 
