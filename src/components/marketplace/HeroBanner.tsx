@@ -1,28 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import heroBanner1 from "@/assets/hero-banner-1.png";
+import heroBanner2 from "@/assets/hero-banner-2.png";
+import heroBanner3 from "@/assets/hero-banner-3.png";
 
 const HERO_SLIDES = [
   {
-    title: "Shop the Best Deals",
-    subtitle: "Discover thousands of products from verified vendors",
-    bg: "from-[hsl(24,95%,53%)] to-[hsl(24,95%,40%)]",
-    cta: "Shop Now",
+    image: heroBanner1,
+    link: "/search?category=fashion",
+  },
+  {
+    image: heroBanner2,
     link: "/search",
   },
   {
-    title: "New Electronics Arrivals",
-    subtitle: "Latest smartphones, laptops & gadgets at unbeatable prices",
-    bg: "from-[hsl(220,20%,15%)] to-[hsl(220,20%,25%)]",
-    cta: "Explore Electronics",
-    link: "/search?category=electronics",
-  },
-  {
-    title: "Fashion For Everyone",
-    subtitle: "Trending styles for men, women & kids",
-    bg: "from-[hsl(340,60%,45%)] to-[hsl(340,60%,35%)]",
-    cta: "Shop Fashion",
-    link: "/search?category=fashion",
+    image: heroBanner3,
+    link: "/search?category=home-garden",
   },
 ];
 
