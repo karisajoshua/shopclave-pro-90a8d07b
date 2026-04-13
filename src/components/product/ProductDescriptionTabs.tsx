@@ -11,7 +11,7 @@ export interface ProductMeta {
   vendor_name?: string;
   video_url?: string | null;
   key_features?: string[] | null;
-  whats_in_box?: string | null;
+  whats_in_box?: string[] | null;
 }
 
 interface ProductDescriptionTabsProps {
@@ -52,7 +52,7 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
     return parsed;
   })();
 
-  const whatsInBox = meta?.whats_in_box || `1 x ${meta?.name || "Product"}`;
+  const whatsInBoxItems: string[] = meta?.whats_in_box?.length ? meta.whats_in_box : [`1 x ${meta?.name || "Product"}`];
 
   return (
     <div className="space-y-6">
@@ -93,9 +93,14 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
             <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
               What's in the Box
             </h4>
-            <p className="text-sm text-foreground">
-              {whatsInBox}
-            </p>
+            <ul className="space-y-2 text-sm text-foreground">
+              {whatsInBoxItems.map((item, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
         <div className="space-y-0">

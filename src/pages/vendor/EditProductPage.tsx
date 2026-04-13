@@ -59,9 +59,9 @@ const EditProductPage = () => {
   const [form, setForm] = useState({
     name: "", description: "", price: "", compareAtPrice: "", bulkPrice: "",
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
-    whatsInBox: "",
   });
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
+  const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
   const [showBulkPrice, setShowBulkPrice] = useState(false);
 
   // Media state
@@ -113,9 +113,9 @@ const EditProductPage = () => {
       status: p.status,
       condition: p.condition || "new",
       delivery: "",
-      whatsInBox: p.whats_in_box || "",
     });
     setKeyFeatures(p.key_features?.length ? [...p.key_features] : [""]);
+    setWhatsInBoxItems(Array.isArray(p.whats_in_box) && p.whats_in_box.length ? [...p.whats_in_box] : [""]);
     setVideoUrl(p.video_url || "");
 
     // Resolve category hierarchy
@@ -300,7 +300,7 @@ const EditProductPage = () => {
         sku: form.sku.trim() || undefined,
         key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
         condition: form.condition,
-        whats_in_box: form.whatsInBox.trim() || null,
+        whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
       } as any).eq("id", productId);
       if (error) throw error;
 
@@ -486,12 +486,25 @@ const EditProductPage = () => {
             </div>
 
             <div>
-              <Label>What's in the Box</Label>
-              <Input
-                value={form.whatsInBox}
-                onChange={(e) => setForm({ ...form, whatsInBox: e.target.value })}
-                placeholder={`e.g. 1 x ${form.name || "Product"}, charger, manual`}
-              />
+              <Label className="mb-2 block">What's in the Box</Label>
+              <p className="text-xs text-muted-foreground mb-2">Add items one per line.</p>
+              {whatsInBoxItems.map((item, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <Input
+                    value={item}
+                    onChange={(e) => { const next = [...whatsInBoxItems]; next[i] = e.target.value; setWhatsInBoxItems(next); }}
+                    placeholder={`Item ${i + 1}, e.g. 1 x ${form.name || "Product"}`}
+                  />
+                  {whatsInBoxItems.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive shrink-0" onClick={() => setWhatsInBoxItems(whatsInBoxItems.filter((_, j) => j !== i))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setWhatsInBoxItems([...whatsInBoxItems, ""])}>
+                <Plus className="h-3.5 w-3.5" /> Add Item
+              </Button>
             </div>
           </div>
         )}
@@ -673,7 +686,7 @@ const EditProductPage = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Product Name</span><span className="font-medium">{form.name || "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Condition</span><span className="font-medium capitalize">{form.condition}</span></div>
               {keyFeatures.filter(f => f.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Key Features</span><span className="font-medium">{keyFeatures.filter(f => f.trim()).length} listed</span></div>}
-              {form.whatsInBox && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{form.whatsInBox}</span></div>}
+              {whatsInBoxItems.filter(s => s.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{whatsInBoxItems.filter(s => s.trim()).length} items</span></div>}
               <Separator />
               <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">KSh {form.price || "—"}</span></div>
               {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">KSh {form.compareAtPrice}</span></div>}
