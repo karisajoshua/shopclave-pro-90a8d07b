@@ -699,12 +699,12 @@ const ProductDetailPage = () => {
           Buy Now
         </Button>
         {vendor?.phone && (
-          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={handleCallMobile}>
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => requireAuthMain(handleCallMobile)}>
             <Phone className="h-4 w-4" />
           </Button>
         )}
         {vendor?.whatsapp && (
-          <Button size="icon" className="h-11 w-11 shrink-0 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppMobile}>
+          <Button size="icon" className="h-11 w-11 shrink-0 bg-green-600 hover:bg-green-700 text-white" onClick={() => requireAuthMain(handleWhatsAppMobile)}>
             <MessageCircle className="h-4 w-4" />
           </Button>
         )}
