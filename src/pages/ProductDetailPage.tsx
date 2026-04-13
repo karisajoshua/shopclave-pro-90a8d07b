@@ -458,7 +458,7 @@ const ProductDetailPage = () => {
               forcedImageUrl={null}
             />
             <div className="hidden lg:block">
-              <ProductDescriptionTabs description={product.description} productId={product.id} />
+              <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name }} />
             </div>
           </div>
 
@@ -607,7 +607,7 @@ const ProductDetailPage = () => {
 
           {/* Description tabs on mobile */}
           <div className="order-3 lg:hidden">
-            <ProductDescriptionTabs description={product.description} productId={product.id} />
+            <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name }} />
           </div>
 
           {/* RIGHT: Seller Info */}
