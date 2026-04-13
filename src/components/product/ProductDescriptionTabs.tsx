@@ -2,9 +2,20 @@ import { Separator } from "@/components/ui/separator";
 import { ShieldCheck, Truck, RotateCcw, Package } from "lucide-react";
 import ProductReviews from "./ProductReviews";
 
+export interface ProductMeta {
+  name?: string;
+  category?: string;
+  condition?: string;
+  sku?: string;
+  stock?: number;
+  vendor_name?: string;
+  video_url?: string | null;
+}
+
 interface ProductDescriptionTabsProps {
   description: string | null;
   productId: string;
+  meta?: ProductMeta;
 }
 
 const SectionBox = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -17,11 +28,29 @@ const SectionBox = ({ title, children }: { title: string; children: React.ReactN
   </div>
 );
 
-const ProductDescriptionTabs = ({ description, productId }: ProductDescriptionTabsProps) => {
+const SpecRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
+  <div className="flex border-t border-border py-2.5 text-sm">
+    <span className="w-1/3 text-muted-foreground font-medium">{label}</span>
+    <span className="text-foreground">{value || "—"}</span>
+  </div>
+);
+
+const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescriptionTabsProps) => {
+  // Extract bullet-style features from description if available
+  const features: string[] = [];
+  if (description) {
+    const lines = description.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*")) {
+        features.push(line.replace(/^[-•*]\s*/, ""));
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Product Details */}
-      <SectionBox title="Product details">
+      <SectionBox title="Product Details">
         {description ? (
           <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
             {description}
@@ -38,37 +67,36 @@ const ProductDescriptionTabs = ({ description, productId }: ProductDescriptionTa
             <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
               Key Features
             </h4>
-            <ul className="space-y-2 text-sm text-foreground">
-              <li className="flex items-start gap-2">
-                <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <span>High quality product</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <span>Durable and long-lasting</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <span>Satisfaction guaranteed</span>
-              </li>
-            </ul>
+            {features.length > 0 ? (
+              <ul className="space-y-2 text-sm text-foreground">
+                {features.slice(0, 8).map((f, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No key features listed yet.
+              </p>
+            )}
           </div>
           <div className="border border-border rounded-lg p-4">
             <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
               What's in the Box
             </h4>
-            <p className="text-sm text-foreground">1 x Product</p>
+            <p className="text-sm text-foreground">
+              1 x {meta?.name || "Product"}
+            </p>
           </div>
         </div>
         <div className="space-y-0">
-          <div className="flex border-t border-border py-2.5 text-sm">
-            <span className="w-1/3 text-muted-foreground font-medium">SKU</span>
-            <span className="text-foreground">—</span>
-          </div>
-          <div className="flex border-t border-border py-2.5 text-sm">
-            <span className="w-1/3 text-muted-foreground font-medium">Brand</span>
-            <span className="text-foreground">—</span>
-          </div>
+          <SpecRow label="SKU" value={meta?.sku} />
+          <SpecRow label="Category" value={meta?.category} />
+          <SpecRow label="Condition" value={meta?.condition ? (meta.condition === "new" ? "New" : "Used") : undefined} />
+          <SpecRow label="Stock" value={meta?.stock !== undefined ? String(meta.stock) : undefined} />
+          <SpecRow label="Sold by" value={meta?.vendor_name} />
         </div>
       </SectionBox>
 
