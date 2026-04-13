@@ -538,6 +538,8 @@ const AddProductPage = () => {
               <Separator />
               <div className="flex justify-between"><span className="text-muted-foreground">Product Name</span><span className="font-medium">{form.name || "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Condition</span><span className="font-medium capitalize">{form.condition}</span></div>
+              {keyFeatures.filter(f => f.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Key Features</span><span className="font-medium">{keyFeatures.filter(f => f.trim()).length} listed</span></div>}
+              {form.whatsInBox && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{form.whatsInBox}</span></div>}
               <Separator />
               <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">KSh {form.price || "—"}</span></div>
               {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">KSh {form.compareAtPrice}</span></div>}
