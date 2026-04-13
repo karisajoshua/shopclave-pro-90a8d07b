@@ -534,7 +534,7 @@ export type Database = {
           updated_at: string
           vendor_id: string
           video_url: string | null
-          whats_in_box: string | null
+          whats_in_box: string[] | null
         }
         Insert: {
           category_id?: string | null
@@ -555,7 +555,7 @@ export type Database = {
           updated_at?: string
           vendor_id: string
           video_url?: string | null
-          whats_in_box?: string | null
+          whats_in_box?: string[] | null
         }
         Update: {
           category_id?: string | null
@@ -576,7 +576,7 @@ export type Database = {
           updated_at?: string
           vendor_id?: string
           video_url?: string | null
-          whats_in_box?: string | null
+          whats_in_box?: string[] | null
         }
         Relationships: [
           {
