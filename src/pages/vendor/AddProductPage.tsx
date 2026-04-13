@@ -57,7 +57,9 @@ const AddProductPage = () => {
   const [form, setForm] = useState({
     name: "", description: "", price: "", compareAtPrice: "", bulkPrice: "",
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
+    whatsInBox: "",
   });
+  const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [showBulkPrice, setShowBulkPrice] = useState(false);
 
   // Media state
@@ -173,6 +175,8 @@ const AddProductPage = () => {
     setLoading(true);
     try {
       const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
+      const autoSku = form.sku.trim() || `SKU-${Date.now().toString(36).toUpperCase().slice(-5)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean);
       const { data: product, error } = await supabase.from("products").insert({
         vendor_id: vendor.id, name: form.name.trim(), slug,
         description: form.description.trim() || null,
@@ -181,7 +185,11 @@ const AddProductPage = () => {
         stock: hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : parseInt(form.stock) || 0,
         category_id: selectedCategoryId || null, status: form.status,
         video_url: videoUrl.trim() || null,
-      }).select().single();
+        sku: autoSku,
+        key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
+        condition: form.condition,
+        whats_in_box: form.whatsInBox.trim() || null,
+      } as any).select().single();
       if (error) throw error;
 
       if (images.length > 0 && product) {
@@ -320,6 +328,41 @@ const AddProductPage = () => {
                 onChange={(e) => { if (e.target.value.length <= MAX_DESC) setForm({ ...form, description: e.target.value }); }}
                 rows={5}
                 placeholder="Describe your product in detail..."
+              />
+            </div>
+
+            <Separator />
+
+            {/* Key Features */}
+            <div>
+              <Label className="mb-2 block">Key Features</Label>
+              <p className="text-xs text-muted-foreground mb-2">Add features one per line. These appear independently in the product specifications.</p>
+              {keyFeatures.map((feat, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <Input
+                    value={feat}
+                    onChange={(e) => { const next = [...keyFeatures]; next[i] = e.target.value; setKeyFeatures(next); }}
+                    placeholder={`Feature ${i + 1}`}
+                  />
+                  {keyFeatures.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive shrink-0" onClick={() => setKeyFeatures(keyFeatures.filter((_, j) => j !== i))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setKeyFeatures([...keyFeatures, ""])}>
+                <Plus className="h-3.5 w-3.5" /> Add Feature
+              </Button>
+            </div>
+
+            {/* What's in the Box */}
+            <div>
+              <Label>What's in the Box</Label>
+              <Input
+                value={form.whatsInBox}
+                onChange={(e) => setForm({ ...form, whatsInBox: e.target.value })}
+                placeholder={`e.g. 1 x ${form.name || "Product"}, charger, manual`}
               />
             </div>
           </div>
