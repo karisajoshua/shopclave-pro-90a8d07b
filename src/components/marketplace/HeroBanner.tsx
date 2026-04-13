@@ -1,28 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import heroBanner1 from "@/assets/hero-banner-1.png";
+import heroBanner2 from "@/assets/hero-banner-2.png";
+import heroBanner3 from "@/assets/hero-banner-3.png";
 
 const HERO_SLIDES = [
   {
-    title: "Shop the Best Deals",
-    subtitle: "Discover thousands of products from verified vendors",
-    bg: "from-[hsl(24,95%,53%)] to-[hsl(24,95%,40%)]",
-    cta: "Shop Now",
+    image: heroBanner1,
+    link: "/search?category=fashion",
+  },
+  {
+    image: heroBanner2,
     link: "/search",
   },
   {
-    title: "New Electronics Arrivals",
-    subtitle: "Latest smartphones, laptops & gadgets at unbeatable prices",
-    bg: "from-[hsl(220,20%,15%)] to-[hsl(220,20%,25%)]",
-    cta: "Explore Electronics",
-    link: "/search?category=electronics",
-  },
-  {
-    title: "Fashion For Everyone",
-    subtitle: "Trending styles for men, women & kids",
-    bg: "from-[hsl(340,60%,45%)] to-[hsl(340,60%,35%)]",
-    cta: "Shop Fashion",
-    link: "/search?category=fashion",
+    image: heroBanner3,
+    link: "/search?category=home-garden",
   },
 ];
 
@@ -125,24 +119,15 @@ const HeroBanner = () => {
     <div>
       {/* Hero carousel */}
       <section className="relative">
-        <div className={`bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
-          <div className="container py-12 md:py-20 relative">
-            <div className="max-w-lg">
-              <h1 className="font-display text-3xl md:text-5xl font-extrabold text-primary-foreground leading-tight mb-3">
-                {slide.title}
-              </h1>
-              <p className="text-primary-foreground/80 text-base md:text-lg mb-6">
-                {slide.subtitle}
-              </p>
-              <Link
-                to={slide.link}
-                className="inline-block bg-[hsl(var(--marketplace-orange))] hover:bg-[hsl(var(--marketplace-orange-hover))] text-primary-foreground font-semibold px-6 py-3 rounded-lg transition-colors"
-              >
-                {slide.cta}
-              </Link>
-            </div>
+        <Link to={slide.link} className="block">
+          <div className="w-full overflow-hidden">
+            <img
+              src={slide.image}
+              alt="Hero banner"
+              className="w-full h-[200px] sm:h-[300px] md:h-[400px] lg:h-[450px] object-cover transition-all duration-700"
+            />
           </div>
-        </div>
+        </Link>
         {/* Navigation dots */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
           {HERO_SLIDES.map((_, i) => (
