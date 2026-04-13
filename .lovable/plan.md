@@ -1,52 +1,26 @@
 
 
-# Independent Product Fields + Edit Form Wizard + Auto-SKU
+# Show Contact Seller to Signed-Out Users with Auth Prompts
 
-## Problem Summary
-1. Key Features are parsed from the description text — editing description removes features
-2. Edit Product form is a basic single-page form, not matching the new multi-step Add Product wizard
-3. Products have no SKU column — need to add one with auto-generation
+## Summary
+The Contact Seller section will always be visible (signed in or not). For signed-out users: phone numbers are masked, and clicking any action (call, WhatsApp, chat, follow) prompts them to sign in or register.
 
-## Changes
+## Changes (single file: `src/pages/ProductDetailPage.tsx`)
 
-### 1. Database Migration — Add columns to `products` table
-Add four new columns:
-- `sku` (text, nullable) — auto-generated if not provided
-- `key_features` (text[], nullable) — independent array of feature strings  
-- `condition` (text, default `'new'`) — New/Used
-- `whats_in_box` (text, nullable) — independent from description
+### SellerInfoSidebar updates
 
-Also generate SKUs for all 19 existing products using a pattern like `SKU-{first 3 chars of name uppercased}-{short random}`.
+1. **Always render the section** -- remove any `user` guards that hide the component (currently it renders for all since it only checks `vendor`, so no structural change needed).
 
-### 2. Update `AddProductPage.tsx`
-- Add `key_features` input (multi-line, one feature per line or add/remove UI)
-- Add `whats_in_box` text input
-- Save `sku`, `key_features`, `condition`, `whats_in_box` to the new columns on submit
-- Auto-generate SKU if vendor doesn't provide one (e.g., `SKU-{timestamp-short}`)
+2. **Mask phone numbers when signed out**: Show e.g. `+234 80** *** ***` instead of the full number. Only reveal the real number to authenticated users.
 
-### 3. Rewrite `EditProductPage.tsx` as Multi-Step Wizard
-- Match the same 6-step structure as `AddProductPage`: Category → Details → Pricing → Media → Variants → Review
-- Pre-populate all fields from the existing product data
-- Include cascading category dropdowns, key features editor, condition, whats_in_box
-- Keep existing variant editing logic but restructure into the step format
+3. **Gate all interactive actions behind auth check**:
+   - **Call / WhatsApp / Website / Chat Now / Follow**: If `!user`, show a toast or small dialog prompting "Please sign in to contact this seller" with a link to `/auth`. Do not execute the action.
+   - The buttons remain visible and clickable -- they just redirect to auth instead of performing the action.
 
-### 4. Update `ProductDescriptionTabs.tsx`
-- Read `key_features` from `meta` prop (from database) instead of parsing from description
-- Read `whats_in_box` from `meta` prop instead of hardcoding
-- Read `condition` and `sku` from `meta` prop
+4. **Chat Now button** already has handling in `ChatDialog` for unauthenticated users (shows "Please log in" message). Keep that as a fallback but also add the pre-check in the sidebar button itself for consistency.
 
-### 5. Update `ProductDetailPage.tsx`
-- Pass the new fields (`key_features`, `condition`, `sku`, `whats_in_box`) from the product query into the `meta` prop
-
-## SKU Auto-Generation Logic
-Pattern: `SKU-{CATEGORY_PREFIX}-{TIMESTAMP_SHORT}`  
-Example: `SKU-ELC-7K3X2` (for Electronics category)  
-If no category: `SKU-GEN-7K3X2`
-
-## Files to modify
-- **Migration**: Add `sku`, `key_features`, `condition`, `whats_in_box` columns; backfill SKUs for existing products
-- `src/pages/vendor/AddProductPage.tsx` — Add key features, whats_in_box, condition fields; auto-generate SKU; save new columns
-- `src/pages/vendor/EditProductPage.tsx` — Full rewrite as multi-step wizard matching AddProductPage
-- `src/components/product/ProductDescriptionTabs.tsx` — Read features/condition/sku/whats_in_box from meta instead of parsing description
-- `src/pages/ProductDetailPage.tsx` — Pass new fields to ProductDescriptionTabs meta prop
+### Implementation detail
+- Add a helper `requireAuth` that checks `user` and either shows a toast with "Sign in to continue" + navigates to `/auth`, or returns true to proceed.
+- Wrap `handleCall`, `handleWhatsApp`, `handleWebsite`, `onChatOpen`, and `followMutation.mutate()` calls with this guard.
+- For phone display: `user ? vendor.phone : vendor.phone?.replace(/(\d{4})(\d+)/, '$1** *** ***')`.
 
