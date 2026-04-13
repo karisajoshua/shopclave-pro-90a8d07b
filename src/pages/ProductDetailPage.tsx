@@ -420,6 +420,15 @@ const ProductDetailPage = () => {
 
   const vendor = product.vendors as any;
 
+  const requireAuthMain = (action: () => void) => {
+    if (!user) {
+      toast.info("Please sign in to contact this seller");
+      navigate("/auth");
+      return;
+    }
+    action();
+  };
+
   const handleCallMobile = () => {
     if (vendor?.phone) {
       trackEvent(vendor.id, product.id, "call_click");
