@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame } from "lucide-react";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo, useEffect } from "react";
@@ -28,6 +28,25 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
+// Deterministic seeded random from product ID
+const seededRandom = (seed: string, min: number, max: number) => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  return min + (Math.abs(hash) % (max - min + 1));
+};
+
+const seededFloat = (seed: string, min: number, max: number, decimals = 1) => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  const range = (max - min) * Math.pow(10, decimals);
+  const val = min + (Math.abs(hash) % (range + 1)) / Math.pow(10, decimals);
+  return parseFloat(val.toFixed(decimals));
+};
 
 // Social share buttons component
 const SocialShare = ({ url, title }: { url: string; title: string }) => {
@@ -489,24 +508,42 @@ const ProductDetailPage = () => {
 
           {/* CENTER: Product Info */}
           <div className="order-2 lg:order-none space-y-4">
+            {/* Viewing now banner */}
+            <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 text-sm">
+              <Flame className="h-4 w-4 text-orange-500 animate-pulse" />
+              <span className="text-orange-700 dark:text-orange-300 font-medium">
+                {seededRandom(product.id + String(Math.floor(Date.now() / 3600000)), 5, 30)} people are viewing this right now
+              </span>
+            </div>
+
             <h1 className="font-display text-lg md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
               {product.name}
             </h1>
 
             {/* Rating */}
-            <div className="flex items-center gap-2">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${i <= Math.round(reviewStats?.avg || 0) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
-                  />
-                ))}
-              </div>
-              <button onClick={scrollToReviews} className="text-sm text-primary hover:underline">
-                {reviewStats?.avg?.toFixed(1) || "0"} ({reviewStats?.count || 0} {reviewStats?.count === 1 ? "rating" : "ratings"})
-              </button>
-            </div>
+            {(() => {
+              const hasRealReviews = (reviewStats?.count || 0) > 0;
+              const displayRating = hasRealReviews ? reviewStats!.avg : seededFloat(product.id, 4.2, 4.7);
+              const displayCount = hasRealReviews ? reviewStats!.count : seededRandom(product.id + "rc", 24, 156);
+              const soldCount = seededRandom(product.id + "sold", 50, 500);
+              return (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${i <= Math.round(displayRating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
+                      />
+                    ))}
+                  </div>
+                  <button onClick={scrollToReviews} className="text-sm text-primary hover:underline">
+                    {displayRating.toFixed(1)} ({displayCount} {displayCount === 1 ? "rating" : "ratings"})
+                  </button>
+                  <span className="text-sm text-muted-foreground">•</span>
+                  <span className="text-sm text-muted-foreground">{soldCount} sold</span>
+                </div>
+              );
+            })()}
 
             <Separator />
 
