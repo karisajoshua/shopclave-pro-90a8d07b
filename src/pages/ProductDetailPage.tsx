@@ -289,6 +289,15 @@ const ProductDetailPage = () => {
     enabled: !!slug,
   });
 
+  // Dynamic viewing count
+  useEffect(() => {
+    if (!product?.id) return;
+    const calcViewers = () => seededRandom(product.id + String(Math.floor(Date.now() / 150000)), 5, 30);
+    setViewingCount(calcViewers());
+    const interval = setInterval(() => setViewingCount(calcViewers()), 35000);
+    return () => clearInterval(interval);
+  }, [product?.id]);
+
   // Track product view
   useEffect(() => {
     if (product?.id && product?.vendor_id) {
