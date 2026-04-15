@@ -522,7 +522,7 @@ const ProductDetailPage = () => {
             <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 text-sm">
               <Flame className="h-4 w-4 text-orange-500 animate-pulse" />
               <span className="text-orange-700 dark:text-orange-300 font-medium">
-                {seededRandom(product.id + String(Math.floor(Date.now() / 3600000)), 5, 30)} people are viewing this right now
+                {viewingCount} people are viewing this right now
               </span>
             </div>
 
