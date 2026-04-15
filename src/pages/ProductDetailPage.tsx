@@ -270,6 +270,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [chatOpen, setChatOpen] = useState(false);
+  const [viewingCount, setViewingCount] = useState(0);
   const { t } = useTranslation();
   const { country, formatPrice } = useLocale();
   const { addItem } = useCart();
