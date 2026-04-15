@@ -270,6 +270,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [chatOpen, setChatOpen] = useState(false);
+  const [viewingCount, setViewingCount] = useState(0);
   const { t } = useTranslation();
   const { country, formatPrice } = useLocale();
   const { addItem } = useCart();
@@ -287,6 +288,15 @@ const ProductDetailPage = () => {
     },
     enabled: !!slug,
   });
+
+  // Dynamic viewing count
+  useEffect(() => {
+    if (!product?.id) return;
+    const calcViewers = () => seededRandom(product.id + String(Math.floor(Date.now() / 150000)), 5, 30);
+    setViewingCount(calcViewers());
+    const interval = setInterval(() => setViewingCount(calcViewers()), 35000);
+    return () => clearInterval(interval);
+  }, [product?.id]);
 
   // Track product view
   useEffect(() => {
@@ -512,7 +522,7 @@ const ProductDetailPage = () => {
             <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 text-sm">
               <Flame className="h-4 w-4 text-orange-500 animate-pulse" />
               <span className="text-orange-700 dark:text-orange-300 font-medium">
-                {seededRandom(product.id + String(Math.floor(Date.now() / 3600000)), 5, 30)} people are viewing this right now
+                {viewingCount} people are viewing this right now
               </span>
             </div>
 
