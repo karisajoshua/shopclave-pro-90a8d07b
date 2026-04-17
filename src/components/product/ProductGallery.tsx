@@ -82,7 +82,7 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: Produ
               title={`${productName} video`}
             />
           ) : (
-            <img src={displayImage || barakazIcon} alt={productName} className="w-full h-full object-cover" />
+            <ImageZoom src={displayImage || barakazIcon} alt={productName} />
           )}
         </div>
       </div>
