@@ -1,5 +1,5 @@
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Truck, RotateCcw, Package } from "lucide-react";
+import { ShieldCheck, Truck, RotateCcw, Check } from "lucide-react";
 import ProductReviews from "./ProductReviews";
 
 export interface ProductMeta {
