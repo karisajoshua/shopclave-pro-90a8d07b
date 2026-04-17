@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save, Settings, DollarSign, Store } from "lucide-react";
+import { Save, Settings, DollarSign, Store, Smartphone } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const CURRENCIES = ["KES", "USD", "EUR", "GBP", "UGX", "TZS", "NGN", "ZAR"];
 
@@ -158,6 +159,59 @@ const AdminSettings = () => {
             </div>
             <Switch checked={settings.maintenance_mode === "true"} onCheckedChange={(c) => update("maintenance_mode", c ? "true" : "false")} />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* M-Pesa Payment Details */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">M-Pesa Payment Details</CardTitle>
+          </div>
+          <CardDescription>Vendors see these details when upgrading their plan</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(() => {
+            const mpesa = (() => { try { return typeof settings.mpesa_payment_details === "string" ? JSON.parse(settings.mpesa_payment_details) : (settings.mpesa_payment_details || {}); } catch { return {}; } })();
+            const updateMpesa = (field: string, value: string) => {
+              const next = { ...mpesa, [field]: value };
+              update("mpesa_payment_details", next as any);
+            };
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Till Number</Label>
+                    <Input value={mpesa.till_number || ""} onChange={(e) => updateMpesa("till_number", e.target.value)} placeholder="e.g. 123456" />
+                  </div>
+                  <div>
+                    <Label>Paybill</Label>
+                    <Input value={mpesa.paybill || ""} onChange={(e) => updateMpesa("paybill", e.target.value)} placeholder="e.g. 400200" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Account Name</Label>
+                    <Input value={mpesa.account_name || ""} onChange={(e) => updateMpesa("account_name", e.target.value)} placeholder="e.g. Barakaz" />
+                  </div>
+                  <div>
+                    <Label>Phone Number</Label>
+                    <Input value={mpesa.phone || ""} onChange={(e) => updateMpesa("phone", e.target.value)} placeholder="e.g. 0712345678" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Instructions for vendors</Label>
+                  <Textarea
+                    value={mpesa.instructions || ""}
+                    onChange={(e) => updateMpesa("instructions", e.target.value)}
+                    rows={2}
+                    placeholder="e.g. Send the exact amount, then enter your transaction code below."
+                  />
+                </div>
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
