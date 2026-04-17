@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Play } from "lucide-react";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import ImageZoom from "@/components/product/ImageZoom";
 
 function getEmbedUrl(url: string): string | null {
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
