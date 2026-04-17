@@ -7,9 +7,14 @@
   "background_color": "#f5f5f5",
   "icons": [
     {
-      "src": "/placeholder.svg",
+      "src": "/favicon.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
