@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Truck, RotateCcw, Check } from "lucide-react";
+import { ShieldCheck, Truck, RotateCcw, Check, ChevronDown, ChevronUp } from "lucide-react";
 import ProductReviews from "./ProductReviews";
 
 export interface ProductMeta {
@@ -38,6 +39,24 @@ const SpecRow = ({ label, value }: { label: string; value: string | undefined | 
 );
 
 const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescriptionTabsProps) => {
+  const [expanded, setExpanded] = useState(false);
+
+  // Split description into first paragraph + rest
+  const { firstParagraph, restParagraphs, hasMore } = (() => {
+    if (!description) return { firstParagraph: "", restParagraphs: "", hasMore: false };
+    const parts = description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      return { firstParagraph: parts[0], restParagraphs: parts.slice(1).join("\n\n"), hasMore: true };
+    }
+    // Fallback: long single paragraph — split by character length (~300 chars)
+    if (description.length > 300) {
+      const cutoff = description.lastIndexOf(" ", 300);
+      const idx = cutoff > 0 ? cutoff : 300;
+      return { firstParagraph: description.slice(0, idx), restParagraphs: description.slice(idx).trim(), hasMore: true };
+    }
+    return { firstParagraph: description, restParagraphs: "", hasMore: false };
+  })();
+
   // Use key_features from meta (independent field) — fallback to parsing description for legacy products
   const features: string[] = meta?.key_features?.length ? meta.key_features : (() => {
     const parsed: string[] = [];
@@ -59,9 +78,34 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
       {/* Product Details */}
       <SectionBox title="Product Details">
         {description ? (
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-            {description}
-          </p>
+          <div>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+              {firstParagraph}
+              {hasMore && expanded && (
+                <>
+                  {"\n\n"}
+                  {restParagraphs}
+                </>
+              )}
+            </p>
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+              >
+                {expanded ? (
+                  <>
+                    Read less <ChevronUp className="h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Read more <ChevronDown className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">No description available.</p>
         )}
