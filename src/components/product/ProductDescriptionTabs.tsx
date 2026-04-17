@@ -156,14 +156,7 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
               Key Features
             </h4>
             {features.length > 0 ? (
-              <ul className="space-y-2 text-sm text-foreground">
-                {features.slice(0, 8).map((f, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" strokeWidth={3} />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
+              <ExpandableList items={features} />
             ) : (
               <p className="text-sm text-muted-foreground italic">
                 No key features listed yet.
@@ -174,14 +167,7 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
             <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
               What's in the Box
             </h4>
-            <ul className="space-y-2 text-sm text-foreground">
-              {whatsInBoxItems.map((item, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" strokeWidth={3} />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            <ExpandableList items={whatsInBoxItems} />
           </div>
         </div>
         <div className="space-y-0">
