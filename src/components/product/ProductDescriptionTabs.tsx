@@ -38,6 +38,43 @@ const SpecRow = ({ label, value }: { label: string; value: string | undefined | 
   </div>
 );
 
+const COLLAPSED_LIST_COUNT = 4;
+
+const ExpandableList = ({ items }: { items: string[] }) => {
+  const [open, setOpen] = useState(false);
+  const hasMore = items.length > COLLAPSED_LIST_COUNT;
+  const visible = open || !hasMore ? items : items.slice(0, COLLAPSED_LIST_COUNT);
+  return (
+    <>
+      <ul className="space-y-2 text-sm text-foreground">
+        {visible.map((item, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" strokeWidth={3} />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+        >
+          {open ? (
+            <>
+              Read less <ChevronUp className="h-4 w-4" />
+            </>
+          ) : (
+            <>
+              Read more <ChevronDown className="h-4 w-4" />
+            </>
+          )}
+        </button>
+      )}
+    </>
+  );
+};
+
 const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescriptionTabsProps) => {
   const [expanded, setExpanded] = useState(false);
 
