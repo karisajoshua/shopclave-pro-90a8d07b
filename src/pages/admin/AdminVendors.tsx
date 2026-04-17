@@ -41,11 +41,24 @@ const AdminVendors = () => {
         productMap.set(p.vendor_id, (productMap.get(p.vendor_id) || 0) + 1);
       });
 
+      // Get active subscriptions
+      const { data: subs } = await supabase
+        .from("vendor_subscriptions")
+        .select("vendor_id, plan_name, max_listings, expires_at, created_at")
+        .in("vendor_id", vendorIds)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      const subMap = new Map<string, any>();
+      (subs || []).forEach((s: any) => {
+        if (!subMap.has(s.vendor_id)) subMap.set(s.vendor_id, s);
+      });
+
       return vendorData.map((v: any) => ({
         ...v,
         owner_name: profileMap.get(v.user_id) || "—",
         stats: analyticsMap.get(v.id) || { views: 0, clicks: 0 },
         listing_count: productMap.get(v.id) || 0,
+        subscription: subMap.get(v.id) || null,
       }));
     },
     enabled: !!user,
@@ -90,6 +103,7 @@ const AdminVendors = () => {
               <th className="text-left p-3 font-medium">Store</th>
               <th className="text-left p-3 font-medium">Owner</th>
               <th className="text-left p-3 font-medium">Phone</th>
+              <th className="text-left p-3 font-medium">Plan</th>
               <th className="text-left p-3 font-medium">Listings</th>
               <th className="text-left p-3 font-medium">Views</th>
               <th className="text-left p-3 font-medium">Clicks</th>
@@ -103,6 +117,19 @@ const AdminVendors = () => {
                 <td className="p-3 font-medium">{v.store_name}</td>
                 <td className="p-3 text-muted-foreground">{v.owner_name}</td>
                 <td className="p-3 text-muted-foreground text-xs">{v.phone || "—"}</td>
+                <td className="p-3">
+                  {v.subscription ? (
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium capitalize">{v.subscription.plan_name}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {v.subscription.max_listings} listings
+                        {v.subscription.expires_at && ` · exp ${new Date(v.subscription.expires_at).toLocaleDateString()}`}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Free (5)</span>
+                  )}
+                </td>
                 <td className="p-3">
                   <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {v.listing_count}</span>
                 </td>

@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, X, Layers, Upload, Video, ImageIcon, ChevronRight, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { isAdminUnlimited } from "@/lib/subscriptionPlans";
 
 const STEPS = [
   { label: "Category", icon: "1" },
@@ -42,11 +43,12 @@ function generateCombinations(optionTypes: OptionType[]): Record<string, string>
 }
 
 const AddProductPage = () => {
-  const { user } = useAuth();
+  const { user, userRoles } = useAuth();
   const navigate = useNavigate();
   const { vendor } = useOutletContext<{ vendor: any }>();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const isAdmin = isAdminUnlimited(userRoles);
 
   // Category state
   const [cat1, setCat1] = useState("");
@@ -174,6 +176,30 @@ const AddProductPage = () => {
     if (!vendor) { toast.error("Vendor account not found"); return; }
     setLoading(true);
     try {
+      // Enforce listing limit (admins are unlimited)
+      if (!isAdmin) {
+        const { data: sub } = await supabase
+          .from("vendor_subscriptions")
+          .select("max_listings, plan_name")
+          .eq("vendor_id", vendor.id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const maxListings = sub?.max_listings ?? 5;
+        const planName = sub?.plan_name ?? "free";
+        const { count } = await supabase
+          .from("products")
+          .select("*", { count: "exact", head: true })
+          .eq("vendor_id", vendor.id)
+          .eq("status", "active");
+        if ((count ?? 0) >= maxListings) {
+          toast.error(`You've reached your ${planName} plan limit (${maxListings} listings). Upgrade to add more.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
       const autoSku = form.sku.trim() || `SKU-${Date.now().toString(36).toUpperCase().slice(-5)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
       const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean);

@@ -794,6 +794,88 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_subscription_payments: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          expires_days: number
+          id: string
+          max_listings: number
+          notes: string | null
+          payer_phone: string
+          payment_method: string
+          plan_name: string
+          price: number
+          status: string
+          subscription_id: string | null
+          transaction_code: string
+          updated_at: string
+          vendor_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          expires_days?: number
+          id?: string
+          max_listings?: number
+          notes?: string | null
+          payer_phone: string
+          payment_method?: string
+          plan_name: string
+          price?: number
+          status?: string
+          subscription_id?: string | null
+          transaction_code: string
+          updated_at?: string
+          vendor_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          expires_days?: number
+          id?: string
+          max_listings?: number
+          notes?: string | null
+          payer_phone?: string
+          payment_method?: string
+          plan_name?: string
+          price?: number
+          status?: string
+          subscription_id?: string | null
+          transaction_code?: string
+          updated_at?: string
+          vendor_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_subscription_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_subscription_payments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_subscription_payments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_subscriptions: {
         Row: {
           created_at: string

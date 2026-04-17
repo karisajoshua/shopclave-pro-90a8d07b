@@ -1,16 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext } from "react-router-dom";
-import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle } from "lucide-react";
+import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
+import { PLANS, type Plan, isAdminUnlimited } from "@/lib/subscriptionPlans";
 
 const VendorDashboard = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
-  const { user } = useAuth();
-  const [requestingUpgrade, setRequestingUpgrade] = useState(false);
+  const { user, userRoles } = useAuth();
+  const queryClient = useQueryClient();
+  const isAdmin = isAdminUnlimited(userRoles);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [transactionCode, setTransactionCode] = useState("");
+  const [payerPhone, setPayerPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["vendor-products", vendor?.id],
@@ -49,6 +60,34 @@ const VendorDashboard = () => {
     enabled: !!vendor,
   });
 
+  const { data: pendingPayment } = useQuery({
+    queryKey: ["vendor-pending-payment", vendor?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendor_subscription_payments")
+        .select("*")
+        .eq("vendor_id", vendor.id)
+        .eq("status", "pending_verification")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!vendor,
+  });
+
+  const { data: mpesaDetails } = useQuery({
+    queryKey: ["mpesa-payment-details"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "mpesa_payment_details")
+        .maybeSingle();
+      return (data?.value as any) || {};
+    },
+  });
+
   const { data: followerCount = 0 } = useQuery({
     queryKey: ["vendor-followers", vendor?.id],
     queryFn: async () => {
@@ -65,35 +104,48 @@ const VendorDashboard = () => {
 
   const isExpiring = subscription?.expires_at && new Date(subscription.expires_at).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
 
-  const plans = [
-    { name: "Basic", price: 500, listings: 10 },
-    { name: "Standard", price: 1500, listings: 50 },
-    { name: "Premium", price: 5000, listings: 200 },
-    { name: "Enterprise", price: 15000, listings: 1000 },
-  ];
+  const openUpgradeDialog = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setTransactionCode("");
+    setPayerPhone("");
+    setNotes("");
+  };
 
-  const handleRequestUpgrade = async (plan: typeof plans[0]) => {
-    if (!user) return;
-    setRequestingUpgrade(true);
+  const submitPayment = async () => {
+    if (!selectedPlan || !vendor || !user) return;
+    if (!transactionCode.trim() || !payerPhone.trim()) {
+      toast.error("M-Pesa code and phone number are required");
+      return;
+    }
+    setSubmitting(true);
     try {
-      await supabase.from("notifications").insert({
-        recipient_id: user.id, // Will be visible to admins too
-        title: "Subscription Upgrade Request",
-        message: `Vendor "${vendor.store_name}" requests upgrade to ${plan.name} plan (KSh ${plan.price}/mo, ${plan.listings} listings).`,
-        type: "upgrade_request",
-      });
-      toast.success(`Upgrade request for ${plan.name} plan sent! Admin will review shortly.`);
+      const { error } = await supabase.from("vendor_subscription_payments").insert({
+        vendor_id: vendor.id,
+        plan_name: selectedPlan.key,
+        price: selectedPlan.price,
+        max_listings: selectedPlan.listings,
+        expires_days: selectedPlan.expires_days,
+        payment_method: "mpesa",
+        transaction_code: transactionCode.trim(),
+        payer_phone: payerPhone.trim(),
+        notes: notes.trim() || null,
+      } as any);
+      if (error) throw error;
+      toast.success("Payment submitted! Your plan is active. Admin will verify shortly.");
+      setSelectedPlan(null);
+      queryClient.invalidateQueries({ queryKey: ["vendor-subscription", vendor.id] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-pending-payment", vendor.id] });
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || "Failed to submit payment");
     } finally {
-      setRequestingUpgrade(false);
+      setSubmitting(false);
     }
   };
 
   const stats = [
     { label: "Product Views", value: totalViews, icon: Eye, color: "text-primary" },
     { label: "Contact Clicks", value: totalClicks, icon: MousePointer, color: "text-success" },
-    { label: "Active Listings", value: `${activeListings} / ${maxListings}`, icon: Package, color: "text-warning" },
+    { label: "Active Listings", value: isAdmin ? "Unlimited" : `${activeListings} / ${maxListings}`, icon: Package, color: "text-warning" },
     { label: "Followers", value: followerCount, icon: Users, color: "text-primary" },
   ];
 
@@ -101,19 +153,32 @@ const VendorDashboard = () => {
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Overview</h2>
 
+      {/* Pending payment banner */}
+      {pendingPayment && (
+        <div className="flex items-start gap-2 bg-primary/10 border border-primary/30 rounded-lg p-3 text-sm">
+          <Clock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Payment pending verification</p>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              Your <span className="capitalize">{pendingPayment.plan_name}</span> plan is active. M-Pesa code <span className="font-mono">{pendingPayment.transaction_code}</span> awaiting admin review.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Subscription warning */}
-      {isExpiring && (
+      {isExpiring && !pendingPayment && (
         <div className="flex items-center gap-2 bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm">
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-          <span>Your subscription expires on {new Date(subscription!.expires_at!).toLocaleDateString()}. Contact admin to renew.</span>
+          <span>Your subscription expires on {new Date(subscription!.expires_at!).toLocaleDateString()}. Upgrade or renew below.</span>
         </div>
       )}
 
       {/* Subscription info */}
       <div className="bg-card rounded-lg border border-border p-4">
         <p className="text-sm text-muted-foreground">
-          Plan: <span className="font-semibold text-foreground capitalize">{subscription?.plan_name || "Free"}</span>
-          {subscription?.expires_at && (
+          Plan: <span className="font-semibold text-foreground capitalize">{isAdmin ? "Admin (Unlimited)" : (subscription?.plan_name || "Free")}</span>
+          {!isAdmin && subscription?.expires_at && (
             <> · Expires: <span className="font-medium">{new Date(subscription.expires_at).toLocaleDateString()}</span></>
           )}
         </p>
@@ -164,38 +229,111 @@ const VendorDashboard = () => {
         </div>
       )}
 
-      {/* Subscription Upgrade */}
-      <div>
-        <h3 className="font-semibold mb-3 flex items-center gap-2">
-          <ArrowUpCircle className="h-4 w-4 text-primary" /> Upgrade Your Plan
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {plans.map((plan) => {
-            const isCurrent = subscription?.plan_name?.toLowerCase() === plan.name.toLowerCase();
-            return (
-              <div key={plan.name} className={`bg-card rounded-lg border p-4 text-center ${isCurrent ? "border-primary" : "border-border"}`}>
-                <p className="font-semibold text-sm">{plan.name}</p>
-                <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">/month</p>
-                <p className="text-xs text-muted-foreground mt-2">{plan.listings} listings</p>
-                {isCurrent ? (
-                  <p className="text-xs text-primary font-medium mt-3">Current Plan</p>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-3 w-full text-xs"
-                    disabled={requestingUpgrade}
-                    onClick={() => handleRequestUpgrade(plan)}
-                  >
-                    Request Upgrade
-                  </Button>
-                )}
-              </div>
-            );
-          })}
+      {/* Subscription Upgrade — hidden for admins */}
+      {!isAdmin && (
+        <div>
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <ArrowUpCircle className="h-4 w-4 text-primary" /> Upgrade Your Plan
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {PLANS.filter(p => p.key !== "free").map((plan) => {
+              const isCurrent = subscription?.plan_name?.toLowerCase() === plan.key;
+              return (
+                <div key={plan.key} className={`bg-card rounded-lg border p-4 text-center ${isCurrent ? "border-primary" : "border-border"}`}>
+                  <p className="font-semibold text-sm">{plan.name}</p>
+                  <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">/month</p>
+                  <p className="text-xs text-muted-foreground mt-2">{plan.listings} listings</p>
+                  {isCurrent ? (
+                    <p className="text-xs text-primary font-medium mt-3 flex items-center justify-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Current
+                    </p>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 w-full text-xs"
+                      onClick={() => openUpgradeDialog(plan)}
+                    >
+                      Upgrade
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Upgrade Payment Dialog */}
+      <Dialog open={!!selectedPlan} onOpenChange={(o) => !o && setSelectedPlan(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upgrade to {selectedPlan?.name}</DialogTitle>
+            <DialogDescription>
+              Pay <span className="font-semibold text-foreground">KSh {selectedPlan?.price.toLocaleString()}</span> via M-Pesa, then submit your transaction code.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* M-Pesa instructions */}
+          <div className="bg-secondary rounded-lg p-3 space-y-1.5 text-sm">
+            <p className="font-semibold text-foreground">Payment Details</p>
+            {mpesaDetails?.till_number && (
+              <p><span className="text-muted-foreground">Till Number:</span> <span className="font-mono font-medium">{mpesaDetails.till_number}</span></p>
+            )}
+            {mpesaDetails?.paybill && (
+              <p><span className="text-muted-foreground">Paybill:</span> <span className="font-mono font-medium">{mpesaDetails.paybill}</span></p>
+            )}
+            {mpesaDetails?.account_name && (
+              <p><span className="text-muted-foreground">Account:</span> <span className="font-medium">{mpesaDetails.account_name}</span></p>
+            )}
+            {mpesaDetails?.phone && (
+              <p><span className="text-muted-foreground">Phone:</span> <span className="font-mono font-medium">{mpesaDetails.phone}</span></p>
+            )}
+            {!mpesaDetails?.till_number && !mpesaDetails?.paybill && !mpesaDetails?.phone && (
+              <p className="text-xs text-muted-foreground">Admin has not configured payment details yet. Please contact support.</p>
+            )}
+            {mpesaDetails?.instructions && (
+              <p className="text-xs text-muted-foreground pt-1">{mpesaDetails.instructions}</p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <Label>M-Pesa Transaction Code *</Label>
+              <Input
+                value={transactionCode}
+                onChange={(e) => setTransactionCode(e.target.value.toUpperCase())}
+                placeholder="e.g. SGH7K2P3LM"
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <Label>Phone Number Used *</Label>
+              <Input
+                value={payerPhone}
+                onChange={(e) => setPayerPhone(e.target.value)}
+                placeholder="07XXXXXXXX"
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <Label>Notes (optional)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any additional info..."
+                rows={2}
+                maxLength={500}
+              />
+            </div>
+          </div>
+
+          <Button onClick={submitPayment} disabled={submitting} className="w-full">
+            {submitting ? "Submitting..." : "Submit Payment & Activate Plan"}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
