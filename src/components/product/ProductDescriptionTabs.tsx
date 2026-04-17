@@ -96,7 +96,7 @@ const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescrip
             <ul className="space-y-2 text-sm text-foreground">
               {whatsInBoxItems.map((item, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <Package className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" strokeWidth={3} />
                   <span>{item}</span>
                 </li>
               ))}
