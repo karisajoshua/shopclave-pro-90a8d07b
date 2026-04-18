@@ -187,7 +187,7 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
 
         <div className="flex items-center justify-between">
           <div>
-            <Link to={`/store/${vendor.id}`} className="font-semibold text-sm text-primary hover:underline">
+            <Link to={`/store/${vendor.slug ?? vendor.id}`} className="font-semibold text-sm text-primary hover:underline">
               {vendor.store_name}
             </Link>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">

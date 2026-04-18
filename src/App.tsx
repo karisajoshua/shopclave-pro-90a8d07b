@@ -87,7 +87,7 @@ const App = () => (
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/category/:slug" element={<SearchPage />} />
                 <Route path="/vendor/register" element={<VendorRegisterPage />} />
-                <Route path="/store/:vendorId" element={<VendorStorePage />} />
+                <Route path="/store/:slug" element={<VendorStorePage />} />
                 <Route path="/s/:code" element={<ShortLinkRedirect />} />
 
                 {/* Static pages */}

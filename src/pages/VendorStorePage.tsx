@@ -21,8 +21,10 @@ const maskPhone = (p?: string | null) => {
   return `${digits.slice(0, 3)}••••${digits.slice(-2)}`;
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const VendorStorePage = () => {
-  const { vendorId } = useParams<{ vendorId: string }>();
+  const { slug: param } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -38,18 +40,22 @@ const VendorStorePage = () => {
   };
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
-    queryKey: ["vendor-store", vendorId],
+    queryKey: ["vendor-store", param],
     queryFn: async () => {
+      if (!param) return null;
+      const isUuid = UUID_RE.test(param);
       const { data, error } = await supabase
         .from("vendors")
         .select("*")
-        .eq("id", vendorId!)
+        .eq(isUuid ? "id" : "slug", param)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!vendorId,
+    enabled: !!param,
   });
+
+  const vendorId = vendor?.id;
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["vendor-store-products", vendorId],
