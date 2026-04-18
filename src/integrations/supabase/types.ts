@@ -994,6 +994,7 @@ export type Database = {
           payment_details: Json | null
           phone: string | null
           phone2: string | null
+          slug: string | null
           status: string
           store_description: string | null
           store_name: string
@@ -1011,6 +1012,7 @@ export type Database = {
           payment_details?: Json | null
           phone?: string | null
           phone2?: string | null
+          slug?: string | null
           status?: string
           store_description?: string | null
           store_name: string
@@ -1028,6 +1030,7 @@ export type Database = {
           payment_details?: Json | null
           phone?: string | null
           phone2?: string | null
+          slug?: string | null
           status?: string
           store_description?: string | null
           store_name?: string
@@ -1165,6 +1168,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      slugify: { Args: { _input: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "vendor" | "customer"

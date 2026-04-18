@@ -131,6 +131,7 @@ const VendorSettings = () => {
     store_description: vendor.store_description || "",
     logo_url: vendor.logo_url || "",
     banner_url: vendor.banner_url || "",
+    slug: vendor.slug || "",
     phone: vendor.phone || "",
     phone2: vendor.phone2 || "",
     whatsapp: vendor.whatsapp || "",
@@ -165,6 +166,26 @@ const VendorSettings = () => {
         <div>
           <Label>Store Description</Label>
           <Textarea value={form.store_description} onChange={(e) => setForm({ ...form, store_description: e.target.value })} rows={3} />
+        </div>
+
+        <div>
+          <Label>Store URL</Label>
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">barakaz.com/store/</span>
+            <Input
+              value={form.slug}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-"),
+                })
+              }
+              placeholder="your-store-name"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Lowercase letters, numbers and hyphens only. Must be unique.
+          </p>
         </div>
 
         <ImageUploadField
