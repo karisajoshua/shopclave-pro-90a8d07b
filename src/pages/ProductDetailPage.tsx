@@ -281,7 +281,7 @@ const ProductDetailPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, vendors(id, store_name, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug)")
+        .select("*, vendors(id, slug, store_name, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug)")
         .eq("slug", slug!)
         .single();
       return data as any;
