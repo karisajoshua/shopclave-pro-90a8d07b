@@ -667,6 +667,33 @@ export type Database = {
           },
         ]
       }
+      short_links: {
+        Row: {
+          click_count: number
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          target_url: string
+        }
+        Insert: {
+          click_count?: number
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          target_url: string
+        }
+        Update: {
+          click_count?: number
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          target_url?: string
+        }
+        Relationships: []
+      }
       site_analytics_cache: {
         Row: {
           data: Json
@@ -1086,6 +1113,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_short_link_click: {
+        Args: { _code: string }
+        Returns: undefined
       }
       move_to_dlq: {
         Args: {
