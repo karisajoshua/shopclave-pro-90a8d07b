@@ -1,4 +1,4 @@
-import { LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree, Settings, Wallet, Home, BarChart3, CreditCard, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree, Settings, Wallet, Home, BarChart3, CreditCard, MessageCircle, Images } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, Link } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ const items = [
   { title: "Categories", url: "/admin/categories", icon: FolderTree },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Bulk Import", url: "/admin/bulk-import", icon: Upload },
+  { title: "Media", url: "/admin/media", icon: Images },
   { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Notifications", url: "/admin/notifications", icon: Bell },

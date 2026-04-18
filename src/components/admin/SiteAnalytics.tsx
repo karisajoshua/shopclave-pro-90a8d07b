@@ -29,7 +29,7 @@ const SiteAnalytics = () => {
       if (error) throw error;
       return data as any;
     },
-    refetchInterval: 30000,
+    refetchInterval: 10000,
   });
 
   const analyticsData = cacheRow?.data;

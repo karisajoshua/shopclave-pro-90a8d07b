@@ -58,6 +58,9 @@ import VendorBulkImport from "./pages/vendor/VendorBulkImport";
 import VendorMessages from "./pages/vendor/VendorMessages";
 import EditProductPage from "./pages/vendor/EditProductPage";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminMedia from "./pages/admin/AdminMedia";
+import VendorMedia from "./pages/vendor/VendorMedia";
+import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +86,7 @@ const App = () => (
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/category/:slug" element={<SearchPage />} />
                 <Route path="/vendor/register" element={<VendorRegisterPage />} />
+                <Route path="/s/:code" element={<ShortLinkRedirect />} />
 
                 {/* Static pages */}
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -103,6 +107,7 @@ const App = () => (
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="categories" element={<AdminCategories />} />
                   <Route path="bulk-import" element={<AdminBulkImport />} />
+                  <Route path="media" element={<AdminMedia />} />
                   <Route path="withdrawals" element={<AdminWithdrawals />} />
                   <Route path="analytics" element={<AdminAnalyticsPage />} />
                   <Route path="subscriptions" element={<AdminSubscriptions />} />
@@ -123,6 +128,7 @@ const App = () => (
                   <Route path="messages" element={<VendorMessages />} />
                   <Route path="settings" element={<VendorSettings />} />
                   <Route path="bulk-import" element={<VendorBulkImport />} />
+                  <Route path="media" element={<VendorMedia />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
