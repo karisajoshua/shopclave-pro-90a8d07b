@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { getOrCreateShortLink } from "@/lib/shortLinks";
-import { Copy, Pencil, Trash2, Upload as UploadIcon, RefreshCw, Plus } from "lucide-react";
+import { Copy, Pencil, Trash2, Upload as UploadIcon, RefreshCw, Plus, Link2 } from "lucide-react";
 
 type Mode = "admin" | "vendor";
 
@@ -53,9 +54,18 @@ interface ImageRow {
   } | null;
 }
 
+interface UploadRow {
+  id: string;
+  url: string;
+  storage_path: string;
+  file_name: string | null;
+  user_id: string;
+  vendor_id: string | null;
+  created_at: string;
+}
+
 const BUCKET = "product-images";
 
-// Extract storage path from a Supabase public URL
 function urlToStoragePath(url: string): string | null {
   const marker = `/storage/v1/object/public/${BUCKET}/`;
   const idx = url.indexOf(marker);
@@ -66,8 +76,13 @@ function urlToStoragePath(url: string): string | null {
 const MediaLibrary = ({ mode }: MediaLibraryProps) => {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [tab, setTab] = useState<"uploads" | "products">("uploads");
+
+  // Shared
   const [search, setSearch] = useState("");
   const [vendorFilter, setVendorFilter] = useState<string>("all");
+
+  // Product images state
   const [editing, setEditing] = useState<ImageRow | null>(null);
   const [deleting, setDeleting] = useState<ImageRow | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -76,6 +91,15 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const [replacingFor, setReplacingFor] = useState<ImageRow | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  // My Uploads state
+  const [deletingUpload, setDeletingUpload] = useState<UploadRow | null>(null);
+  const [attachingUpload, setAttachingUpload] = useState<UploadRow | null>(null);
+  const [attachProductId, setAttachProductId] = useState<string>("");
+  const [replacingUpload, setReplacingUpload] = useState<UploadRow | null>(null);
+  const replaceUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const standaloneInputRef = useRef<HTMLInputElement | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Vendor lookup for vendor mode
   const { data: vendorRow } = useQuery({
@@ -91,7 +115,6 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     enabled: !!user && mode === "vendor",
   });
 
-  // Vendors list for admin filter
   const { data: vendorsList = [] } = useQuery({
     queryKey: ["media-vendors-list"],
     queryFn: async () => {
@@ -104,7 +127,6 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     enabled: mode === "admin",
   });
 
-  // Products list for "upload to product" picker
   const { data: productsForUpload = [] } = useQuery({
     queryKey: ["media-products-for-upload", mode, vendorRow?.id],
     queryFn: async () => {
@@ -116,7 +138,7 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     enabled: mode === "admin" || (mode === "vendor" && !!vendorRow?.id),
   });
 
-  // Images
+  // Product images
   const { data: images = [], isLoading, refetch } = useQuery({
     queryKey: ["media-images", mode, vendorRow?.id, vendorFilter],
     queryFn: async () => {
@@ -139,15 +161,42 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     enabled: mode === "admin" || (mode === "vendor" && !!vendorRow?.id),
   });
 
+  // My uploads
+  const { data: uploads = [], isLoading: uploadsLoading, refetch: refetchUploads } = useQuery({
+    queryKey: ["media-uploads", mode, user?.id],
+    queryFn: async () => {
+      let q = supabase
+        .from("vendor_uploads")
+        .select("id, url, storage_path, file_name, user_id, vendor_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      // Vendors only see their own (RLS enforces this anyway, but explicit is faster)
+      if (mode === "vendor" && user?.id) {
+        q = q.eq("user_id", user.id);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data as any) as UploadRow[];
+    },
+    enabled: !!user,
+  });
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return images;
     return images.filter((img) => img.products?.name.toLowerCase().includes(q));
   }, [images, search]);
 
-  const handleCopyShortLink = async (img: ImageRow) => {
+  const filteredUploads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return uploads;
+    return uploads.filter((u) => (u.file_name || "").toLowerCase().includes(q));
+  }, [uploads, search]);
+
+  // ---------- Shared helpers ----------
+  const handleCopyShortLink = async (targetUrl: string) => {
     try {
-      const shortUrl = await getOrCreateShortLink(img.url);
+      const shortUrl = await getOrCreateShortLink(targetUrl);
       await navigator.clipboard.writeText(shortUrl);
       toast({ title: "Short link copied", description: shortUrl });
     } catch (e: any) {
@@ -155,12 +204,11 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     }
   };
 
+  // ---------- Product image actions ----------
   const handleDelete = async () => {
     if (!deleting) return;
     const path = urlToStoragePath(deleting.url);
-    if (path) {
-      await supabase.storage.from(BUCKET).remove([path]);
-    }
+    if (path) await supabase.storage.from(BUCKET).remove([path]);
     const { error } = await supabase.from("product_images").delete().eq("id", deleting.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
@@ -196,7 +244,6 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
-      // Delete old storage object
       const oldPath = urlToStoragePath(replacingFor.url);
       if (oldPath) await supabase.storage.from(BUCKET).remove([oldPath]);
 
@@ -224,7 +271,6 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     }
     setUploading(true);
     try {
-      // Get current max position
       const { data: existing } = await supabase
         .from("product_images")
         .select("position")
@@ -263,9 +309,115 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     }
   };
 
+  // ---------- Standalone uploads actions ----------
+  const handleStandaloneUpload = async (files: FileList | File[]) => {
+    if (!user) {
+      toast({ title: "You must be signed in", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const arr = Array.from(files);
+      const uploadOne = async (file: File) => {
+        const ext = file.name.split(".").pop() || "jpg";
+        const storage_path = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storage_path);
+        return {
+          user_id: user.id,
+          vendor_id: vendorRow?.id ?? null,
+          url: pub.publicUrl,
+          storage_path,
+          file_name: file.name,
+        };
+      };
+      const rows = await Promise.all(arr.map(uploadOne));
+      const { error: insErr } = await supabase.from("vendor_uploads").insert(rows);
+      if (insErr) throw insErr;
+      toast({ title: `Uploaded ${rows.length} image(s)` });
+      qc.invalidateQueries({ queryKey: ["media-uploads"] });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (standaloneInputRef.current) standaloneInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteUpload = async () => {
+    if (!deletingUpload) return;
+    if (deletingUpload.storage_path) {
+      await supabase.storage.from(BUCKET).remove([deletingUpload.storage_path]);
+    }
+    const { error } = await supabase.from("vendor_uploads").delete().eq("id", deletingUpload.id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Upload deleted" });
+      qc.invalidateQueries({ queryKey: ["media-uploads"] });
+    }
+    setDeletingUpload(null);
+  };
+
+  const handleReplaceUpload = async (file: File) => {
+    if (!replacingUpload || !user) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const storage_path = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storage_path);
+
+      if (replacingUpload.storage_path) {
+        await supabase.storage.from(BUCKET).remove([replacingUpload.storage_path]);
+      }
+      const { error: dbErr } = await supabase
+        .from("vendor_uploads")
+        .update({ url: pub.publicUrl, storage_path, file_name: file.name })
+        .eq("id", replacingUpload.id);
+      if (dbErr) throw dbErr;
+      toast({ title: "Upload replaced" });
+      qc.invalidateQueries({ queryKey: ["media-uploads"] });
+    } catch (e: any) {
+      toast({ title: "Replace failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      setReplacingUpload(null);
+      if (replaceUploadInputRef.current) replaceUploadInputRef.current.value = "";
+    }
+  };
+
+  const handleAttachToProduct = async () => {
+    if (!attachingUpload || !attachProductId) return;
+    try {
+      const { data: existing } = await supabase
+        .from("product_images")
+        .select("position")
+        .eq("product_id", attachProductId)
+        .order("position", { ascending: false })
+        .limit(1);
+      const nextPos = ((existing?.[0]?.position as number) ?? -1) + 1;
+      const { error } = await supabase.from("product_images").insert({
+        product_id: attachProductId,
+        url: attachingUpload.url,
+        position: nextPos,
+      });
+      if (error) throw error;
+      toast({ title: "Attached to product" });
+      qc.invalidateQueries({ queryKey: ["media-images"] });
+      setAttachingUpload(null);
+      setAttachProductId("");
+    } catch (e: any) {
+      toast({ title: "Attach failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  // ---------- Render ----------
   return (
     <div className="space-y-4">
-      {/* Hidden input used by Replace action */}
+      {/* Hidden inputs */}
       <input
         ref={replaceInputRef}
         type="file"
@@ -276,77 +428,183 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
           if (f) handleReplaceFile(f);
         }}
       />
+      <input
+        ref={replaceUploadInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleReplaceUpload(f);
+        }}
+      />
+      <input
+        ref={standaloneInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) handleStandaloneUpload(e.target.files);
+        }}
+      />
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder="Search by product name…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        {mode === "admin" && (
-          <Select value={vendorFilter} onValueChange={setVendorFilter}>
-            <SelectTrigger className="max-w-xs w-[220px]">
-              <SelectValue placeholder="All vendors" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All vendors</SelectItem>
-              {vendorsList.map((v: any) => (
-                <SelectItem key={v.id} value={v.id}>{v.store_name}</SelectItem>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="uploads">My Uploads</TabsTrigger>
+          <TabsTrigger value="products">Product Images</TabsTrigger>
+        </TabsList>
+
+        {/* ============== MY UPLOADS TAB ============== */}
+        <TabsContent value="uploads" className="space-y-4">
+          {/* Drop zone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files?.length) handleStandaloneUpload(e.dataTransfer.files);
+            }}
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              dragOver ? "border-primary bg-primary/5" : "border-border bg-muted/30"
+            }`}
+          >
+            <UploadIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium mb-1">Drag & drop images here</p>
+            <p className="text-xs text-muted-foreground mb-3">or pick from your device — no product needed</p>
+            <Button size="sm" onClick={() => standaloneInputRef.current?.click()} disabled={uploading}>
+              <Plus className="h-4 w-4 mr-1" /> {uploading ? "Uploading…" : "Upload images"}
+            </Button>
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search by file name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+            <Button variant="outline" size="sm" onClick={() => refetchUploads()}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+          </div>
+
+          {/* Grid */}
+          {uploadsLoading ? (
+            <p className="text-muted-foreground text-sm">Loading…</p>
+          ) : filteredUploads.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No uploads yet. Use the box above to upload your first image.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {filteredUploads.map((u) => (
+                <div key={u.id} className="bg-card border border-border rounded-lg overflow-hidden flex flex-col">
+                  <div className="aspect-square bg-muted">
+                    <img src={u.url} alt={u.file_name || "Upload"} className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                  <div className="p-2 text-xs flex-1">
+                    <p className="font-medium truncate" title={u.file_name || ""}>{u.file_name || "Untitled"}</p>
+                    <p className="text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="p-2 pt-0 grid grid-cols-4 gap-1">
+                    <Button size="icon" variant="ghost" title="Copy short link" onClick={() => handleCopyShortLink(u.url)}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Replace" onClick={() => { setReplacingUpload(u); replaceUploadInputRef.current?.click(); }}>
+                      <UploadIcon className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Attach to product" onClick={() => { setAttachingUpload(u); setAttachProductId(""); }}>
+                      <Link2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Delete" onClick={() => setDeletingUpload(u)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-1" /> Refresh
-        </Button>
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setUploadOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Upload to product
-          </Button>
-        </div>
-      </div>
-
-      {/* Grid */}
-      {isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading…</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No images found.</p>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {filtered.map((img) => (
-            <div key={img.id} className="bg-card border border-border rounded-lg overflow-hidden flex flex-col">
-              <div className="aspect-square bg-muted">
-                <img src={img.url} alt={img.products?.name || "Product image"} className="w-full h-full object-cover" loading="lazy" />
-              </div>
-              <div className="p-2 text-xs flex-1">
-                <p className="font-medium truncate">{img.products?.name || "—"}</p>
-                {mode === "admin" && img.products?.vendors?.store_name && (
-                  <p className="text-muted-foreground truncate">{img.products.vendors.store_name}</p>
-                )}
-                <p className="text-muted-foreground">Pos: {img.position}</p>
-              </div>
-              <div className="p-2 pt-0 grid grid-cols-4 gap-1">
-                <Button size="icon" variant="ghost" title="Copy short link" onClick={() => handleCopyShortLink(img)}>
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="icon" variant="ghost" title="Replace" onClick={() => { setReplacingFor(img); replaceInputRef.current?.click(); }}>
-                  <UploadIcon className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="icon" variant="ghost" title="Edit" onClick={() => setEditing(img)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="icon" variant="ghost" title="Delete" onClick={() => setDeleting(img)}>
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
 
-      {/* Edit dialog */}
+        {/* ============== PRODUCT IMAGES TAB ============== */}
+        <TabsContent value="products" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search by product name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+            {mode === "admin" && (
+              <Select value={vendorFilter} onValueChange={setVendorFilter}>
+                <SelectTrigger className="max-w-xs w-[220px]">
+                  <SelectValue placeholder="All vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All vendors</SelectItem>
+                  {vendorsList.map((v: any) => (
+                    <SelectItem key={v.id} value={v.id}>{v.store_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            <div className="ml-auto">
+              <Button size="sm" onClick={() => setUploadOpen(true)} disabled={productsForUpload.length === 0}>
+                <Plus className="h-4 w-4 mr-1" /> Upload to product
+              </Button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <p className="text-muted-foreground text-sm">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {productsForUpload.length === 0
+                ? "You don't have any products yet. Use 'My Uploads' to upload images straight from your device."
+                : "No images found."}
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {filtered.map((img) => (
+                <div key={img.id} className="bg-card border border-border rounded-lg overflow-hidden flex flex-col">
+                  <div className="aspect-square bg-muted">
+                    <img src={img.url} alt={img.products?.name || "Product image"} className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                  <div className="p-2 text-xs flex-1">
+                    <p className="font-medium truncate">{img.products?.name || "—"}</p>
+                    {mode === "admin" && img.products?.vendors?.store_name && (
+                      <p className="text-muted-foreground truncate">{img.products.vendors.store_name}</p>
+                    )}
+                    <p className="text-muted-foreground">Pos: {img.position}</p>
+                  </div>
+                  <div className="p-2 pt-0 grid grid-cols-4 gap-1">
+                    <Button size="icon" variant="ghost" title="Copy short link" onClick={() => handleCopyShortLink(img.url)}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Replace" onClick={() => { setReplacingFor(img); replaceInputRef.current?.click(); }}>
+                      <UploadIcon className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Edit" onClick={() => setEditing(img)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Delete" onClick={() => setDeleting(img)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit product image dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
@@ -364,7 +622,7 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
+      {/* Delete product image */}
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -376,6 +634,22 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete upload */}
+      <AlertDialog open={!!deletingUpload} onOpenChange={(o) => !o && setDeletingUpload(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this upload?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The image will be removed from storage. If it's attached to any product, those references will keep their copy. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUpload}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -417,6 +691,33 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attach upload to product */}
+      <Dialog open={!!attachingUpload} onOpenChange={(o) => !o && setAttachingUpload(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Attach to product</DialogTitle>
+            <DialogDescription>Pick a product to attach this image to as a product image.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label className="mb-1 block">Product</Label>
+            <Select value={attachProductId} onValueChange={setAttachProductId}>
+              <SelectTrigger>
+                <SelectValue placeholder={productsForUpload.length === 0 ? "No products available" : "Select product…"} />
+              </SelectTrigger>
+              <SelectContent>
+                {productsForUpload.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAttachingUpload(null)}>Cancel</Button>
+            <Button onClick={handleAttachToProduct} disabled={!attachProductId}>Attach</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
