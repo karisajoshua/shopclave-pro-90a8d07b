@@ -1,49 +1,43 @@
 
 
-# Vendor Storefront Page
+# Vendor name in URL instead of UUID
 
-## Goal
-"Visit Vendor Store" link on product detail page → dedicated public store page showing banner, logo, store info, and grid of that vendor's active products.
+## Current state
+- Route is `/store/:vendorId` and links use `/store/${vendor.id}` (UUID).
+- `vendors` table has no `slug` column.
+- The user mentions `/search?vendor=<uuid>` which doesn't match any existing code — likely confusion with the address bar showing the storefront URL after a redirect, or an older link. Either way, the goal is clear: vendor links should show the store name, not a UUID.
 
-## Investigation needed
-Check `ProductDetailPage.tsx` for the current "Visit Store" link target, and confirm there's no existing vendor public page.
+## Fix: add a `slug` to vendors and route on it
 
-## Implementation
+### 1. DB migration
+- Add `slug text unique` to `public.vendors`.
+- Backfill existing vendors: `slug = slugify(store_name)` with collision suffix `-2`, `-3`, etc.
+- Add a trigger (BEFORE INSERT/UPDATE on `store_name`) that auto-generates/updates `slug` when it's null or when `store_name` changes and the vendor opts in. To keep it simple and predictable: only auto-fill on INSERT and when `slug IS NULL`. Vendors can edit their slug later from Store Settings.
+- Add `CREATE INDEX vendors_slug_idx ON vendors(slug)`.
 
-### New route
-`/store/:vendorId` → `VendorStorePage.tsx` (public, no auth required).
+### 2. Route change
+- Update route in `src/App.tsx`: `/store/:slug` (replaces `:vendorId`).
+- Keep backward compatibility: in `VendorStorePage`, if param looks like a UUID, fetch by `id`; otherwise fetch by `slug`. This way old links and shared UUID URLs still work.
 
-### New page `src/pages/VendorStorePage.tsx`
-Wrapped in `MarketplaceLayout` (navbar + footer).
+### 3. Update all links to use slug
+Files that link to a store:
+- `src/pages/ProductDetailPage.tsx` line 190 → `/store/${vendor.slug ?? vendor.id}`.
+- Any other `/store/${...id}` occurrences (search confirmed only that one + the route + the page itself).
 
-**Layout (top → bottom):**
-1. **Banner**: full-width 16:9 hero using `vendors.banner_url` (fallback to gradient placeholder if null).
-2. **Store header card** (overlapping bottom of banner, like Facebook page style):
-   - Round logo (96px, `vendors.logo_url`, fallback to first letter of store_name).
-   - Store name (h1), status badge (only if approved).
-   - Short description (`store_description`).
-   - Action row: Follow button (uses existing `vendor_follows`), follower count, WhatsApp/phone contact buttons (gated for guests per existing rule), member-since date.
-3. **Products section**:
-   - Heading "Products (N)".
-   - Simple sort dropdown: Newest / Price low-high / Price high-low.
-   - Responsive grid of `ProductCard` (existing component) for `products` where `vendor_id = :vendorId AND status = 'active'`.
-   - Empty state: "This vendor has no active products yet."
+### 4. Vendor Store Settings
+- Add a "Store URL" field in `src/pages/vendor/VendorSettings.tsx` showing `barakaz.com/store/<slug>` with an editable slug input (lowercase, hyphenated, validated unique on save). Optional polish — include in this task.
 
-### Update product detail page
-In `src/pages/ProductDetailPage.tsx`, find the "Visit Store" / vendor contact action and change target to `/store/{product.vendor_id}` (open in same tab).
+### 5. URL preview
+Result: `https://barakaz.com/store/acme-electronics` instead of `/store/7622f8b9-...`.
 
-### Data fetching
-- One `useQuery` for vendor by id.
-- One `useQuery` for products filtered by vendor_id + active.
-- One light query for follower count.
+## Files
+- **migration**: add `slug` column + backfill + unique index + insert trigger
+- **edit** `src/App.tsx` — route param rename
+- **edit** `src/pages/VendorStorePage.tsx` — fetch by slug or UUID
+- **edit** `src/pages/ProductDetailPage.tsx` — link uses `vendor.slug`
+- **edit** `src/pages/vendor/VendorSettings.tsx` — editable Store URL field
 
-### Files
-- **create** `src/pages/VendorStorePage.tsx`
-- **edit** `src/App.tsx` — add route
-- **edit** `src/pages/ProductDetailPage.tsx` — point "Visit Store" to new route
-
-### Notes
-- Public route (RLS already allows anyone to view vendors and active products).
-- Mobile-responsive: banner shrinks, logo overlaps less, grid collapses to 2 cols.
-- No DB changes.
+## Out of scope
+- Search-results filtering by vendor (no current `/search?vendor=` code path exists).
+- Renaming the route itself away from `/store/`.
 
