@@ -954,6 +954,36 @@ export type Database = {
           },
         ]
       }
+      vendor_uploads: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          id: string
+          storage_path: string
+          url: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          storage_path: string
+          url: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          storage_path?: string
+          url?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           banner_url: string | null
