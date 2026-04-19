@@ -11,11 +11,20 @@ const AdminLayout = () => {
   const { user, userRoles, loading } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && !user) navigate("/auth");
-  }, [user, loading, navigate]);
+  const isAdmin = userRoles.includes("admin");
 
-  if (loading || !user) return null;
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!isAdmin) {
+      navigate("/");
+    }
+  }, [user, isAdmin, loading, navigate]);
+
+  if (loading || !user || !isAdmin) return null;
 
   return (
     <SidebarProvider>
