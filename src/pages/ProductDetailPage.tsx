@@ -2,7 +2,12 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import sizeChartJacket from "@/assets/size-chart-jacket.jpeg";
+import sizeChartPants from "@/assets/size-chart-pants.jpeg";
+
+const FASHION_CATEGORY_ID = "a0000001-0000-0000-0000-000000000002";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo, useEffect } from "react";
@@ -281,7 +286,7 @@ const ProductDetailPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, vendors(id, slug, store_name, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug)")
+        .select("*, vendors(id, slug, store_name, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug, parent_id)")
         .eq("slug", slug!)
         .single();
       return data as any;
@@ -609,6 +614,46 @@ const ProductDetailPage = () => {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* Size Chart (Fashion only) */}
+            {(product.category_id === FASHION_CATEGORY_ID ||
+              (product as any).categories?.parent_id === FASHION_CATEGORY_ID) && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                  >
+                    <Ruler className="h-4 w-4" />
+                    View Size Chart
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Size Chart</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Jacket / Top</h3>
+                      <img
+                        src={sizeChartJacket}
+                        alt="Jacket and top size chart"
+                        className="w-full rounded-md border"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Pants</h3>
+                      <img
+                        src={sizeChartPants}
+                        alt="Pants size chart"
+                        className="w-full rounded-md border"
+                      />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
 
             <Separator />
