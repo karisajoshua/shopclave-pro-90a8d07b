@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import sizeChartJacket from "@/assets/size-chart-jacket.jpeg";
-import sizeChartPants from "@/assets/size-chart-pants.jpeg";
 
 const FASHION_CATEGORY_ID = "a0000001-0000-0000-0000-000000000002";
 import ProductCard from "@/components/marketplace/ProductCard";
@@ -630,27 +628,96 @@ const ProductDetailPage = () => {
                     <ChevronDown className="h-4 w-4" />
                   </button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Size Chart</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-6">
+                  <div className="space-y-8 text-sm">
+                    {/* Jacket / Top */}
                     <div>
-                      <h3 className="text-sm font-semibold mb-2">Jacket / Top</h3>
-                      <img
-                        src={sizeChartJacket}
-                        alt="Jacket and top size chart"
-                        className="w-full rounded-md border"
-                      />
+                      <h3 className="text-base font-semibold mb-3">Jacket / Top (cm)</h3>
+                      <div className="overflow-x-auto rounded-md border">
+                        <table className="w-full text-center">
+                          <thead className="bg-muted">
+                            <tr>
+                              <th className="px-3 py-2 font-semibold text-left">Size</th>
+                              <th className="px-3 py-2 font-semibold">Bust</th>
+                              <th className="px-3 py-2 font-semibold">Shoulder</th>
+                              <th className="px-3 py-2 font-semibold">Sleeve</th>
+                              <th className="px-3 py-2 font-semibold">Length</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {[
+                              ["XS", "92", "41", "60", "66"],
+                              ["S", "96", "42.5", "61", "68"],
+                              ["M", "100", "44", "62", "70"],
+                              ["L", "104", "45.5", "63", "72"],
+                              ["XL", "108", "47", "64", "74"],
+                              ["XXL", "112", "48.5", "65", "76"],
+                              ["3XL", "116", "50", "66", "78"],
+                            ].map(([size, bust, shoulder, sleeve, length]) => (
+                              <tr key={size}>
+                                <td className="px-3 py-2 font-medium text-left">{size}</td>
+                                <td className="px-3 py-2">{bust}</td>
+                                <td className="px-3 py-2">{shoulder}</td>
+                                <td className="px-3 py-2">{sleeve}</td>
+                                <td className="px-3 py-2">{length}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Bust: measured around the fullest part of the chest. Shoulder: from one shoulder seam to the other. Sleeve: from shoulder seam to cuff. Length: from highest point of shoulder to hem.
+                      </p>
                     </div>
+
+                    {/* Pants */}
                     <div>
-                      <h3 className="text-sm font-semibold mb-2">Pants</h3>
-                      <img
-                        src={sizeChartPants}
-                        alt="Pants size chart"
-                        className="w-full rounded-md border"
-                      />
+                      <h3 className="text-base font-semibold mb-3">Pants (cm)</h3>
+                      <div className="overflow-x-auto rounded-md border">
+                        <table className="w-full text-center">
+                          <thead className="bg-muted">
+                            <tr>
+                              <th className="px-3 py-2 font-semibold text-left">Size</th>
+                              <th className="px-3 py-2 font-semibold">Waist</th>
+                              <th className="px-3 py-2 font-semibold">Hip</th>
+                              <th className="px-3 py-2 font-semibold">Thigh</th>
+                              <th className="px-3 py-2 font-semibold">Inseam</th>
+                              <th className="px-3 py-2 font-semibold">Length</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {[
+                              ["XS", "68", "90", "54", "74", "98"],
+                              ["S", "72", "94", "56", "75", "100"],
+                              ["M", "76", "98", "58", "76", "102"],
+                              ["L", "80", "102", "60", "77", "104"],
+                              ["XL", "84", "106", "62", "78", "106"],
+                              ["XXL", "88", "110", "64", "79", "108"],
+                              ["3XL", "92", "114", "66", "80", "110"],
+                            ].map(([size, waist, hip, thigh, inseam, length]) => (
+                              <tr key={size}>
+                                <td className="px-3 py-2 font-medium text-left">{size}</td>
+                                <td className="px-3 py-2">{waist}</td>
+                                <td className="px-3 py-2">{hip}</td>
+                                <td className="px-3 py-2">{thigh}</td>
+                                <td className="px-3 py-2">{inseam}</td>
+                                <td className="px-3 py-2">{length}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Waist: measured around the natural waistline. Hip: around the fullest part of the hips. Thigh: around the fullest part of the upper thigh. Inseam: from crotch seam to bottom of leg. Length: from waistband to hem.
+                      </p>
                     </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Measurements are approximate and may vary by ±1–2 cm. If you are between sizes, we recommend choosing the larger size.
+                    </p>
                   </div>
                 </DialogContent>
               </Dialog>
