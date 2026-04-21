@@ -111,12 +111,10 @@ const VendorOrders = () => {
                   <tr>
                     <th>Order</th>
                     <th>Product</th>
-                    <th className="min-w-[260px]">Deliver to</th>
+                    <th className="min-w-[200px]">Deliver to</th>
                     <th>Qty</th>
                     <th>Total</th>
-                    <th>Payment</th>
                     <th>Status</th>
-                    <th>Date</th>
                     <th>Action</th>
                   </tr>
                 </thead>
