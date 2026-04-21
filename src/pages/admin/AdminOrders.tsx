@@ -147,7 +147,14 @@ const AdminOrders = () => {
                           <tbody>
                             {items.map((item: any) => (
                               <tr key={item.id}>
-                                <td className="font-medium">{(item.products as any)?.name || "—"}</td>
+                                <td className="font-medium">
+                                  <div>{(item.products as any)?.name || "—"}</div>
+                                  {(item.variant_options as any)?.label && (
+                                    <span className="inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                                      {(item.variant_options as any).label}
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="text-muted-foreground text-xs">{(item.vendors as any)?.store_name || "—"}</td>
                                 <td>{item.quantity}</td>
                                 <td>KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
