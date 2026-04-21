@@ -105,34 +105,56 @@ const Index = () => {
     dealEndsAt: p.deal_ends_at || null,
   })) : DEMO_PRODUCTS;
 
+  const displayProducts = products.length
+    ? products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
+        image: p.product_images?.[0]?.url || barakazIcon,
+        vendorId: p.vendor_id,
+        vendorName: p.vendors?.store_name || "Unknown Seller",
+        slug: p.slug,
+        rating: 4.5,
+        reviewCount: 0,
+        dealEndsAt: p.deal_ends_at || null,
+      }))
+    : isFirstRunDemo
+      ? DEMO_PRODUCTS
+      : [];
+
+  const showFeaturedSection = isLoading || displayProducts.length > 0;
+
   return (
     <MarketplaceLayout>
       <HeroBanner />
 
       {/* Featured Products */}
-      <section className="container py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">{t("home.featured")}</h2>
-          <Link to="/search">
-            <Button variant="ghost" size="sm" className="gap-1 text-primary">
-              {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
-            ))}
+      {showFeaturedSection && (
+        <section className="container py-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">{t("home.featured")}</h2>
+            <Link to="/search">
+              <Button variant="ghost" size="sm" className="gap-1 text-primary">
+                {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {displayProducts.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
-          </div>
-        )}
-      </section>
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {displayProducts.map((product) => (
+                <ProductCard key={product.id} {...product} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Sell banner */}
       <section className="container py-8">
