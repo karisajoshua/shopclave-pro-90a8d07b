@@ -32,7 +32,15 @@ const CheckoutPage = () => {
     addressLine: "",
     city: "",
     country: "Kenya",
+    email: "",
   });
+
+  // Prefill email from auth user
+  useEffect(() => {
+    if (user?.email) {
+      setAddress((a) => (a.email ? a : { ...a, email: user.email ?? "" }));
+    }
+  }, [user?.email]);
 
   // Redirect to cart if empty - but skip on first render if coming from Buy Now
   useEffect(() => {
