@@ -149,18 +149,43 @@ const SiteAnalytics = () => {
     </div>
   );
 
+  const cacheUpdatedAt = cacheRow?.updated_at ? new Date(cacheRow.updated_at) : null;
+  const minutesStale = cacheUpdatedAt ? differenceInMinutes(new Date(), cacheUpdatedAt) : null;
+  const isStale = minutesStale !== null && minutesStale > 60 * 24;
+
+  const formatStale = () => {
+    if (minutesStale === null) return "";
+    if (minutesStale < 1) return "just now";
+    if (minutesStale < 60) return `${minutesStale}m ago`;
+    if (minutesStale < 60 * 24) return `${Math.floor(minutesStale / 60)}h ago`;
+    return `${Math.floor(minutesStale / (60 * 24))}d ago`;
+  };
+
+  const handleRefresh = () => {
+    refetch();
+    toast.info("Site analytics is provided by Lovable.", {
+      description:
+        'No public API exists to auto-pull this. To refresh, ask the AI in chat: "refresh site analytics" — it will fetch and update for you.',
+      duration: 8000,
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold text-lg">Site Analytics</h3>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => refetch()} className="gap-1">
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="text-xs text-muted-foreground">
-              {dataUpdatedAt ? `Updated ${format(new Date(dataUpdatedAt), "HH:mm:ss")}` : ""}
-            </span>
-          </Button>
+        <div>
+          <h3 className="font-semibold text-lg">Site Analytics</h3>
+          {cacheUpdatedAt && (
+            <p className={`text-xs mt-0.5 flex items-center gap-1 ${isStale ? "text-destructive" : "text-muted-foreground"}`}>
+              {isStale && <AlertCircle className="h-3 w-3" />}
+              Data refreshed {formatStale()}{isStale && " — ask AI to refresh"}
+            </p>
+          )}
         </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1">
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span className="text-xs">Refresh data</span>
+        </Button>
       </div>
 
       {/* Time frame selector */}
