@@ -2,14 +2,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Package, MapPin, Phone, CreditCard } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import AdminEmptyState from "@/components/admin/AdminEmptyState";
 
-const statusColor = (s: string) => {
+const statusPill = (s: string) => {
   if (s === "delivered") return "bg-success/10 text-success";
-  if (s === "shipped") return "bg-primary/10 text-primary";
+  if (s === "shipped") return "bg-[hsl(var(--admin-accent-info))]/10 text-[hsl(var(--admin-accent-info))]";
   if (s === "processing") return "bg-warning/10 text-warning";
+  if (s === "cancelled") return "bg-destructive/10 text-destructive";
   return "bg-muted text-muted-foreground";
 };
 
@@ -52,63 +54,49 @@ const AdminOrders = () => {
     orderItems?.filter((i: any) => i.order_id === orderId) || [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <h2 className="text-xl font-bold">All Orders ({filtered.length})</h2>
-        <div className="relative w-full sm:w-64">
+    <div>
+      <AdminPageHeader title="All Orders" subtitle="Track and review every order placed on the marketplace." count={filtered.length} countLabel="orders">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Filter by ID or status..."
-            className="pl-9"
+            placeholder="Filter by order ID or status..."
+            className="pl-9 h-9 bg-card"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-      </div>
+      </AdminPageHeader>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-12 bg-card rounded-lg border border-border">
-          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No orders found</p>
+        <div className="admin-card">
+          <AdminEmptyState
+            icon={Package}
+            title={filter ? "No orders match your filter" : "No orders yet"}
+            description={filter ? "Try a different ID or status." : "When customers place orders they will appear here."}
+          />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {filtered.map((o: any) => {
             const items = getItemsForOrder(o.id);
             const isExpanded = expandedOrder === o.id;
             return (
-              <div
-                key={o.id}
-                className="bg-card rounded-lg border border-border overflow-hidden"
-              >
-                {/* Order header row */}
+              <div key={o.id} className="admin-card admin-card-hover overflow-hidden">
                 <button
-                  className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/50 transition-colors"
-                  onClick={() =>
-                    setExpandedOrder(isExpanded ? null : o.id)
-                  }
+                  className="w-full flex items-center justify-between p-4 text-left hover:bg-primary/5 transition-colors"
+                  onClick={() => setExpandedOrder(isExpanded ? null : o.id)}
                 >
                   <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-                    <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                    <span className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold">
                       #{o.id.slice(0, 8)}
                     </span>
-                    <span className="font-semibold text-sm">
+                    <span className="font-bold text-sm text-foreground">
                       KSh {Number(o.total).toLocaleString()}
                     </span>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        o.payment_status === "paid"
-                          ? "bg-success/10 text-success"
-                          : "bg-warning/10 text-warning"
-                      }`}
-                    >
+                    <span className={`status-pill ${o.payment_status === "paid" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                       {o.payment_status}
                     </span>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(
-                        o.status
-                      )}`}
-                    >
+                    <span className={`status-pill ${statusPill(o.status)}`}>
                       {o.status}
                     </span>
                     <span className="text-xs text-muted-foreground">
@@ -125,91 +113,51 @@ const AdminOrders = () => {
                   )}
                 </button>
 
-                {/* Expanded order items */}
                 {isExpanded && (
                   <div className="border-t border-border">
-                    {/* Shipping info */}
                     {o.shipping_address && (
-                      <div className="px-4 py-3 bg-secondary/30 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-                        <span>
-                          <strong>Ship to:</strong>{" "}
-                          {(o.shipping_address as any).fullName}
-                        </span>
-                        <span>
-                          {(o.shipping_address as any).addressLine},{" "}
-                          {(o.shipping_address as any).city}
+                      <div className="px-4 py-3 bg-muted/30 text-xs text-muted-foreground flex flex-wrap gap-x-5 gap-y-1.5">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <strong className="text-foreground">{(o.shipping_address as any).fullName}</strong>
+                          — {(o.shipping_address as any).addressLine}, {(o.shipping_address as any).city}
                         </span>
                         {(o.shipping_address as any).phone && (
-                          <span>📞 {(o.shipping_address as any).phone}</span>
+                          <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {(o.shipping_address as any).phone}</span>
                         )}
-                        <span>Payment: {o.payment_method || "—"}</span>
+                        <span className="inline-flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /> {o.payment_method || "—"}</span>
                       </div>
                     )}
 
                     {items.length === 0 ? (
-                      <p className="p-4 text-sm text-muted-foreground">
-                        No items found for this order.
-                      </p>
+                      <p className="p-4 text-sm text-muted-foreground">No items found for this order.</p>
                     ) : (
-                      <table className="w-full text-sm">
-                        <thead className="bg-secondary/50">
-                          <tr>
-                            <th className="text-left p-3 font-medium">
-                              Product
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Vendor
-                            </th>
-                            <th className="text-left p-3 font-medium">Qty</th>
-                            <th className="text-left p-3 font-medium">
-                              Price
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Commission
-                            </th>
-                            <th className="text-left p-3 font-medium">
-                              Item Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((item: any) => (
-                            <tr
-                              key={item.id}
-                              className="border-t border-border"
-                            >
-                              <td className="p-3 font-medium">
-                                {(item.products as any)?.name || "—"}
-                              </td>
-                              <td className="p-3 text-muted-foreground text-xs">
-                                {(item.vendors as any)?.store_name || "—"}
-                              </td>
-                              <td className="p-3">{item.quantity}</td>
-                              <td className="p-3">
-                                KSh{" "}
-                                {(
-                                  Number(item.price) * item.quantity
-                                ).toLocaleString()}
-                              </td>
-                              <td className="p-3 text-xs text-muted-foreground">
-                                KSh{" "}
-                                {Number(
-                                  item.commission_amount
-                                ).toLocaleString()}
-                              </td>
-                              <td className="p-3">
-                                <span
-                                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(
-                                    item.status
-                                  )}`}
-                                >
-                                  {item.status}
-                                </span>
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Product</th>
+                              <th>Vendor</th>
+                              <th>Qty</th>
+                              <th>Price</th>
+                              <th>Commission</th>
+                              <th>Item Status</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {items.map((item: any) => (
+                              <tr key={item.id}>
+                                <td className="font-medium">{(item.products as any)?.name || "—"}</td>
+                                <td className="text-muted-foreground text-xs">{(item.vendors as any)?.store_name || "—"}</td>
+                                <td>{item.quantity}</td>
+                                <td>KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground">KSh {Number(item.commission_amount).toLocaleString()}</td>
+                                <td><span className={`status-pill ${statusPill(item.status)}`}>{item.status}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 )}
