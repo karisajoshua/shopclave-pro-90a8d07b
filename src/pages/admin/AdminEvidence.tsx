@@ -352,6 +352,7 @@ function EvidenceDetail({ orderId, onBack }: { orderId: string; onBack: () => vo
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [originals, setOriginals] = useState<Record<string, MessageOriginal>>({});
   const [profiles, setProfiles] = useState<Record<string, { full_name: string | null; avatar_url: string | null }>>({});
   const [vendor, setVendor] = useState<any>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
