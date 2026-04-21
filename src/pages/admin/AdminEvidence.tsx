@@ -591,7 +591,7 @@ function EvidenceDetail({ orderId, onBack }: { orderId: string; onBack: () => vo
         <TabsContent value="chat" className="mt-4">
           <Card>
             <CardContent className="pt-6">
-              <ChatHistory messages={messages} profiles={profiles} vendor={vendor} buyerId={order.user_id} />
+              <ChatHistory messages={messages} originals={originals} profiles={profiles} vendor={vendor} buyerId={order.user_id} />
             </CardContent>
           </Card>
         </TabsContent>
