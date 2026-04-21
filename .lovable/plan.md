@@ -1,84 +1,75 @@
 
 
-# Featured products filter, richer Admin Dashboard, and a high-end admin UI refresh
+# Preserve original message content for admin evidence review
 
-## 1. Homepage — Featured Products only
+## Problem
+When a user (buyer or vendor) chooses **"Delete for everyone"**, the database function `delete_message_for_everyone` overwrites the message text with `[message removed]` and **NULLs out** the attachment fields. As a result, even though admins are technically allowed to see deleted messages, there's nothing left to see — the original text and any image/voice/file attachment are gone forever for everyone, including the admin. This breaks evidence collection during disputes.
 
-**File:** `src/pages/Index.tsx`
+The original text **is** preserved in `message_edit_history.old_text`, but attachments are not, and neither view (Admin Evidence, Admin Messages) actually surfaces the original.
 
-Change the `featured-products` query to filter by `featured = true`:
+## Fix overview
 
-```ts
-.eq("status", "active")
-.eq("featured", true)
-.order("created_at", { ascending: false })
-.limit(8)
-```
+Stop destroying evidence at the source, and surface the originals in the admin views — while keeping the buyer/vendor experience unchanged (they still see "[message removed]" / nothing).
 
-**Empty state behavior:** if no admin-featured products exist, hide the section entirely (don't fall back to demo products in production data) — show demo products only when both real & featured lists are empty AND there are zero active products at all (true "first-run demo" scenario).
+### 1. Database — preserve original text and attachment metadata
 
-**Admin side already works** (verified `AdminProducts.tsx` line 178–181: star button toggles `featured`). I'll add:
-- A "Featured" filter chip at the top of `/admin/products` so admins can quickly see which products are currently featured on the homepage.
-- A small "Shown on homepage" badge next to featured products in the table.
+Add three new columns to `chat_messages`:
+- `original_message text` — snapshot of the text at the moment of deletion
+- `original_attachment_url text`
+- `original_attachment_type text`
+- `original_attachment_size integer`
 
-## 2. Admin Dashboard — fuller picture
+Update `delete_message_for_everyone(...)` so that when a message is deleted:
+- It **copies** `message`, `attachment_url`, `attachment_type`, `attachment_size` into the new `original_*` columns
+- Then sets the public-facing `message = '[message removed]'`, `deleted_at = now()`, and NULLs the public `attachment_*` fields (unchanged behavior for buyer/vendor)
 
-The current `/admin` page shows site analytics + 6 stat tiles + revenue chart + top vendors/products/orders. It's missing the "what needs my attention NOW" layer that admins actually open the dashboard for.
+Update `delete_message_for_me(...)` to also snapshot into the `original_*` columns the first time a side hides the message, so admins can always see what was hidden.
 
-**Add to `AdminDashboard.tsx`:**
+Add an RLS policy / column-level note: the `original_*` columns are only readable by admins. The existing "Admins can view all messages" SELECT policy already grants admins full row access, but buyer/vendor RLS policies will be tightened in code (frontend never selects `original_*`) and we'll add a SECURITY DEFINER function `admin_get_message_originals(_message_ids uuid[])` that returns the originals only when `has_role(auth.uid(), 'admin')`. This keeps originals invisible to non-admins even if they craft their own query.
 
-**A. "Action Required" panel (top of dashboard, above analytics)** — live counts with click-through:
-- Pending vendor approvals (vendors where `status = 'pending'`) → `/admin/vendors`
-- Pending withdrawal requests → `/admin/withdrawals`
-- Pending subscription payments to verify → `/admin/subscriptions`
-- Open disputes → `/admin/evidence`
-- Orders awaiting action (status = 'pending' > 24h) → `/admin/orders`
-- Low-stock products (stock < 5, status active) → `/admin/products`
+### 2. Admin Evidence Vault (`AdminEvidence.tsx`)
 
-Each is a clickable card with count + icon + colored severity (red if >0 disputes, amber for pending items).
+In the chat history panel, for any message where `deleted_at` is set OR `deleted_by_sender`/`deleted_by_receiver` is true:
+- Render a clearly-marked red-bordered evidence block:
+  - Top line: red **"DELETED — admin view"** badge with the deletion timestamp and who deleted it (sender vs receiver)
+  - Below that, the **original message text** (from `original_message`) shown in normal type, prefixed with a small italic label *"Original content preserved for review:"*
+  - If there was an attachment, render the **original attachment** using the existing `AttachmentPreview` component, with a small "Original attachment" caption
+- Pull the originals via the new `admin_get_message_originals` RPC after loading messages.
 
-**B. Quick navigation grid** — 8 large icon tiles for the most-used sections (Vendors, Products, Orders, Withdrawals, Evidence, Categories, Users, Settings). Mobile-friendly entry point that doesn't require opening the sidebar.
+### 3. Admin Messages page (`AdminMessages.tsx`)
 
-**C. Recent activity feed** — last 15 entries from `audit_logs` (order status changes, disputes, message events), with timestamp and user. Gives admins a live operational pulse.
+Same treatment, smaller surface:
+- Deleted messages keep the existing red border but now show the **original text** struck-through-but-readable, plus the attachment thumbnail if any
+- Footer keeps the existing `· DELETED FOR EVERYONE` / `· hidden by sender` flags
 
-**D. Risk alerts strip** — count of users with active `user_risk_flags` (e.g. delete_abuse), one-click to a filtered view.
+### 4. Backfill historical data
 
-**E. Today vs Yesterday delta chips** on the existing stat cards (e.g. "Revenue: KSh 12,400 ▲ 18% vs yesterday").
+For any existing rows where `deleted_at IS NOT NULL` and `original_message IS NULL`, populate `original_message` from `message_edit_history.old_text` (the most recent entry per message). Attachments deleted in the past are unrecoverable — those rows will show *"Attachment was permanently removed before evidence preservation was enabled"*.
 
-## 3. Admin UI refresh — modern, high-end look
-
-**Honest senior-engineer take:** the current admin panel is **functional but generic** — flat cards, basic tables, no visual hierarchy, no depth, no brand presence beyond the watermark. It looks like a Tailwind starter. For a marketplace handling money, disputes, and evidence, it should feel like a professional ops cockpit (think Stripe Dashboard, Linear, Shopify Admin). Worth refreshing.
-
-**Changes I'll make (design-token level, no full rewrite):**
-
-**Visual system**
-- Switch admin shell to a **dual-tone surface system**: deep slate sidebar (`hsl(220 25% 10%)` dark), off-white app surface, white elevated cards with soft shadow + 1px border. Adds depth without being noisy.
-- Remove the giant centered watermark icon in the main area — it competes with content. Replace with a subtle top-right brand mark in the header.
-- Tighten typography: page title 22px semibold, section labels 12px uppercase tracked, table headers smaller and muted. Consistent 24px section spacing.
-
-**Components**
-- **Stat cards v2**: larger numerals, icon in a tinted square, delta chip below value, subtle gradient accent on the left edge color-coded per metric (revenue=green, orders=blue, etc.). Soft shadow on hover.
-- **Tables**: zebra rows, hover highlight, status badges with pill + dot indicator, sticky header on scroll, row click affordance.
-- **Sidebar**: dark theme, grouped sections with labels ("Operations", "Catalog", "Finance", "Insights", "System"), active item with left accent bar + bg tint, hover micro-interactions, collapse animation tightened.
-- **Header**: add a global search (orders / vendors / products), notifications bell with unread count from `notifications` table, admin avatar dropdown. Replaces the current bare title + back button.
-- **Empty states**: each table/list gets a designed empty state (icon + headline + CTA) instead of "No data yet" text.
-- **Page transitions**: subtle fade-in on route change.
-
-**Files I'll touch**
-- `src/index.css` / `tailwind.config.ts` — add admin-specific tokens (sidebar surface, elevated card shadow, accent gradients).
-- `src/components/admin/AdminLayout.tsx` — header redesign (global search, notifications, avatar), remove watermark, switch to dual-tone shell.
-- `src/components/admin/AdminSidebar.tsx` — dark theme, grouped sections, active accent bar.
-- `src/components/admin/AdminStatCard.tsx` (new) — reusable polished stat card with delta chip.
-- `src/components/admin/ActionRequiredPanel.tsx` (new) — live counts with severity colors.
-- `src/components/admin/QuickNavGrid.tsx` (new) — 8-tile launcher.
-- `src/components/admin/RecentActivityFeed.tsx` (new) — audit-log timeline.
-- `src/components/admin/AdminHeader.tsx` (new) — global search + notifications + avatar.
-- `src/pages/admin/AdminDashboard.tsx` — wire in the 4 new sections, use new stat cards.
-- `src/pages/Index.tsx` — featured filter + empty-state logic.
-- `src/pages/admin/AdminProducts.tsx` — "Featured" filter chip + "On homepage" badge.
+## What buyers and vendors will see (unchanged)
+- Their own chat windows continue to show "[message removed]" with no attachment, exactly as today.
+- The new `original_*` columns are gated behind admin-only RPC, so privacy of "delete for everyone" is preserved between the two parties — only Barakaz admins, acting in a dispute/evidence capacity, can see the originals.
 
 ## Out of scope
-- Wholesale redesign of every admin sub-page (Products, Orders, Users tables) — they'll inherit the new tokens/components automatically and look much better, but I won't restructure each page's layout in this round. If you want, a Phase 2 can polish each individual sub-page after you see the new shell.
-- Implementing global search results (the input + UI will land; hooking up cross-table search is its own task).
-- Dark mode toggle for the customer-facing site.
+- A user-facing "view original" button (intentional — this is admin-only dispute evidence).
+- Restoring permanently-lost attachments from before this change.
+
+## Files touched
+
+```text
+supabase/migrations/<timestamp>_preserve_deleted_message_evidence.sql   (new)
+  - ALTER TABLE chat_messages ADD original_* columns
+  - CREATE OR REPLACE FUNCTION delete_message_for_everyone (snapshot first)
+  - CREATE OR REPLACE FUNCTION delete_message_for_me (snapshot first)
+  - CREATE OR REPLACE FUNCTION admin_get_message_originals (admin-only)
+  - Backfill from message_edit_history
+
+src/pages/admin/AdminEvidence.tsx
+  - Fetch originals via RPC after loading messages
+  - ChatHistory: render preserved original text + attachment under deletion banner
+
+src/pages/admin/AdminMessages.tsx
+  - Fetch originals via RPC for the selected conversation
+  - Render preserved original under the deletion flag
+```
 
