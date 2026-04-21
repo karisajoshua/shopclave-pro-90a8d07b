@@ -59,6 +59,7 @@ import VendorBulkImport from "./pages/vendor/VendorBulkImport";
 import VendorMessages from "./pages/vendor/VendorMessages";
 import EditProductPage from "./pages/vendor/EditProductPage";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminEvidence from "./pages/admin/AdminEvidence";
 import AdminMedia from "./pages/admin/AdminMedia";
 import VendorMedia from "./pages/vendor/VendorMedia";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
@@ -117,6 +118,7 @@ const App = () => (
                   <Route path="subscriptions" element={<AdminSubscriptions />} />
                   <Route path="notifications" element={<AdminNotifications />} />
                   <Route path="messages" element={<AdminMessages />} />
+                  <Route path="evidence" element={<AdminEvidence />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
 
