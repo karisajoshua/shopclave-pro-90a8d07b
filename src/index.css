@@ -110,4 +110,53 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Admin cockpit utilities */
+  .admin-card {
+    @apply bg-[hsl(var(--admin-card))] rounded-xl border border-border;
+    box-shadow: var(--shadow-admin-card);
+  }
+  .admin-card-hover {
+    @apply transition-all duration-200;
+  }
+  .admin-card-hover:hover {
+    box-shadow: var(--shadow-admin-card-hover);
+  }
+  .admin-section-label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+  .admin-page-title {
+    @apply text-[22px] font-semibold tracking-tight text-foreground;
+  }
+  .admin-table {
+    @apply w-full text-sm;
+  }
+  .admin-table thead {
+    @apply sticky top-0 z-10 bg-[hsl(var(--admin-surface))] backdrop-blur-sm;
+  }
+  .admin-table thead th {
+    @apply text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border;
+  }
+  .admin-table tbody tr {
+    @apply border-b border-border/60 transition-colors;
+  }
+  .admin-table tbody tr:nth-child(even) {
+    @apply bg-muted/20;
+  }
+  .admin-table tbody tr:hover {
+    @apply bg-primary/5;
+  }
+  .admin-table tbody tr.row-clickable {
+    @apply cursor-pointer;
+  }
+  .admin-table tbody td {
+    @apply px-4 py-3 align-middle;
+  }
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full;
+  }
+  .status-pill::before {
+    content: "";
+    @apply w-1.5 h-1.5 rounded-full bg-current opacity-70;
+  }
 }
