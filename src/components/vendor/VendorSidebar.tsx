@@ -115,7 +115,7 @@ export function VendorSidebar() {
           />
         </Link>
       </SidebarHeader>
-      <SidebarContent className="bg-[hsl(var(--vendor-sidebar-bg))]">
+      <SidebarContent className="bg-[hsl(var(--vendor-sidebar-bg))] stagger-children">
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
             {!collapsed && (
