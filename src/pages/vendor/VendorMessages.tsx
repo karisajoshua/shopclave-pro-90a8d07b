@@ -27,19 +27,34 @@ const VendorMessages = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("chat_messages")
-        .select("conversation_id, sender_id, message, created_at, is_read, product_id")
+        .select("conversation_id, sender_id, message, created_at, is_read, product_id, order_id")
         .eq("vendor_id", vendor.id)
         .order("created_at", { ascending: false });
 
       if (!data) return [];
 
+      // Helper: derive order_id from conversation_id of form "order_<uuid>"
+      const deriveOrderId = (convId: string): string | null => {
+        if (!convId.startsWith("order_")) return null;
+        const suffix = convId.slice("order_".length);
+        return /^[0-9a-f-]{36}$/i.test(suffix) ? suffix : null;
+      };
+
       // Group by conversation
-      const convMap = new Map<string, { lastMessage: any; unreadCount: number; userId: string; productId: string | null; messageCount: number }>();
+      const convMap = new Map<string, { lastMessage: any; unreadCount: number; userId: string; productId: string | null; orderId: string | null; messageCount: number }>();
       data.forEach((msg) => {
         const convId = msg.conversation_id;
         if (!convMap.has(convId)) {
-          const userId = convId.split("_")[0];
-          convMap.set(convId, { lastMessage: msg, unreadCount: 0, userId, productId: msg.product_id, messageCount: 0 });
+          // For order threads conversation_id is "order_<uuid>"; for product/user threads it's "<userId>_<vendorId>(_<productId>)"
+          const userId = convId.startsWith("order_") ? "" : convId.split("_")[0];
+          convMap.set(convId, {
+            lastMessage: msg,
+            unreadCount: 0,
+            userId,
+            productId: msg.product_id,
+            orderId: msg.order_id ?? deriveOrderId(convId),
+            messageCount: 0,
+          });
         }
         const conv = convMap.get(convId)!;
         conv.messageCount++;
@@ -49,6 +64,10 @@ const VendorMessages = () => {
         // Capture product_id from any message in the conversation
         if (msg.product_id && !conv.productId) {
           conv.productId = msg.product_id;
+        }
+        // Capture order_id from any message in the conversation
+        if (msg.order_id && !conv.orderId) {
+          conv.orderId = msg.order_id;
         }
       });
 
