@@ -7,12 +7,13 @@ import { Bell, Search, Home, ChevronDown, LogOut, User as UserIcon } from "lucid
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export const AdminHeader = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
 
   const { data: unreadCount } = useQuery({
@@ -29,6 +30,37 @@ export const AdminHeader = () => {
     enabled: !!user?.id,
     refetchInterval: 30_000,
   });
+
+  // Realtime: refresh badge whenever this admin's notifications change (new, read, etc.)
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`admin-notif-badge-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `recipient_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["admin-unread-notifications", user.id] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
+
+  const handleBellClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (user?.id && unreadCount && unreadCount > 0) {
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("recipient_id", user.id)
+        .eq("is_read", false);
+      queryClient.invalidateQueries({ queryKey: ["admin-unread-notifications", user.id] });
+    }
+    navigate("/admin/notifications");
+  };
 
   const initials = (user?.email || "A").slice(0, 2).toUpperCase();
 
@@ -55,9 +87,10 @@ export const AdminHeader = () => {
           <Home className="h-4 w-4" /> Site
         </Link>
       </Button>
-      <Link
-        to="/admin/notifications"
-        className="relative h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground"
+      <a
+        href="/admin/notifications"
+        onClick={handleBellClick}
+        className="relative h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground cursor-pointer"
         aria-label="Notifications"
       >
         <Bell className="h-4 w-4" />
@@ -66,7 +99,7 @@ export const AdminHeader = () => {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </Link>
+      </a>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-md hover:bg-muted/60 transition-colors">
