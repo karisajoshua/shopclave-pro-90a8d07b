@@ -45,18 +45,33 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
 const Index = () => {
   const { t } = useTranslation();
 
-  const { data: products, isLoading } = useQuery({
+  const { data: featuredData, isLoading } = useQuery({
     queryKey: ["featured-products"],
     queryFn: async () => {
-      const { data } = await supabase
+      // Featured products marked by admin
+      const featuredQ = await supabase
         .from("products")
         .select("*, vendors(store_name), product_images(url)")
         .eq("status", "active")
+        .eq("featured", true)
         .order("created_at", { ascending: false })
         .limit(8);
-      return data;
+
+      // Determine if any active products exist at all (for first-run demo logic)
+      const anyActiveQ = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active");
+
+      return {
+        featured: featuredQ.data || [],
+        anyActiveCount: anyActiveQ.count || 0,
+      };
     },
   });
+
+  const products = featuredData?.featured || [];
+  const isFirstRunDemo = (featuredData?.anyActiveCount || 0) === 0;
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -76,48 +91,56 @@ const Index = () => {
     image: c.image_url || barakazIcon,
   })) : DEFAULT_CATEGORIES;
 
-  const displayProducts = products?.length ? products.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    price: Number(p.price),
-    compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
-    image: p.product_images?.[0]?.url || barakazIcon,
-    vendorId: p.vendor_id,
-    vendorName: p.vendors?.store_name || "Unknown Seller",
-    slug: p.slug,
-    rating: 4.5,
-    reviewCount: 0,
-    dealEndsAt: p.deal_ends_at || null,
-  })) : DEMO_PRODUCTS;
+  const displayProducts = products.length
+    ? products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
+        image: p.product_images?.[0]?.url || barakazIcon,
+        vendorId: p.vendor_id,
+        vendorName: p.vendors?.store_name || "Unknown Seller",
+        slug: p.slug,
+        rating: 4.5,
+        reviewCount: 0,
+        dealEndsAt: p.deal_ends_at || null,
+      }))
+    : isFirstRunDemo
+      ? DEMO_PRODUCTS
+      : [];
+
+  const showFeaturedSection = isLoading || displayProducts.length > 0;
 
   return (
     <MarketplaceLayout>
       <HeroBanner />
 
       {/* Featured Products */}
-      <section className="container py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">{t("home.featured")}</h2>
-          <Link to="/search">
-            <Button variant="ghost" size="sm" className="gap-1 text-primary">
-              {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
-            ))}
+      {showFeaturedSection && (
+        <section className="container py-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">{t("home.featured")}</h2>
+            <Link to="/search">
+              <Button variant="ghost" size="sm" className="gap-1 text-primary">
+                {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {displayProducts.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
-          </div>
-        )}
-      </section>
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {displayProducts.map((product) => (
+                <ProductCard key={product.id} {...product} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Sell banner */}
       <section className="container py-8">
