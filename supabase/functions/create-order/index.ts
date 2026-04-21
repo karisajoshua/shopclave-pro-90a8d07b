@@ -206,6 +206,74 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Send order confirmation email (best-effort — never fail the order)
+    try {
+      // Build short id, formatted date, items with product names
+      const orderShortId = order.id.slice(0, 8).toUpperCase();
+      const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      const emailItems = orderItems.map((oi) => {
+        const product = productMap.get(oi.product_id);
+        const variantLabel =
+          oi.variant_options && typeof oi.variant_options === "object"
+            ? (oi.variant_options as Record<string, string>).label ?? null
+            : null;
+        return {
+          name: product?.name ?? "Product",
+          variantLabel,
+          quantity: oi.quantity,
+          unitPrice: oi.price,
+          lineTotal: oi.price * oi.quantity,
+        };
+      });
+
+      const subtotal = total;
+      const deliveryFee = 200;
+      const grandTotal = subtotal + deliveryFee;
+
+      const paymentLabelMap: Record<string, string> = {
+        mpesa: "M-Pesa",
+        card: "Card",
+        cod: "Pay on Delivery",
+        vendor_payment: "Pay Vendor Directly",
+      };
+
+      const recipientEmail = user.email;
+      if (recipientEmail) {
+        const supabaseFunctionsUrl = `${supabaseUrl}/functions/v1/send-transactional-email`;
+        await fetch(supabaseFunctionsUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            templateName: "order-confirmation",
+            recipientEmail,
+            idempotencyKey: `order-confirm-${order.id}`,
+            templateData: {
+              customerName: shipping_address.fullName,
+              orderShortId,
+              orderDate,
+              items: emailItems,
+              subtotal,
+              deliveryFee,
+              total: grandTotal,
+              shippingAddress: shipping_address,
+              paymentMethodLabel: paymentLabelMap[payment_method] ?? payment_method,
+              trackUrl: "https://barakaz.com/account",
+            },
+          }),
+        });
+      }
+    } catch (emailErr) {
+      console.error("order confirmation email failed:", emailErr);
+    }
+
     return new Response(JSON.stringify({ order_id: order.id }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

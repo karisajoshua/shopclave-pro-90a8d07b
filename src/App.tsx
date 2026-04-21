@@ -64,6 +64,7 @@ import AdminMedia from "./pages/admin/AdminMedia";
 import VendorMedia from "./pages/vendor/VendorMedia";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 import OrderChatPage from "./pages/OrderChatPage";
+import EmailUnsubscribePage from "./pages/EmailUnsubscribePage";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,7 @@ const App = () => (
                 <Route path="/vendor/register" element={<VendorRegisterPage />} />
                 <Route path="/store/:slug" element={<VendorStorePage />} />
                 <Route path="/s/:code" element={<ShortLinkRedirect />} />
+                <Route path="/unsubscribe" element={<EmailUnsubscribePage />} />
 
                 {/* Static pages */}
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
