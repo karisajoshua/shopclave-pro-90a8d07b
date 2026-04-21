@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, TrendingUp, Wallet, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet, Clock, ArrowDownToLine } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 
 interface PaymentDetails {
   phone?: string;
@@ -120,37 +122,41 @@ const VendorEarnings = () => {
     rejected: "bg-destructive/10 text-destructive",
   };
 
+  const stats = [
+    { label: "Gross Revenue", value: `KSh ${totalRevenue.toLocaleString()}`, icon: DollarSign, accent: "text-foreground", iconBg: "bg-muted text-muted-foreground" },
+    { label: `Platform Fee (${vendor?.commission_rate}%)`, value: `- KSh ${totalCommission.toLocaleString()}`, icon: TrendingUp, accent: "text-destructive", iconBg: "bg-destructive/10 text-destructive" },
+    { label: "Net Earnings", value: `KSh ${netEarnings.toLocaleString()}`, icon: Wallet, accent: "text-success", iconBg: "bg-success/10 text-success" },
+    { label: "Available Balance", value: `KSh ${Math.max(0, availableBalance).toLocaleString()}`, icon: Clock, accent: "text-primary", iconBg: "bg-primary/10 text-primary" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold">Earnings & Withdrawals</h2>
+    <div className="space-y-5">
+      <AdminPageHeader
+        title="Earnings & Withdrawals"
+        subtitle="Track revenue, fees, and request payouts to your preferred method."
+      />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1"><DollarSign className="h-4 w-4 text-muted-foreground" /></div>
-          <p className="text-xs text-muted-foreground">Gross Revenue</p>
-          <p className="text-lg font-bold">KSh {totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1"><TrendingUp className="h-4 w-4 text-destructive" /></div>
-          <p className="text-xs text-muted-foreground">Platform Fee ({vendor?.commission_rate}%)</p>
-          <p className="text-lg font-bold text-destructive">- KSh {totalCommission.toLocaleString()}</p>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1"><Wallet className="h-4 w-4 text-success" /></div>
-          <p className="text-xs text-muted-foreground">Net Earnings</p>
-          <p className="text-lg font-bold text-success">KSh {netEarnings.toLocaleString()}</p>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-4 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1"><Clock className="h-4 w-4 text-primary" /></div>
-          <p className="text-xs text-muted-foreground">Available Balance</p>
-          <p className="text-lg font-bold text-primary">KSh {Math.max(0, availableBalance).toLocaleString()}</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {stats.map((s) => (
+          <div key={s.label} className="admin-card admin-card-hover p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.iconBg}`}>
+                <s.icon className="h-4 w-4" />
+              </div>
+              <span className="text-xs text-muted-foreground">{s.label}</span>
+            </div>
+            <p className={`text-lg font-bold ${s.accent}`}>{s.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Withdrawal Form */}
-      <div className="bg-card rounded-lg border border-border p-6">
-        <h3 className="font-semibold mb-4">Request Withdrawal</h3>
+      <div className="admin-card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <ArrowDownToLine className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold">Request Withdrawal</h3>
+        </div>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -170,7 +176,6 @@ const VendorEarnings = () => {
             </div>
           </div>
 
-          {/* M-Pesa fields */}
           {paymentMethod === "mpesa" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -180,7 +185,6 @@ const VendorEarnings = () => {
             </div>
           )}
 
-          {/* Bank Transfer fields */}
           {paymentMethod === "bank_transfer" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -206,7 +210,6 @@ const VendorEarnings = () => {
             </div>
           )}
 
-          {/* PayPal fields */}
           {paymentMethod === "paypal" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -224,65 +227,76 @@ const VendorEarnings = () => {
 
       {/* Top Products */}
       {topProducts.length > 0 && (
-        <div>
-          <h3 className="font-semibold mb-3">Top Performing Products</h3>
-          <div className="bg-card rounded-lg border border-border overflow-x-auto">
-            <table className="w-full text-sm min-w-[400px]">
-              <thead className="bg-secondary">
-                <tr>
-                  <th className="text-left p-3 font-medium">#</th>
-                  <th className="text-left p-3 font-medium">Product</th>
-                  <th className="text-left p-3 font-medium">Units Sold</th>
-                  <th className="text-left p-3 font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.map((p, idx) => (
-                  <tr key={idx} className="border-t border-border">
-                    <td className="p-3 text-muted-foreground">{idx + 1}</td>
-                    <td className="p-3 font-medium">{p.name}</td>
-                    <td className="p-3">{p.units}</td>
-                    <td className="p-3">KSh {p.revenue.toLocaleString()}</td>
+        <div className="space-y-3">
+          <h3 className="admin-section-label">Top Performing Products</h3>
+          <div className="admin-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="admin-table min-w-[400px]">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Product</th>
+                    <th>Units Sold</th>
+                    <th>Revenue</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {topProducts.map((p, idx) => (
+                    <tr key={idx}>
+                      <td className="text-muted-foreground">{idx + 1}</td>
+                      <td className="font-medium">{p.name}</td>
+                      <td>{p.units}</td>
+                      <td className="font-semibold">KSh {p.revenue.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* Withdrawal History */}
-      <div>
-        <h3 className="font-semibold mb-3">Withdrawal History</h3>
-        <div className="bg-card rounded-lg border border-border overflow-x-auto">
-          <table className="w-full text-sm min-w-[500px]">
-            <thead className="bg-secondary">
-              <tr>
-                <th className="text-left p-3 font-medium">Amount</th>
-                <th className="text-left p-3 font-medium">Method</th>
-                <th className="text-left p-3 font-medium">Status</th>
-                <th className="text-left p-3 font-medium">Date</th>
-                <th className="text-left p-3 font-medium">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {withdrawals?.map((w: any) => (
-                <tr key={w.id} className="border-t border-border">
-                  <td className="p-3 font-bold">KSh {Number(w.amount).toLocaleString()}</td>
-                  <td className="p-3 capitalize">{w.payment_method?.replace("_", " ")}</td>
-                  <td className="p-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[w.status] || ""}`}>{w.status}</span>
-                  </td>
-                  <td className="p-3 text-muted-foreground text-xs">{new Date(w.requested_at).toLocaleDateString()}</td>
-                  <td className="p-3 text-xs text-muted-foreground">{w.admin_notes || "—"}</td>
-                </tr>
-              ))}
-              {(!withdrawals || withdrawals.length === 0) && (
-                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No withdrawals yet</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="space-y-3">
+        <h3 className="admin-section-label">Withdrawal History</h3>
+        {!withdrawals || withdrawals.length === 0 ? (
+          <div className="admin-card">
+            <AdminEmptyState
+              icon={ArrowDownToLine}
+              title="No withdrawals yet"
+              description="Requested payouts will appear here with status updates from the admin team."
+            />
+          </div>
+        ) : (
+          <div className="admin-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="admin-table min-w-[500px]">
+                <thead>
+                  <tr>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawals.map((w: any) => (
+                    <tr key={w.id}>
+                      <td className="font-bold">KSh {Number(w.amount).toLocaleString()}</td>
+                      <td className="capitalize">{w.payment_method?.replace("_", " ")}</td>
+                      <td>
+                        <span className={`status-pill ${statusColors[w.status] || ""}`}>{w.status}</span>
+                      </td>
+                      <td className="text-muted-foreground text-xs">{new Date(w.requested_at).toLocaleDateString()}</td>
+                      <td className="text-xs text-muted-foreground">{w.admin_notes || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
