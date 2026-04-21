@@ -636,11 +636,13 @@ function EvidenceDetail({ orderId, onBack }: { orderId: string; onBack: () => vo
 
 function ChatHistory({
   messages,
+  originals,
   profiles,
   vendor,
   buyerId,
 }: {
   messages: Message[];
+  originals: Record<string, MessageOriginal>;
   profiles: Record<string, any>;
   vendor: any;
   buyerId: string | null;
@@ -673,14 +675,16 @@ function ChatHistory({
           const deletedFlags: string[] = [];
           if (m.deleted_by_sender) deletedFlags.push("sender");
           if (m.deleted_by_receiver) deletedFlags.push("receiver");
+          const isDeleted = deletedForEveryone || deletedFlags.length > 0;
+          const orig = originals[m.id];
+          const hasPreservedText = !!orig?.original_message;
+          const hasPreservedAttachment = !!orig?.original_attachment_url;
 
           return (
             <div
               key={m.id}
               className={`border rounded-lg p-3 text-sm ${
-                deletedForEveryone || deletedFlags.length
-                  ? "border-destructive/30 bg-destructive/5"
-                  : "border-border"
+                isDeleted ? "border-destructive/40 bg-destructive/5" : "border-border"
               }`}
             >
               <div className="flex items-center justify-between mb-1 text-xs text-muted-foreground">
@@ -696,7 +700,7 @@ function ChatHistory({
                   )}
                   {m.seen_at && <span>· seen</span>}
                 </div>
-                {(deletedForEveryone || deletedFlags.length > 0) && (
+                {isDeleted && (
                   <Badge variant="destructive" className="text-[10px]">
                     <Trash2 className="h-3 w-3 mr-1" />
                     {deletedForEveryone
@@ -705,13 +709,44 @@ function ChatHistory({
                   </Badge>
                 )}
               </div>
-              <div className={deletedForEveryone ? "italic text-muted-foreground" : ""}>{m.message}</div>
+
+              {/* Public-facing message (what buyer/vendor see) */}
+              <div className={isDeleted ? "italic text-muted-foreground" : ""}>{m.message}</div>
               {m.attachment_url && !deletedForEveryone && (
                 <AttachmentPreview
                   url={m.attachment_url}
                   type={m.attachment_type}
                   size={m.attachment_size}
                 />
+              )}
+
+              {/* Preserved evidence — admin-only */}
+              {isDeleted && (
+                <div className="mt-2 border-2 border-destructive/40 bg-destructive/10 rounded-md p-2 space-y-1">
+                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase text-destructive">
+                    <Shield className="h-3 w-3" /> Admin view — preserved evidence
+                  </div>
+                  {hasPreservedText ? (
+                    <>
+                      <div className="text-[10px] italic text-muted-foreground">Original content preserved for review:</div>
+                      <div className="text-foreground">{orig!.original_message}</div>
+                    </>
+                  ) : (
+                    <div className="text-[11px] italic text-muted-foreground">
+                      Original text not available (message was deleted before evidence preservation was enabled).
+                    </div>
+                  )}
+                  {hasPreservedAttachment ? (
+                    <div>
+                      <div className="text-[10px] italic text-muted-foreground mt-1">Original attachment:</div>
+                      <AttachmentPreview
+                        url={orig!.original_attachment_url!}
+                        type={orig!.original_attachment_type}
+                        size={orig!.original_attachment_size}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
           );
