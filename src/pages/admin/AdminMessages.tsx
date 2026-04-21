@@ -196,20 +196,36 @@ const AdminMessages = () => {
                   </p>
                 )}
                 {selectedMessages.map((msg: any) => {
+                  if (msg.is_system_message) {
+                    return (
+                      <div key={msg.id} className="flex justify-center">
+                        <div className="text-[11px] bg-muted/60 text-muted-foreground rounded-full px-3 py-1 max-w-[85%] text-center">
+                          ⚙ {msg.message}
+                        </div>
+                      </div>
+                    );
+                  }
                   const conv = conversations.find((c: any) => c.id === selectedConversation);
                   const isVendor = conv && msg.sender_id !== conv.userId;
+                  const isDeleted = !!msg.deleted_at;
+                  const deletedFlags: string[] = [];
+                  if (msg.deleted_by_sender) deletedFlags.push("hidden by sender");
+                  if (msg.deleted_by_receiver) deletedFlags.push("hidden by receiver");
                   return (
                     <div key={msg.id} className={`flex ${isVendor ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                         isVendor ? "bg-primary/10 text-foreground" : "bg-muted text-foreground"
-                      }`}>
+                      } ${isDeleted ? "border border-destructive/40" : ""}`}>
                         <p className="text-[10px] font-medium text-muted-foreground mb-0.5">
                           {isVendor ? "Vendor" : "Customer"}
                         </p>
-                        <p>{msg.message}</p>
+                        <p className={isDeleted ? "italic line-through opacity-70" : ""}>{msg.message}</p>
                         <p className="text-[10px] mt-1 text-muted-foreground">
                           {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          {msg.is_read ? " · Read" : ""}
+                          {msg.edited_at && " · edited"}
+                          {msg.seen_at || msg.is_read ? " · Read" : ""}
+                          {isDeleted && " · DELETED FOR EVERYONE"}
+                          {deletedFlags.length > 0 && ` · ${deletedFlags.join(", ")}`}
                         </p>
                       </div>
                     </div>
