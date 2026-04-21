@@ -217,9 +217,10 @@ const container: React.CSSProperties = {
   overflow: 'hidden',
 }
 const header: React.CSSProperties = {
-  backgroundColor: BRAND,
+  backgroundColor: '#ffffff',
   padding: '20px 24px',
   textAlign: 'center',
+  borderBottom: '1px solid #f3f4f6',
 }
 const logo: React.CSSProperties = {
   display: 'block',
