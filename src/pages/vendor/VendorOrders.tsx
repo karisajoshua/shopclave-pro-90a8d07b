@@ -129,6 +129,16 @@ const VendorOrders = () => {
                     const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
                     return (
                       <tr key={item.id}>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => copyOrderId(item.order_id)}
+                            className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold hover:bg-muted/70 transition-colors"
+                            title="Click to copy full order ID"
+                          >
+                            #{item.order_id.slice(0, 8).toUpperCase()}
+                          </button>
+                        </td>
                         <td className="font-medium">
                           <div>{(item.products as any)?.name || "—"}</div>
                           {(item.variant_options as any)?.label && (
