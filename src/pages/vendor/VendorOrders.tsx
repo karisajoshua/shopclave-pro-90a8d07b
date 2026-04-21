@@ -2,12 +2,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Truck, MessageCircle } from "lucide-react";
+import { Truck, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 
 const orderStatusFlow = ["pending", "processing", "shipped", "delivered"];
+
+const formatAddress = (addr: any) => {
+  if (!addr) return "";
+  const cityCountry = [addr.city, addr.country].filter(Boolean).join(", ");
+  return [addr.fullName, addr.phone, addr.addressLine, cityCountry]
+    .filter(Boolean)
+    .join("\n");
+};
 
 const VendorOrders = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
@@ -49,6 +57,15 @@ const VendorOrders = () => {
     onError: (e: any) => toast.error(e.message || "Failed to update status"),
   });
 
+  const copyAddress = async (addr: any) => {
+    try {
+      await navigator.clipboard.writeText(formatAddress(addr));
+      toast.success("Delivery address copied");
+    } catch {
+      toast.error("Failed to copy address");
+    }
+  };
+
   const statusColor = (s: string) => {
     if (s === "delivered") return "bg-success/10 text-success";
     if (s === "shipped") return "bg-primary/10 text-primary";
@@ -84,7 +101,7 @@ const VendorOrders = () => {
                 <thead>
                   <tr>
                     <th>Product</th>
-                    <th>Customer</th>
+                    <th className="min-w-[260px]">Deliver to</th>
                     <th>Qty</th>
                     <th>Total</th>
                     <th>Payment</th>
@@ -99,13 +116,26 @@ const VendorOrders = () => {
                     const next = idx < orderStatusFlow.length - 1 ? orderStatusFlow[idx + 1] : null;
                     const order = item.orders as any;
                     const addr = order?.shipping_address as any;
+                    const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
                     return (
                       <tr key={item.id}>
                         <td className="font-medium">{(item.products as any)?.name || "—"}</td>
-                        <td className="text-xs">
-                          <div className="font-medium text-foreground">{addr?.fullName || "—"}</div>
-                          <div className="text-muted-foreground">{addr?.city || ""}</div>
-                          {addr?.phone && <div className="text-muted-foreground">{addr.phone}</div>}
+                        <td className="text-xs align-top">
+                          <div className="space-y-0.5 leading-snug">
+                            <div className="font-medium text-foreground">{addr?.fullName || "—"}</div>
+                            {addr?.phone && <div className="text-muted-foreground">{addr.phone}</div>}
+                            {addr?.addressLine && <div className="text-muted-foreground">{addr.addressLine}</div>}
+                            {cityCountry && <div className="text-muted-foreground">{cityCountry}</div>}
+                            {addr && (
+                              <button
+                                type="button"
+                                onClick={() => copyAddress(addr)}
+                                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-1"
+                              >
+                                <Copy className="h-3 w-3" /> Copy address
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td>{item.quantity}</td>
                         <td className="font-semibold">KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
@@ -156,19 +186,42 @@ const VendorOrders = () => {
               const next = idx < orderStatusFlow.length - 1 ? orderStatusFlow[idx + 1] : null;
               const order = item.orders as any;
               const addr = order?.shipping_address as any;
+              const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
               return (
-                <div key={item.id} className="admin-card p-4 space-y-2">
+                <div key={item.id} className="admin-card p-4 space-y-3">
                   <div className="flex justify-between items-start gap-2">
                     <p className="font-medium text-sm line-clamp-1">{(item.products as any)?.name || "—"}</p>
                     <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p>Customer: <span className="text-foreground font-medium">{addr?.fullName || "—"}</span> — {addr?.city || ""}</p>
-                    {addr?.phone && <p>📞 {addr.phone}</p>}
-                    <p>{order?.created_at ? new Date(order.created_at).toLocaleDateString() : ""}</p>
-                  </div>
+
+                  {addr && (
+                    <div className="rounded-md border border-border bg-muted/30 p-2.5 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">
+                          Deliver to
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyAddress(addr)}
+                          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                        >
+                          <Copy className="h-3 w-3" /> Copy
+                        </button>
+                      </div>
+                      <div className="space-y-0.5 leading-snug">
+                        {addr.fullName && <div className="font-medium text-foreground">{addr.fullName}</div>}
+                        {addr.phone && <div className="text-muted-foreground">📞 {addr.phone}</div>}
+                        {addr.addressLine && <div className="text-muted-foreground">{addr.addressLine}</div>}
+                        {cityCountry && <div className="text-muted-foreground">{cityCountry}</div>}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Qty: {item.quantity}</span>
+                    <span className="text-muted-foreground">
+                      Qty: {item.quantity}
+                      {order?.created_at && ` · ${new Date(order.created_at).toLocaleDateString()}`}
+                    </span>
                     <span className="font-semibold">KSh {(Number(item.price) * item.quantity).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center gap-2">
