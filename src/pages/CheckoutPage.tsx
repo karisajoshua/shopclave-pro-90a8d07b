@@ -32,7 +32,15 @@ const CheckoutPage = () => {
     addressLine: "",
     city: "",
     country: "Kenya",
+    email: "",
   });
+
+  // Prefill email from auth user
+  useEffect(() => {
+    if (user?.email) {
+      setAddress((a) => (a.email ? a : { ...a, email: user.email ?? "" }));
+    }
+  }, [user?.email]);
 
   // Redirect to cart if empty - but skip on first render if coming from Buy Now
   useEffect(() => {
@@ -67,17 +75,18 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (savedAddress) {
-      setAddress({
+      setAddress((prev) => ({
         fullName: savedAddress.full_name,
         phone: savedAddress.phone || "",
         addressLine: savedAddress.address_line,
         city: savedAddress.city,
         country: savedAddress.country,
-      });
+        email: prev.email || user?.email || "",
+      }));
       setAddressConfirmed(true);
       setActiveStep("delivery");
     }
-  }, [savedAddress]);
+  }, [savedAddress, user?.email]);
 
   if (items.length === 0 || !user) {
     return null; // useEffect handles redirect
@@ -254,6 +263,18 @@ const CheckoutPage = () => {
                       <Label className="text-xs">Country</Label>
                       <Input value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
                     </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Email for order updates</Label>
+                    <Input
+                      type="email"
+                      value={address.email}
+                      onChange={(e) => setAddress({ ...address, email: e.target.value })}
+                      placeholder="you@example.com"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      We'll send your order confirmation here.
+                    </p>
                   </div>
                   <Button className="w-full mt-2" onClick={handleConfirmAddress}>
                     Save & Continue
