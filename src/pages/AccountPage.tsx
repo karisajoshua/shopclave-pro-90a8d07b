@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Package, User, Store } from "lucide-react";
+import { Package, User, Store, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const AccountPage = () => {
@@ -91,16 +91,23 @@ const AccountPage = () => {
         {orders?.length ? (
           <div className="space-y-3">
             {orders.map((order: any) => (
-              <div key={order.id} className="bg-card rounded-lg border border-border p-4 flex items-center justify-between">
+              <div key={order.id} className="bg-card rounded-lg border border-border p-4 flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <p className="font-mono text-sm font-medium">{order.id.slice(0, 8)}</p>
                   <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold">KSh {Number(order.total).toLocaleString()}</p>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(order.status)}`}>
-                    {order.status}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-bold">KSh {Number(order.total).toLocaleString()}</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(order.status)}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <Link to={`/orders/${order.id}/chat`}>
+                    <Button size="sm" variant="outline" className="gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5" /> Chat
+                    </Button>
+                  </Link>
                 </div>
               </div>
             ))}

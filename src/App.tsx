@@ -62,6 +62,7 @@ import AdminMessages from "./pages/admin/AdminMessages";
 import AdminMedia from "./pages/admin/AdminMedia";
 import VendorMedia from "./pages/vendor/VendorMedia";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
+import OrderChatPage from "./pages/OrderChatPage";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const App = () => (
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
                 <Route path="/account" element={<AccountPage />} />
+                <Route path="/orders/:orderId/chat" element={<OrderChatPage />} />
                 <Route path="/product/:slug" element={<ProductDetailPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/category/:slug" element={<SearchPage />} />

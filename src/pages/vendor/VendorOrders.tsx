@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Truck } from "lucide-react";
+import { Truck, MessageCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 const orderStatusFlow = ["pending", "processing", "shipped", "delivered"];
@@ -113,19 +114,24 @@ const VendorOrders = () => {
                   <td className="p-3 text-xs text-muted-foreground">
                     {order?.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 space-y-1">
                     {next ? (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs w-full"
                         onClick={() => updateStatus.mutate({ id: item.id, status: next, productName: (item.products as any)?.name, orderId: item.order_id })}
                       >
                         Mark {next}
                       </Button>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Completed</span>
+                      <div className="text-xs text-muted-foreground">Completed</div>
                     )}
+                    <Link to={`/orders/${item.order_id}/chat`}>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs w-full gap-1">
+                        <MessageCircle className="h-3 w-3" /> Chat
+                      </Button>
+                    </Link>
                   </td>
                 </tr>
               );
@@ -162,16 +168,23 @@ const VendorOrders = () => {
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${order?.payment_status === "paid" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                   {order?.payment_status || "—"}
                 </span>
-                {next && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    onClick={() => updateStatus.mutate({ id: item.id, status: next, productName: (item.products as any)?.name, orderId: item.order_id })}
-                  >
-                    Mark as {next}
-                  </Button>
-                )}
+                <div className="flex gap-1">
+                  <Link to={`/orders/${item.order_id}/chat`}>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs gap-1">
+                      <MessageCircle className="h-3 w-3" /> Chat
+                    </Button>
+                  </Link>
+                  {next && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => updateStatus.mutate({ id: item.id, status: next, productName: (item.products as any)?.name, orderId: item.order_id })}
+                    >
+                      Mark as {next}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );
