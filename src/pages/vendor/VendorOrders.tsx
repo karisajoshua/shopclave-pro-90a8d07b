@@ -66,6 +66,15 @@ const VendorOrders = () => {
     }
   };
 
+  const copyOrderId = async (orderId: string) => {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      toast.success("Order ID copied");
+    } catch {
+      toast.error("Failed to copy order ID");
+    }
+  };
+
   const statusColor = (s: string) => {
     if (s === "delivered") return "bg-success/10 text-success";
     if (s === "shipped") return "bg-primary/10 text-primary";
