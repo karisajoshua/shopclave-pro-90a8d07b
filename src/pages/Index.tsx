@@ -91,20 +91,6 @@ const Index = () => {
     image: c.image_url || barakazIcon,
   })) : DEFAULT_CATEGORIES;
 
-  const displayProducts = products?.length ? products.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    price: Number(p.price),
-    compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
-    image: p.product_images?.[0]?.url || barakazIcon,
-    vendorId: p.vendor_id,
-    vendorName: p.vendors?.store_name || "Unknown Seller",
-    slug: p.slug,
-    rating: 4.5,
-    reviewCount: 0,
-    dealEndsAt: p.deal_ends_at || null,
-  })) : DEMO_PRODUCTS;
-
   const displayProducts = products.length
     ? products.map((p: any) => ({
         id: p.id,
