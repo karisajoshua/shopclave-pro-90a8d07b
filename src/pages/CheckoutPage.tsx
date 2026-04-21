@@ -75,17 +75,18 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (savedAddress) {
-      setAddress({
+      setAddress((prev) => ({
         fullName: savedAddress.full_name,
         phone: savedAddress.phone || "",
         addressLine: savedAddress.address_line,
         city: savedAddress.city,
         country: savedAddress.country,
-      });
+        email: prev.email || user?.email || "",
+      }));
       setAddressConfirmed(true);
       setActiveStep("delivery");
     }
-  }, [savedAddress]);
+  }, [savedAddress, user?.email]);
 
   if (items.length === 0 || !user) {
     return null; // useEffect handles redirect
