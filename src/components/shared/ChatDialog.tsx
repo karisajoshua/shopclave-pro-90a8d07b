@@ -2,9 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Send, MessageCircle } from "lucide-react";
+import { Send, MessageCircle, MoreVertical, Pencil, Check, X, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
@@ -19,14 +25,25 @@ interface ChatDialogProps {
   productSlug?: string;
 }
 
+const EDIT_DELETE_WINDOW_MS = 5 * 60 * 1000;
+
 const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, productName, productSlug }: ChatDialogProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [, setNowTick] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Product-specific conversation ID
+  // Tick every 30s so the 5-min edit/delete window UI updates
+  useEffect(() => {
+    if (!open) return;
+    const t = setInterval(() => setNowTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, [open]);
+
   const conversationId = user
     ? productId
       ? `${user.id}_${vendorId}_${productId}`
@@ -56,6 +73,14 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
       }, (payload) => {
         setMessages((prev) => [...prev, payload.new]);
       })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "chat_messages",
+        filter: `conversation_id=eq.${conversationId}`,
+      }, (payload) => {
+        setMessages((prev) => prev.map((m) => (m.id === (payload.new as any).id ? payload.new : m)));
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -65,16 +90,12 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Mark messages as read
+  // Mark messages as seen via RPC
   useEffect(() => {
     if (!open || !user || !messages.length) return;
-    const unread = messages.filter((m) => !m.is_read && m.sender_id !== user.id);
+    const unread = messages.filter((m) => !m.seen_at && m.sender_id !== user.id);
     if (unread.length > 0) {
-      supabase
-        .from("chat_messages")
-        .update({ is_read: true })
-        .in("id", unread.map((m) => m.id))
-        .then();
+      supabase.rpc("mark_messages_seen", { _message_ids: unread.map((m) => m.id) }).then();
     }
   }, [messages, open, user]);
 
@@ -87,14 +108,13 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
         sender_id: user.id,
         vendor_id: vendorId,
         message: newMessage.trim(),
+        message_type: "text",
       };
-      // Always attach product_id if this is a product-specific thread
       if (productId) payload.product_id = productId;
 
       const { error } = await supabase.from("chat_messages").insert(payload);
       if (error) throw error;
 
-      // Create notification for vendor
       const { data: vendor } = await supabase
         .from("vendors")
         .select("user_id")
@@ -118,6 +138,34 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
     }
   };
 
+  const handleDeleteForMe = async (msgId: string) => {
+    const { error } = await supabase.rpc("delete_message_for_me", { _message_id: msgId });
+    if (error) toast.error(error.message);
+    else toast.success("Removed from your view");
+  };
+
+  const handleDeleteForEveryone = async (msgId: string) => {
+    const { error } = await supabase.rpc("delete_message_for_everyone", { _message_id: msgId });
+    if (error) toast.error(error.message);
+    else toast.success("Message deleted");
+  };
+
+  const startEdit = (msg: any) => {
+    setEditingId(msg.id);
+    setEditingText(msg.message);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editingText.trim()) return;
+    const { error } = await supabase.rpc("edit_message", { _message_id: editingId, _new_text: editingText.trim() });
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Message updated");
+      setEditingId(null);
+      setEditingText("");
+    }
+  };
+
   if (!user) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,6 +181,14 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
     );
   }
 
+  // Filter out messages the current viewer soft-deleted
+  const visibleMessages = messages.filter((m) => {
+    const isMine = m.sender_id === user.id;
+    if (isMine && m.deleted_by_sender) return false;
+    if (!isMine && m.deleted_by_receiver) return false;
+    return true;
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
@@ -142,9 +198,9 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
             Chat with {vendorName}
           </DialogTitle>
           <div className="flex items-center gap-2 mt-1">
-            {messages.length > 0 && (
+            {visibleMessages.length > 0 && (
               <Badge variant="secondary" className="text-[10px]">
-                {messages.length} message{messages.length !== 1 ? "s" : ""}
+                {visibleMessages.length} message{visibleMessages.length !== 1 ? "s" : ""}
               </Badge>
             )}
           </div>
@@ -162,30 +218,105 @@ const ChatDialog = ({ open, onOpenChange, vendorId, vendorName, productId, produ
           </div>
         )}
 
+        <div className="text-[10px] text-muted-foreground bg-muted/30 rounded p-2 flex items-start gap-1.5">
+          <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+          <span>Chats may be securely retained for safety, dispute resolution, and fraud prevention.</span>
+        </div>
+
         <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[400px] space-y-2 py-2">
-          {productName && messages.length === 0 && (
+          {productName && visibleMessages.length === 0 && (
             <div className="text-xs text-center bg-muted/50 rounded p-2 text-muted-foreground">
               Inquiring about: <span className="font-medium text-foreground">{productName}</span>
             </div>
           )}
-          {messages.length === 0 && (
+          {visibleMessages.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
               Start a conversation with {vendorName}
             </p>
           )}
-          {messages.map((msg) => {
+          {visibleMessages.map((msg) => {
+            // System messages
+            if (msg.is_system_message) {
+              return (
+                <div key={msg.id} className="flex justify-center">
+                  <div className="text-[11px] bg-muted/60 text-muted-foreground rounded-full px-3 py-1 max-w-[85%] text-center">
+                    {msg.message}
+                  </div>
+                </div>
+              );
+            }
+
             const isMe = msg.sender_id === user.id;
+            const isDeleted = !!msg.deleted_at;
+            const ageMs = Date.now() - new Date(msg.created_at).getTime();
+            const withinWindow = ageMs < EDIT_DELETE_WINDOW_MS;
+            const isEditing = editingId === msg.id;
+
             return (
-              <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                  isMe
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+              <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} group`}>
+                <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${
+                  isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                 }`}>
-                  <p>{msg.message}</p>
-                  <p className={`text-[10px] mt-1 ${isMe ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
+                  {isEditing ? (
+                    <div className="flex flex-col gap-2 min-w-[200px]">
+                      <Input
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="h-8 text-foreground bg-background"
+                        autoFocus
+                      />
+                      <div className="flex gap-1 justify-end">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingId(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={saveEdit}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className={isDeleted ? "italic opacity-70" : ""}>{msg.message}</p>
+                      <p className={`text-[10px] mt-1 flex items-center gap-1 ${isMe ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {msg.edited_at && !isDeleted && <span>· edited</span>}
+                        {isMe && msg.seen_at && <span>· seen</span>}
+                      </p>
+                      {!isDeleted && (
+                        <div className={`absolute top-1 ${isMe ? "left-1" : "right-1"} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className={`h-5 w-5 ${isMe ? "text-primary-foreground hover:bg-primary-foreground/20" : ""}`}
+                              >
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isMe ? "start" : "end"}>
+                              <DropdownMenuItem onClick={() => handleDeleteForMe(msg.id)}>
+                                Delete for me
+                              </DropdownMenuItem>
+                              {isMe && withinWindow && (
+                                <>
+                                  <DropdownMenuItem onClick={() => startEdit(msg)}>
+                                    <Pencil className="h-3 w-3 mr-2" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteForEveryone(msg.id)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    Delete for everyone
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             );
