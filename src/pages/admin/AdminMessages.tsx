@@ -102,6 +102,21 @@ const AdminMessages = () => {
     enabled: !!selectedConversation,
   });
 
+  const { data: originals = {} } = useQuery({
+    queryKey: ["admin-chat-originals", selectedConversation, selectedMessages.length],
+    queryFn: async () => {
+      const deletedIds = (selectedMessages as any[])
+        .filter((m) => m.deleted_at || m.deleted_by_sender || m.deleted_by_receiver)
+        .map((m) => m.id);
+      if (deletedIds.length === 0) return {};
+      const { data } = await supabase.rpc("admin_get_message_originals", { _message_ids: deletedIds });
+      const map: Record<string, any> = {};
+      (data || []).forEach((o: any) => { map[o.id] = o; });
+      return map;
+    },
+    enabled: !!selectedConversation && selectedMessages.length > 0,
+  });
+
   const selectedConv = conversations.find((c: any) => c.id === selectedConversation);
 
   return (
