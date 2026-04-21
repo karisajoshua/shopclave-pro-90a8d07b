@@ -164,7 +164,9 @@ export default function AdminEvidence() {
     const profileMap = new Map<string, { full_name: string | null }>();
     (profilesRes.data ?? []).forEach((p: any) => profileMap.set(p.user_id, p));
 
-    const vendorIds = Array.from(new Set((itemsRes.data ?? []).map((i: any) => i.vendor_id).filter(Boolean)));
+    const vendorIds = Array.from(
+      new Set((itemsRes.data ?? []).map((i: any) => i.vendor_id).filter(Boolean) as string[]),
+    );
     const vendorsRes = vendorIds.length
       ? await supabase.from("vendors").select("id, store_name").in("id", vendorIds)
       : ({ data: [] } as any);
