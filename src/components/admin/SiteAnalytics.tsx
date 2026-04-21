@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const timeFrameOptions: { label: string; value: TimeFrame }[] = [
 
 const SiteAnalytics = () => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("7d");
+  const queryClient = useQueryClient();
 
   const { data: cacheRow, isLoading, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["site-analytics-cache"],
@@ -31,6 +32,23 @@ const SiteAnalytics = () => {
     },
     refetchInterval: 10000,
   });
+
+  // Live updates: push new analytics the instant the cache row changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("site-analytics-cache-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_analytics_cache" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["site-analytics-cache"] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const analyticsData = cacheRow?.data;
   const timeSeries = analyticsData?.timeSeries;
