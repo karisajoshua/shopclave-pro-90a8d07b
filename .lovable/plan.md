@@ -1,63 +1,73 @@
 
 
-# Customer order details + order confirmation email
+# Fix order confirmation emails not sending
 
-Two changes for buyers: (1) make the customer dashboard show full order details (items, prices, delivery address, payment method, status), and (2) send a branded order-confirmation email automatically when an order is placed.
+## Root cause
 
-## 1. Customer dashboard — full order details
+Orders are being placed successfully, but **zero rows ever appear** in `email_send_log` for `order-confirmation`, and the `send-transactional-email` Edge Function has **no log entries** corresponding to those orders. That means the email-send block inside `create-order` is being skipped entirely.
 
-Today `/account` only shows order ID, date, total, status, and a Chat button. Buyers can't see what they actually ordered.
+The cause is in `supabase/functions/create-order/index.ts`:
 
-**Update `src/pages/AccountPage.tsx`:**
-- Replace each compact order row with an expandable order card.
-- Collapsed view (default): order ID, date, total, status badge, item count, "View details" toggle, Chat button.
-- Expanded view shows:
-  - **Items**: thumbnail, name, variant label (if any), quantity, unit price, line total — fetched via a join on `order_items` + `products` (name, image, vendor name from `vendors`).
-  - **Delivery address**: full block from `orders.shipping_address` (name, phone, address line, city, country).
-  - **Payment method**: friendly label ("Pay on Delivery", "Pay Vendor Directly", "M-Pesa", "Card") plus payment status.
-  - **Order timeline**: pending → processing → shipped → delivered, current step highlighted.
-- Add a single React Query that fetches orders **with** `order_items(*, products(name, images, vendor_id, vendors(store_name)))` so all data loads in one round-trip. RLS on `order_items` already restricts buyers to their own orders.
-- Mobile: cards stack; expanded section uses smaller text and 2-column grid for item rows.
+```ts
+const recipientEmail = user.email;
+if (recipientEmail) {  // ← silently skipped when user.email is null
+  await fetch(...);
+}
+```
 
-## 2. Order confirmation email
+Two real problems:
 
-Send a branded email to the buyer immediately after `create-order` succeeds. The verified sender domain `notify.nyumbanifitnesssolutions.com` will be used.
+1. **`user.email` is empty for many sessions.** Google-OAuth users and users whose email is not in the JWT `email` claim come back from `auth.getUser()` with `email: null`. The block is silently bypassed.
+2. **Even when the fetch runs, there's no response check.** If `send-transactional-email` returns 401/500/anything non-2xx, the code logs nothing and the order returns success. That's why we can't see what's going wrong.
 
-**Infrastructure:**
-- Set up the shared email queue infrastructure (one-time, idempotent).
-- Scaffold the transactional-email edge function and template registry.
-- Deploy the new edge functions.
+There's also a smaller issue: the `user_id` is the canonical recipient, but we never look it up in the `profiles` table or `auth.users` as a fallback, so we miss every email that isn't on the JWT.
 
-**New template** `_shared/transactional-email-templates/order-confirmation.tsx`:
-- Branded with Barakaz orange (`#ff420e`), white body, Inter/Arial.
-- Sections: header ("Thanks for your order, {name}!"), order ID & date, itemized table (name, variant, qty, line total), totals (subtotal, delivery KSh 200, grand total), delivery address block, payment method, "Track your order" button linking to `/account` on `https://barakaz.com`, footer.
-- Subject: `Your Barakaz order #XXXXXXXX is confirmed`.
-- Props: `customerName`, `orderId`, `orderShortId`, `items[]`, `subtotal`, `deliveryFee`, `total`, `shippingAddress`, `paymentMethodLabel`, `trackUrl`.
+## Fix
 
-**Trigger from `create-order` edge function** (server-side, not client) so it fires reliably even on slow client connections:
-- After successful order + items insert, fetch product names for the line items, build `templateData`, and invoke `send-transactional-email` with:
-  - `templateName: 'order-confirmation'`
-  - `recipientEmail: user.email`
-  - `idempotencyKey: order-confirm-${order.id}`
-  - `templateData: { ... }`
-- Email failure must NOT fail the order — wrap in try/catch and log only.
+### 1. Resolve recipient email reliably (`create-order/index.ts`)
+
+Order of resolution:
+1. `user.email` from the JWT (current behavior)
+2. If empty, fetch from `auth.admin.getUserById(user.id)` using the admin client — this always has the verified email
+3. If still empty, fall back to the `shipping_address` if it contains an `email` field (we'll add an optional `email` to the checkout schema as well)
+4. If none of the above, log a warning explaining no email was sent — but still return order success
+
+### 2. Make the email send observable (`create-order/index.ts`)
+
+Replace the bare `await fetch(...)` with:
+- Capture the `Response` and check `res.ok`
+- On non-2xx, read the body and `console.error` with status, body, recipient, order id
+- On success, `console.log` confirming enqueue
+- Wrap in try/catch as today (never fails the order)
+
+This way, the next failed send shows up in the edge function logs immediately and we can diagnose without guessing.
+
+### 3. Allow optional buyer email at checkout (`CheckoutPage.tsx` + `create-order` schema)
+
+Add an **optional "Email for order updates"** field to the checkout shipping form (prefilled from `user.email` if present, editable). Pass it through to `create-order`, validate as `z.string().email().optional()`, and use it as the highest-priority recipient. This guarantees the buyer always controls where the receipt goes, even if their auth account has no email on file.
+
+### 4. Backfill confirmation emails for the 5 recent orders that didn't get one
+
+After the fix is deployed, send a one-off confirmation for each of the 5 orders placed today (21:45, 21:40, 20:59, 11:40, 11:29 UTC) so those buyers actually get their receipt. This is run server-side via the same `send-transactional-email` function with each order's data — idempotency keys prevent duplicates if already sent.
 
 ## Files touched
 
 ```text
-src/pages/AccountPage.tsx                                         (rewrite cards)
-supabase/functions/_shared/transactional-email-templates/
-  registry.ts                                                     (new — added by scaffold)
-  order-confirmation.tsx                                          (new)
-supabase/functions/send-transactional-email/index.ts              (new — from scaffold)
-supabase/functions/handle-email-unsubscribe/index.ts              (new — from scaffold)
-supabase/functions/handle-email-suppression/index.ts              (new — from scaffold)
-src/pages/EmailUnsubscribePage.tsx + route in App.tsx             (new)
-supabase/functions/create-order/index.ts                          (invoke email after success)
+supabase/functions/create-order/index.ts
+  - Add OrderSchema.shipping_address.email (optional)
+  - Resolve recipient: form email → user.email → auth.admin.getUserById → profiles
+  - Check fetch response status and log failures with full context
+  - Log success on enqueue
+
+src/pages/CheckoutPage.tsx
+  - Add optional "Email for order updates" input, prefilled from auth user
+
+(one-off) Backfill script run inside an exec call
+  - For each of the 5 recent orders missing a confirmation email,
+    invoke send-transactional-email with the proper templateData
 ```
 
 ## Out of scope
-- Reordering / cancellation buttons on the dashboard.
-- SMS notifications.
-- Vendor "new order received" emails (can be added next if you want).
+- Vendor "new order received" email
+- Shipped / delivered notifications
 
