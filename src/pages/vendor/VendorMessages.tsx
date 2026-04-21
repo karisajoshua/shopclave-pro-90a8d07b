@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Send, MessageCircle, User, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 
 const VendorMessages = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
@@ -146,16 +148,19 @@ const VendorMessages = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold flex items-center gap-2">
-        <MessageCircle className="h-5 w-5" /> Messages
-      </h2>
+    <div className="space-y-5">
+      <AdminPageHeader
+        title="Messages"
+        subtitle="Reply to customer enquiries about your products and orders."
+        count={conversations.length}
+        countLabel="conversations"
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100vh-250px)] min-h-[400px]">
+      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100vh-220px)] min-h-[400px]">
         {/* Conversation List */}
-        <div className="bg-card rounded-lg border border-border overflow-y-auto">
+        <div className="admin-card overflow-y-auto p-0">
           {conversations.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No messages yet</p>
+            <AdminEmptyState icon={MessageCircle} title="No conversations" description="Customer messages will appear here." />
           )}
           {conversations.map((conv: any) => (
             <button
@@ -194,7 +199,7 @@ const VendorMessages = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="bg-card rounded-lg border border-border flex flex-col">
+        <div className="admin-card flex flex-col p-0 overflow-hidden">
           {!selectedConversation ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
               Select a conversation to view messages
