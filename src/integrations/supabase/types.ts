@@ -197,6 +197,10 @@ export type Database = {
           message: string
           message_type: string
           order_id: string | null
+          original_attachment_size: number | null
+          original_attachment_type: string | null
+          original_attachment_url: string | null
+          original_message: string | null
           product_id: string | null
           seen_at: string | null
           sender_id: string
@@ -218,6 +222,10 @@ export type Database = {
           message: string
           message_type?: string
           order_id?: string | null
+          original_attachment_size?: number | null
+          original_attachment_type?: string | null
+          original_attachment_url?: string | null
+          original_message?: string | null
           product_id?: string | null
           seen_at?: string | null
           sender_id: string
@@ -239,6 +247,10 @@ export type Database = {
           message?: string
           message_type?: string
           order_id?: string | null
+          original_attachment_size?: number | null
+          original_attachment_type?: string | null
+          original_attachment_url?: string | null
+          original_message?: string | null
           product_id?: string | null
           seen_at?: string | null
           sender_id?: string
@@ -1361,6 +1373,16 @@ export type Database = {
       }
     }
     Functions: {
+      admin_get_message_originals: {
+        Args: { _message_ids: string[] }
+        Returns: {
+          id: string
+          original_attachment_size: number
+          original_attachment_type: string
+          original_attachment_url: string
+          original_message: string
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
