@@ -27,19 +27,34 @@ const VendorMessages = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("chat_messages")
-        .select("conversation_id, sender_id, message, created_at, is_read, product_id")
+        .select("conversation_id, sender_id, message, created_at, is_read, product_id, order_id")
         .eq("vendor_id", vendor.id)
         .order("created_at", { ascending: false });
 
       if (!data) return [];
 
+      // Helper: derive order_id from conversation_id of form "order_<uuid>"
+      const deriveOrderId = (convId: string): string | null => {
+        if (!convId.startsWith("order_")) return null;
+        const suffix = convId.slice("order_".length);
+        return /^[0-9a-f-]{36}$/i.test(suffix) ? suffix : null;
+      };
+
       // Group by conversation
-      const convMap = new Map<string, { lastMessage: any; unreadCount: number; userId: string; productId: string | null; messageCount: number }>();
+      const convMap = new Map<string, { lastMessage: any; unreadCount: number; userId: string; productId: string | null; orderId: string | null; messageCount: number }>();
       data.forEach((msg) => {
         const convId = msg.conversation_id;
         if (!convMap.has(convId)) {
-          const userId = convId.split("_")[0];
-          convMap.set(convId, { lastMessage: msg, unreadCount: 0, userId, productId: msg.product_id, messageCount: 0 });
+          // For order threads conversation_id is "order_<uuid>"; for product/user threads it's "<userId>_<vendorId>(_<productId>)"
+          const userId = convId.startsWith("order_") ? "" : convId.split("_")[0];
+          convMap.set(convId, {
+            lastMessage: msg,
+            unreadCount: 0,
+            userId,
+            productId: msg.product_id,
+            orderId: msg.order_id ?? deriveOrderId(convId),
+            messageCount: 0,
+          });
         }
         const conv = convMap.get(convId)!;
         conv.messageCount++;
@@ -49,6 +64,10 @@ const VendorMessages = () => {
         // Capture product_id from any message in the conversation
         if (msg.product_id && !conv.productId) {
           conv.productId = msg.product_id;
+        }
+        // Capture order_id from any message in the conversation
+        if (msg.order_id && !conv.orderId) {
+          conv.orderId = msg.order_id;
         }
       });
 
@@ -75,10 +94,11 @@ const VendorMessages = () => {
     enabled: !!vendor,
   });
 
-  // Derive product info from selected conversation
+  // Derive product/order info from selected conversation
   const selectedConv = conversations.find((c: any) => c.id === selectedConversation);
   const selectedProduct = selectedConv?.product;
   const selectedProductId = selectedConv?.productId;
+  const selectedOrderId = selectedConv?.orderId ?? null;
 
   // Load messages for selected conversation
   useEffect(() => {
@@ -135,6 +155,8 @@ const VendorMessages = () => {
       };
       // Preserve product reference on every reply in a product thread
       if (selectedProductId) payload.product_id = selectedProductId;
+      // Preserve order reference so buyer-side RLS (order-linked messages) lets the buyer see this reply
+      if (selectedOrderId) payload.order_id = selectedOrderId;
 
       const { error } = await supabase.from("chat_messages").insert(payload);
       if (error) throw error;
@@ -188,6 +210,11 @@ const VendorMessages = () => {
                       <Package className="h-3 w-3" /> {conv.product.name}
                     </p>
                   )}
+                  {conv.orderId && !conv.product && (
+                    <p className="text-[10px] text-primary truncate flex items-center gap-1">
+                      <Package className="h-3 w-3" /> Order #{String(conv.orderId).slice(0, 8).toUpperCase()}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage.message}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {conv.messageCount} message{conv.messageCount !== 1 ? "s" : ""} · {new Date(conv.lastMessage.created_at).toLocaleDateString()}
@@ -211,6 +238,14 @@ const VendorMessages = () => {
                   <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground flex items-center gap-1">
                     <Package className="h-3 w-3" />
                     Re: <a href={`/product/${selectedProduct.slug}`} className="font-medium text-primary hover:underline">{selectedProduct.name}</a>
+                  </div>
+                </div>
+              )}
+              {selectedOrderId && !selectedProduct && (
+                <div className="px-4 py-2 border-b border-border">
+                  <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    Re: Order #<span className="font-medium text-primary">{String(selectedOrderId).slice(0, 8).toUpperCase()}</span>
                   </div>
                 </div>
               )}
