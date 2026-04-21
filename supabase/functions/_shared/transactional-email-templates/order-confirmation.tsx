@@ -7,6 +7,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
@@ -69,7 +70,13 @@ const OrderConfirmationEmail = ({
       <Container style={container}>
         {/* Header */}
         <Section style={header}>
-          <Heading style={brandMark}>{SITE_NAME}</Heading>
+          <Img
+            src="https://barakaz.com/email-logo.png"
+            width="140"
+            height="auto"
+            alt={SITE_NAME}
+            style={logo}
+          />
         </Section>
 
         <Section style={content}>
@@ -212,13 +219,13 @@ const container: React.CSSProperties = {
 const header: React.CSSProperties = {
   backgroundColor: BRAND,
   padding: '20px 24px',
+  textAlign: 'center',
 }
-const brandMark: React.CSSProperties = {
-  color: '#ffffff',
-  fontSize: '22px',
-  fontWeight: 800,
-  letterSpacing: '0.5px',
-  margin: 0,
+const logo: React.CSSProperties = {
+  display: 'block',
+  margin: '0 auto',
+  maxWidth: '140px',
+  height: 'auto',
 }
 const content: React.CSSProperties = { padding: '24px' }
 const h1: React.CSSProperties = {
