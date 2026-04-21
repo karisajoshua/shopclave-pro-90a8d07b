@@ -1,67 +1,33 @@
 
 
-# Fix: order confirmation email is rejected with 401 (Invalid JWT)
+# Fix order email header — make the logo visible
 
-## Root cause
-
-Edge function logs from `create-order` show every email send failing with:
-
-```
-send-transactional-email failed: status=401
-body={"code":"UNAUTHORIZED_INVALID_JWT_FORMAT","message":"Invalid JWT"}
-```
-
-That means the request never reaches our `send-transactional-email` code — Supabase's gateway rejects it before it runs. Two things are causing this:
-
-1. `supabase/config.toml` sets `verify_jwt = true` for `send-transactional-email`. Under the new signing-keys system, the gateway is rejecting the service-role bearer token we're sending.
-2. `create-order` is doing a raw `fetch(...)` with `Authorization: Bearer <service_role_key>`. That's the wrong shape for the new JWT verifier and gets refused as "invalid JWT format".
-
-Result: every order today still has zero rows in `email_send_log` for `order-confirmation`, and `send-transactional-email`'s own logs are empty (because nothing actually invoked it).
+## Problem
+The order confirmation email header has an orange background (`#ff420e`), and the Barakaz logo is also orange/dark on transparent. Result: the logo blends into the band and is barely visible in inboxes.
 
 ## Fix
+In `supabase/functions/_shared/transactional-email-templates/order-confirmation.tsx`, change the email header from an orange band to a clean **white background** so the orange Barakaz logo reads clearly.
 
-### 1. Stop the gateway from blocking internal calls
-Set `verify_jwt = false` for `send-transactional-email` in `supabase/config.toml`. The function is only ever invoked from other edge functions (server-to-server with the service role key) — there's no client-facing surface that needs gateway-level JWT enforcement. This matches how `auth-email-hook`, `handle-email-unsubscribe`, and `handle-email-suppression` are already configured.
+Specifically:
+- `header` background: `#ff420e` → `#ffffff`
+- Add a subtle bottom border (`1px solid #f3f4f6`) to keep visual separation from the body content
+- Keep the logo size (140px wide, auto height) and centered alignment
+- Leave the orange brand color (`#ff420e`) on the CTA button and meta box accents — the brand color stays present, just not behind the logo
 
-### 2. Use the proper SDK to invoke it from `create-order`
-Replace the raw `fetch(...)` block in `create-order/index.ts` with `supabase.functions.invoke('send-transactional-email', { body: { ... } })` using a service-role-authenticated Supabase client. This:
-- Constructs the auth header in the correct format
-- Doesn't depend on URL string-building
-- Surfaces a real `error` object we can log cleanly
-- Is the pattern Lovable's email infra recommends
-
-We keep:
-- The recipient-resolution priority (form email → JWT → `auth.admin.getUserById`)
-- The idempotency key (`order-confirm-${order.id}`) so retries can't double-send
-- The try/catch wrapper so email failures never fail the order
-- The existing detailed error logging
-
-### 3. Redeploy
-Deploy `send-transactional-email` (config change) and `create-order` (code change). Until both are deployed, the bug persists.
-
-### 4. Backfill the orders that didn't get an email
-After deploy, send the missing confirmations for the recent orders that hit the 401 (3 orders today: `3097d9f7…`, `415937b9…`, `462bbb5f…`, plus any others since the original "missing emails" backfill). Idempotency keys make this safe — already-sent ones won't duplicate.
+This matches how most marketplace receipts (Amazon, Jumia) handle their email headers: white background, colored logo, color accents elsewhere.
 
 ## Files touched
 
 ```text
-supabase/config.toml
-  - [functions.send-transactional-email] verify_jwt: true → false
+supabase/functions/_shared/transactional-email-templates/order-confirmation.tsx
+  - header style: backgroundColor #ff420e → #ffffff
+  - header style: add borderBottom 1px solid #f3f4f6
 
-supabase/functions/create-order/index.ts
-  - Replace raw fetch(send-transactional-email) with
-    supabase.functions.invoke('send-transactional-email', { body: ... })
-  - Keep try/catch + recipient resolution + detailed error logging
-
-(deploy) send-transactional-email   (config change requires redeploy)
-(deploy) create-order               (code change requires redeploy)
-
-(one-off backfill) for the 3+ orders that failed with 401 today,
-  invoke send-transactional-email server-side with the same templateData
+(deploy) send-transactional-email   (template change requires redeploy)
 ```
 
 ## Out of scope
-- Vendor "new order received" email
-- Shipped / delivered notifications
-- Auth email branding ("shopclave-pro" → "Barakaz" was already fixed last turn)
+- Other emails (auth, etc.) — only the order confirmation template is touched
+- Logo asset itself — no re-export needed
+- Layout / CTA / totals styling
 
