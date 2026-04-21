@@ -111,12 +111,10 @@ const VendorOrders = () => {
                   <tr>
                     <th>Order</th>
                     <th>Product</th>
-                    <th className="min-w-[260px]">Deliver to</th>
+                    <th className="min-w-[200px]">Deliver to</th>
                     <th>Qty</th>
                     <th>Total</th>
-                    <th>Payment</th>
                     <th>Status</th>
-                    <th>Date</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -130,14 +128,19 @@ const VendorOrders = () => {
                     return (
                       <tr key={item.id}>
                         <td>
-                          <button
-                            type="button"
-                            onClick={() => copyOrderId(item.order_id)}
-                            className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold hover:bg-muted/70 transition-colors"
-                            title="Click to copy full order ID"
-                          >
-                            #{item.order_id.slice(0, 8).toUpperCase()}
-                          </button>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => copyOrderId(item.order_id)}
+                              className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold hover:bg-muted/70 transition-colors w-fit"
+                              title="Click to copy full order ID"
+                            >
+                              #{item.order_id.slice(0, 8).toUpperCase()}
+                            </button>
+                            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                              {order?.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
+                            </span>
+                          </div>
                         </td>
                         <td className="font-medium">
                           <div>{(item.products as any)?.name || "—"}</div>
@@ -165,35 +168,34 @@ const VendorOrders = () => {
                           </div>
                         </td>
                         <td>{item.quantity}</td>
-                        <td className="font-semibold">KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
                         <td>
-                          <span className={`status-pill ${payColor(order?.payment_status)}`}>
-                            {order?.payment_status || "—"}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-semibold whitespace-nowrap">KSh {(Number(item.price) * item.quantity).toLocaleString()}</span>
+                            <span className={`status-pill ${payColor(order?.payment_status)} w-fit`}>
+                              {order?.payment_status || "—"}
+                            </span>
+                          </div>
                         </td>
                         <td>
                           <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
                         </td>
-                        <td className="text-xs text-muted-foreground">
-                          {order?.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
-                        </td>
                         <td>
-                          <div className="flex flex-col gap-1 min-w-[140px]">
+                          <div className="flex items-center gap-1">
                             {next ? (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs"
+                                className="h-7 text-xs whitespace-nowrap"
                                 onClick={() => updateStatus.mutate({ id: item.id, status: next, productName: (item.products as any)?.name, orderId: item.order_id })}
                               >
                                 Mark {next}
                               </Button>
                             ) : (
-                              <div className="text-xs text-muted-foreground text-center">Completed</div>
+                              <span className="text-xs text-muted-foreground">Done</span>
                             )}
-                            <Link to={`/orders/${item.order_id}/chat`}>
-                              <Button size="sm" variant="ghost" className="h-7 text-xs w-full gap-1">
-                                <MessageCircle className="h-3 w-3" /> Chat
+                            <Link to={`/orders/${item.order_id}/chat`} title="Chat">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                                <MessageCircle className="h-3.5 w-3.5" />
                               </Button>
                             </Link>
                           </div>
