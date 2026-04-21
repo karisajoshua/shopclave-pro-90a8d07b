@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Users, Eye, MousePointerClick, Clock, TrendingDown, RefreshCw } from "lucide-react";
-import { format, subDays, startOfDay, startOfYesterday, endOfYesterday, isAfter, isBefore, parseISO } from "date-fns";
+import { toast } from "sonner";
+import { Users, Eye, MousePointerClick, Clock, TrendingDown, RefreshCw, AlertCircle } from "lucide-react";
+import { format, subDays, startOfDay, startOfYesterday, endOfYesterday, isAfter, isBefore, parseISO, differenceInMinutes } from "date-fns";
 
 type TimeFrame = "today" | "yesterday" | "7d" | "30d";
 
