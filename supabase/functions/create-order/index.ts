@@ -22,6 +22,7 @@ const OrderSchema = z.object({
     addressLine: z.string().min(1).max(500),
     city: z.string().min(1).max(100),
     country: z.string().min(1).max(100),
+    email: z.string().email().max(255).optional().or(z.literal("")),
   }),
   payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
 });
