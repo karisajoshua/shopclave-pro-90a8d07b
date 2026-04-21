@@ -210,6 +210,11 @@ const VendorMessages = () => {
                       <Package className="h-3 w-3" /> {conv.product.name}
                     </p>
                   )}
+                  {conv.orderId && !conv.product && (
+                    <p className="text-[10px] text-primary truncate flex items-center gap-1">
+                      <Package className="h-3 w-3" /> Order #{String(conv.orderId).slice(0, 8).toUpperCase()}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage.message}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {conv.messageCount} message{conv.messageCount !== 1 ? "s" : ""} · {new Date(conv.lastMessage.created_at).toLocaleDateString()}
