@@ -53,6 +53,47 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action_details: Json
+          action_type: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          order_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_details?: Json
+          action_type: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          order_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_details?: Json
+          action_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          order_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -88,38 +129,129 @@ export type Database = {
           },
         ]
       }
+      chat_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          message_id: string
+          order_id: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          message_id: string
+          order_id?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          message_id?: string
+          order_id?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_attachments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
+          attachment_size: number | null
+          attachment_type: string | null
+          attachment_url: string | null
           conversation_id: string
           created_at: string
+          deleted_at: string | null
+          deleted_by_receiver: boolean
+          deleted_by_sender: boolean
+          edited_at: string | null
           id: string
           is_read: boolean
+          is_system_message: boolean
           message: string
+          message_type: string
+          order_id: string | null
           product_id: string | null
+          seen_at: string | null
           sender_id: string
           vendor_id: string
         }
         Insert: {
+          attachment_size?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           conversation_id: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by_receiver?: boolean
+          deleted_by_sender?: boolean
+          edited_at?: string | null
           id?: string
           is_read?: boolean
+          is_system_message?: boolean
           message: string
+          message_type?: string
+          order_id?: string | null
           product_id?: string | null
+          seen_at?: string | null
           sender_id: string
           vendor_id: string
         }
         Update: {
+          attachment_size?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           conversation_id?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by_receiver?: boolean
+          deleted_by_sender?: boolean
+          edited_at?: string | null
           id?: string
           is_read?: boolean
+          is_system_message?: boolean
           message?: string
+          message_type?: string
+          order_id?: string | null
           product_id?: string | null
+          seen_at?: string | null
           sender_id?: string
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_product_id_fkey"
             columns: ["product_id"]
@@ -178,6 +310,47 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      disputes: {
+        Row: {
+          admin_notes: string | null
+          closed_at: string | null
+          id: string
+          opened_at: string
+          opened_by: string
+          order_id: string
+          reason: string
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          closed_at?: string | null
+          id?: string
+          opened_at?: string
+          opened_by: string
+          order_id: string
+          reason: string
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          closed_at?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string
+          order_id?: string
+          reason?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -265,6 +438,41 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      message_edit_history: {
+        Row: {
+          edited_at: string
+          edited_by: string
+          id: string
+          message_id: string
+          new_text: string | null
+          old_text: string | null
+        }
+        Insert: {
+          edited_at?: string
+          edited_by: string
+          id?: string
+          message_id: string
+          new_text?: string | null
+          old_text?: string | null
+        }
+        Update: {
+          edited_at?: string
+          edited_by?: string
+          id?: string
+          message_id?: string
+          new_text?: string | null
+          old_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_edit_history_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -736,6 +944,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_risk_flags: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          flag_type: string
+          id: string
+          reason: string | null
+          score: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          flag_type: string
+          id?: string
+          reason?: string | null
+          score?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          flag_type?: string
+          id?: string
+          reason?: string | null
+          score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1127,6 +1365,18 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      delete_message_for_everyone: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
+      delete_message_for_me: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
+      edit_message: {
+        Args: { _message_id: string; _new_text: string }
+        Returns: undefined
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -1151,6 +1401,14 @@ export type Database = {
         Args: { _code: string }
         Returns: undefined
       }
+      log_system_event: {
+        Args: { _details?: Json; _event_type: string; _order_id: string }
+        Returns: undefined
+      }
+      mark_messages_seen: {
+        Args: { _message_ids: string[] }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -1160,6 +1418,11 @@ export type Database = {
         }
         Returns: number
       }
+      open_dispute: {
+        Args: { _order_id: string; _reason: string }
+        Returns: string
+      }
+      order_has_open_dispute: { Args: { _order_id: string }; Returns: boolean }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
