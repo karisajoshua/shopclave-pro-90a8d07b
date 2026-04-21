@@ -149,7 +149,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="space-y-8 max-w-[1400px] mx-auto">
+    <div className="space-y-8 max-w-[1400px] mx-auto stagger-children">
       {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>

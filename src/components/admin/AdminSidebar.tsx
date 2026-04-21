@@ -83,7 +83,7 @@ export function AdminSidebar() {
           />
         </Link>
       </SidebarHeader>
-      <SidebarContent className="bg-admin-sidebar-bg">
+      <SidebarContent className="bg-admin-sidebar-bg stagger-children">
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
             {!collapsed && (

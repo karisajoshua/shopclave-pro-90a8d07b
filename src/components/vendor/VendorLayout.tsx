@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate, Outlet, Link } from "react-router-dom";
+import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Store, ExternalLink } from "lucide-react";
 const VendorLayout = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
     queryKey: ["vendor", user?.id],
@@ -73,7 +74,7 @@ const VendorLayout = () => {
               )}
             </div>
           </header>
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <main key={location.pathname} className="flex-1 p-4 md:p-6 overflow-auto animate-fade-in">
             <Outlet context={{ vendor }} />
           </main>
         </div>
