@@ -226,15 +226,40 @@ const AdminMessages = () => {
                   const deletedFlags: string[] = [];
                   if (msg.deleted_by_sender) deletedFlags.push("hidden by sender");
                   if (msg.deleted_by_receiver) deletedFlags.push("hidden by receiver");
+                  const isAnyDeleted = isDeleted || deletedFlags.length > 0;
+                  const orig = (originals as Record<string, any>)[msg.id];
                   return (
                     <div key={msg.id} className={`flex ${isVendor ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                         isVendor ? "bg-primary/10 text-foreground" : "bg-muted text-foreground"
-                      } ${isDeleted ? "border border-destructive/40" : ""}`}>
+                      } ${isAnyDeleted ? "border border-destructive/40" : ""}`}>
                         <p className="text-[10px] font-medium text-muted-foreground mb-0.5">
                           {isVendor ? "Vendor" : "Customer"}
                         </p>
                         <p className={isDeleted ? "italic line-through opacity-70" : ""}>{msg.message}</p>
+
+                        {isAnyDeleted && (
+                          <div className="mt-1.5 border border-destructive/40 bg-destructive/10 rounded p-1.5 space-y-0.5">
+                            <p className="text-[9px] font-semibold uppercase text-destructive">Admin view — preserved</p>
+                            {orig?.original_message ? (
+                              <p className="text-foreground text-xs">{orig.original_message}</p>
+                            ) : (
+                              <p className="text-[10px] italic text-muted-foreground">Original text not available.</p>
+                            )}
+                            {orig?.original_attachment_url && (
+                              orig.original_attachment_type?.startsWith("image/") ? (
+                                <a href={orig.original_attachment_url} target="_blank" rel="noreferrer">
+                                  <img src={orig.original_attachment_url} alt="original attachment" className="mt-1 max-h-32 rounded" />
+                                </a>
+                              ) : (
+                                <a href={orig.original_attachment_url} target="_blank" rel="noreferrer" className="text-[10px] underline text-primary">
+                                  Original attachment
+                                </a>
+                              )
+                            )}
+                          </div>
+                        )}
+
                         <p className="text-[10px] mt-1 text-muted-foreground">
                           {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           {msg.edited_at && " · edited"}
