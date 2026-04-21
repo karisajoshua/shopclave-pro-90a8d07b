@@ -216,6 +216,17 @@ const VendorOrders = () => {
               const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
               return (
                 <div key={item.id} className="admin-card p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyOrderId(item.order_id)}
+                      className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold hover:bg-muted/70 transition-colors"
+                      title="Click to copy full order ID"
+                    >
+                      #{item.order_id.slice(0, 8).toUpperCase()}
+                    </button>
+                    <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
+                  </div>
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm line-clamp-1">{(item.products as any)?.name || "—"}</p>
@@ -225,7 +236,6 @@ const VendorOrders = () => {
                         </span>
                       )}
                     </div>
-                    <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
                   </div>
 
                   {addr && (
