@@ -118,17 +118,37 @@ const AdminProducts = () => {
     }
   };
 
-  const filtered = products?.filter((p: any) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  const filtered = products?.filter((p: any) => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesFeatured = !featuredOnly || p.featured === true;
+    return matchesSearch && matchesFeatured;
+  }) || [];
+
+  const featuredCount = products?.filter((p: any) => p.featured).length || 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <h2 className="text-xl font-bold">All Products</h2>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search products..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-col sm:flex-row gap-3 justify-between sm:items-center">
+        <div>
+          <h2 className="text-xl font-bold">All Products</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {featuredCount} featured on homepage · {products?.length || 0} total
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={featuredOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFeaturedOnly((v) => !v)}
+            className="gap-1.5"
+          >
+            <Star className={`h-3.5 w-3.5 ${featuredOnly ? "fill-current" : ""}`} />
+            Featured {featuredOnly ? `(${featuredCount})` : ""}
+          </Button>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search products..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
         </div>
       </div>
 
@@ -150,7 +170,14 @@ const AdminProducts = () => {
                 <td className="p-3">
                   <div className="flex items-center gap-2">
                     <img src={p.product_images?.[0]?.url || barakazIcon} alt="" className="w-8 h-8 rounded object-cover bg-secondary" />
-                    <span className="font-medium line-clamp-1">{p.name}</span>
+                    <div className="min-w-0">
+                      <span className="font-medium line-clamp-1 block">{p.name}</span>
+                      {p.featured && (
+                        <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-warning/10 text-warning">
+                          <Star className="h-2.5 w-2.5 fill-current" /> On homepage
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="p-3 text-muted-foreground">{p.vendors?.store_name || "—"}</td>
