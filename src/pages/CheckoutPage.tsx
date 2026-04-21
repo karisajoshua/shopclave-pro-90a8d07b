@@ -264,6 +264,18 @@ const CheckoutPage = () => {
                       <Input value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
                     </div>
                   </div>
+                  <div>
+                    <Label className="text-xs">Email for order updates</Label>
+                    <Input
+                      type="email"
+                      value={address.email}
+                      onChange={(e) => setAddress({ ...address, email: e.target.value })}
+                      placeholder="you@example.com"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      We'll send your order confirmation here.
+                    </p>
+                  </div>
                   <Button className="w-full mt-2" onClick={handleConfirmAddress}>
                     Save & Continue
                   </Button>
