@@ -83,6 +83,13 @@ type Message = {
   created_at: string;
 };
 
+type MessageOriginal = {
+  original_message: string | null;
+  original_attachment_url: string | null;
+  original_attachment_type: string | null;
+  original_attachment_size: number | null;
+};
+
 type AuditLog = {
   id: string;
   user_id: string | null;
