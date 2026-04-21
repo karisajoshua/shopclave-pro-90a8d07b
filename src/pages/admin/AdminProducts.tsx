@@ -22,6 +22,7 @@ const AdminProducts = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [featuredOnly, setFeaturedOnly] = useState(false);
   const [editProduct, setEditProduct] = useState<EditProduct | null>(null);
   const [newFiles, setNewFiles] = useState<{ file: File; preview: string }[]>([]);
   const [editVideoUrl, setEditVideoUrl] = useState("");
