@@ -73,7 +73,7 @@ const VendorLayout = () => {
               )}
             </div>
           </header>
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <main key={location.pathname} className="flex-1 p-4 md:p-6 overflow-auto animate-fade-in">
             <Outlet context={{ vendor }} />
           </main>
         </div>
