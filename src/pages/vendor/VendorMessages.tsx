@@ -155,6 +155,8 @@ const VendorMessages = () => {
       };
       // Preserve product reference on every reply in a product thread
       if (selectedProductId) payload.product_id = selectedProductId;
+      // Preserve order reference so buyer-side RLS (order-linked messages) lets the buyer see this reply
+      if (selectedOrderId) payload.order_id = selectedOrderId;
 
       const { error } = await supabase.from("chat_messages").insert(payload);
       if (error) throw error;
