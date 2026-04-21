@@ -94,10 +94,11 @@ const VendorMessages = () => {
     enabled: !!vendor,
   });
 
-  // Derive product info from selected conversation
+  // Derive product/order info from selected conversation
   const selectedConv = conversations.find((c: any) => c.id === selectedConversation);
   const selectedProduct = selectedConv?.product;
   const selectedProductId = selectedConv?.productId;
+  const selectedOrderId = selectedConv?.orderId ?? null;
 
   // Load messages for selected conversation
   useEffect(() => {
