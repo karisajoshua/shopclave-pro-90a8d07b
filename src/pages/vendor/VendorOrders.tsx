@@ -119,7 +119,14 @@ const VendorOrders = () => {
                     const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
                     return (
                       <tr key={item.id}>
-                        <td className="font-medium">{(item.products as any)?.name || "—"}</td>
+                        <td className="font-medium">
+                          <div>{(item.products as any)?.name || "—"}</div>
+                          {(item.variant_options as any)?.label && (
+                            <span className="inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                              {(item.variant_options as any).label}
+                            </span>
+                          )}
+                        </td>
                         <td className="text-xs align-top">
                           <div className="space-y-0.5 leading-snug">
                             <div className="font-medium text-foreground">{addr?.fullName || "—"}</div>
@@ -190,7 +197,14 @@ const VendorOrders = () => {
               return (
                 <div key={item.id} className="admin-card p-4 space-y-3">
                   <div className="flex justify-between items-start gap-2">
-                    <p className="font-medium text-sm line-clamp-1">{(item.products as any)?.name || "—"}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm line-clamp-1">{(item.products as any)?.name || "—"}</p>
+                      {(item.variant_options as any)?.label && (
+                        <span className="inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                          {(item.variant_options as any).label}
+                        </span>
+                      )}
+                    </div>
                     <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
                   </div>
 
