@@ -109,6 +109,7 @@ const VendorOrders = () => {
               <table className="admin-table">
                 <thead>
                   <tr>
+                    <th>Order</th>
                     <th>Product</th>
                     <th className="min-w-[260px]">Deliver to</th>
                     <th>Qty</th>
