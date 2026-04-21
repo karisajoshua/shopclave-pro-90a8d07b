@@ -243,33 +243,62 @@ Deno.serve(async (req) => {
         vendor_payment: "Pay Vendor Directly",
       };
 
-      const recipientEmail = user.email;
-      if (recipientEmail) {
+      // Resolve recipient email with priority: form > JWT > auth.admin lookup
+      let recipientEmail: string | null =
+        (shipping_address.email && shipping_address.email.trim()) || user.email || null;
+
+      if (!recipientEmail) {
+        try {
+          const { data: adminUserData } = await adminClient.auth.admin.getUserById(user.id);
+          recipientEmail = adminUserData?.user?.email ?? null;
+        } catch (lookupErr) {
+          console.error("auth.admin.getUserById failed:", lookupErr);
+        }
+      }
+
+      if (!recipientEmail) {
+        console.warn(
+          `[order ${order.id}] No recipient email found (user ${user.id}). Skipping confirmation email.`
+        );
+      } else {
         const supabaseFunctionsUrl = `${supabaseUrl}/functions/v1/send-transactional-email`;
-        await fetch(supabaseFunctionsUrl, {
+        const emailPayload = {
+          templateName: "order-confirmation",
+          recipientEmail,
+          idempotencyKey: `order-confirm-${order.id}`,
+          templateData: {
+            customerName: shipping_address.fullName,
+            orderShortId,
+            orderDate,
+            items: emailItems,
+            subtotal,
+            deliveryFee,
+            total: grandTotal,
+            shippingAddress: shipping_address,
+            paymentMethodLabel: paymentLabelMap[payment_method] ?? payment_method,
+            trackUrl: "https://barakaz.com/account",
+          },
+        };
+
+        const res = await fetch(supabaseFunctionsUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${supabaseServiceKey}`,
           },
-          body: JSON.stringify({
-            templateName: "order-confirmation",
-            recipientEmail,
-            idempotencyKey: `order-confirm-${order.id}`,
-            templateData: {
-              customerName: shipping_address.fullName,
-              orderShortId,
-              orderDate,
-              items: emailItems,
-              subtotal,
-              deliveryFee,
-              total: grandTotal,
-              shippingAddress: shipping_address,
-              paymentMethodLabel: paymentLabelMap[payment_method] ?? payment_method,
-              trackUrl: "https://barakaz.com/account",
-            },
-          }),
+          body: JSON.stringify(emailPayload),
         });
+
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "<no body>");
+          console.error(
+            `[order ${order.id}] send-transactional-email failed: status=${res.status} recipient=${recipientEmail} body=${errBody}`
+          );
+        } else {
+          console.log(
+            `[order ${order.id}] order-confirmation enqueued for ${recipientEmail}`
+          );
+        }
       }
     } catch (emailErr) {
       console.error("order confirmation email failed:", emailErr);
