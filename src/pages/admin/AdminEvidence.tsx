@@ -376,9 +376,32 @@ function EvidenceDetail({ orderId, onBack }: { orderId: string; onBack: () => vo
 
     setOrder(orderRes.data);
     setItems(itemsRes.data ?? []);
-    setMessages((msgsRes.data ?? []) as Message[]);
+    const msgs = (msgsRes.data ?? []) as Message[];
+    setMessages(msgs);
     setLogs((logsRes.data ?? []) as AuditLog[]);
     setDisputes((dispRes.data ?? []) as Dispute[]);
+
+    // Fetch preserved originals for any deleted messages (admin-only RPC)
+    const deletedIds = msgs
+      .filter((m) => m.deleted_at || m.deleted_by_sender || m.deleted_by_receiver)
+      .map((m) => m.id);
+    if (deletedIds.length > 0) {
+      const { data: origs } = await supabase.rpc("admin_get_message_originals", {
+        _message_ids: deletedIds,
+      });
+      const map: Record<string, MessageOriginal> = {};
+      (origs ?? []).forEach((o: any) => {
+        map[o.id] = {
+          original_message: o.original_message,
+          original_attachment_url: o.original_attachment_url,
+          original_attachment_type: o.original_attachment_type,
+          original_attachment_size: o.original_attachment_size,
+        };
+      });
+      setOriginals(map);
+    } else {
+      setOriginals({});
+    }
 
     const userIds = new Set<string>();
     if (orderRes.data?.user_id) userIds.add(orderRes.data.user_id);
