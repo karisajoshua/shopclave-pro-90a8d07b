@@ -241,6 +241,14 @@ const VendorMessages = () => {
                   </div>
                 </div>
               )}
+              {selectedOrderId && !selectedProduct && (
+                <div className="px-4 py-2 border-b border-border">
+                  <div className="text-xs bg-muted/50 rounded p-2 text-muted-foreground flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    Re: Order #<span className="font-medium text-primary">{String(selectedOrderId).slice(0, 8).toUpperCase()}</span>
+                  </div>
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {messages.length > 0 && (
                   <p className="text-[10px] text-center text-muted-foreground mb-2">
