@@ -1,47 +1,67 @@
 
 
-# Fix order email branding: sender name + logo
+# Fix: order confirmation email is rejected with 401 (Invalid JWT)
 
-## Two issues
+## Root cause
 
-### 1. From header says "shopclave-pro" instead of "Barakaz"
-In `supabase/functions/send-transactional-email/index.ts`, line 8:
+Edge function logs from `create-order` show every email send failing with:
+
 ```
-const SITE_NAME = "shopclave-pro"
+send-transactional-email failed: status=401
+body={"code":"UNAUTHORIZED_INVALID_JWT_FORMAT","message":"Invalid JWT"}
 ```
-This was baked in from the original Lovable project name. It's used to build the `From:` header:
-```
-From: shopclave-pro <noreply@barakaz.com>
-```
-So buyers see the email come from "shopclave-pro" in their inbox.
 
-**Fix**: Change `SITE_NAME` to `"Barakaz"`. After the change, the From line becomes `Barakaz <noreply@barakaz.com>`.
+That means the request never reaches our `send-transactional-email` code — Supabase's gateway rejects it before it runs. Two things are causing this:
 
-### 2. The order-confirmation email has no logo
-The template (`_shared/transactional-email-templates/order-confirmation.tsx`) renders the brand as a plain text `<Heading>` ("Barakaz") on an orange band — no image. Buyers don't see the actual logo.
+1. `supabase/config.toml` sets `verify_jwt = true` for `send-transactional-email`. Under the new signing-keys system, the gateway is rejecting the service-role bearer token we're sending.
+2. `create-order` is doing a raw `fetch(...)` with `Authorization: Bearer <service_role_key>`. That's the wrong shape for the new JWT verifier and gets refused as "invalid JWT format".
 
-**Fix**:
-- Copy the existing brand logo (`src/assets/barakaz-logo.png`, used in the navbar) into `public/email-logo.png` so it's served at a stable, publicly reachable URL: `https://barakaz.com/email-logo.png`. Email clients can't load `src/assets/...` (bundled) — they need an absolute HTTPS URL.
-- Replace the `<Heading>{SITE_NAME}</Heading>` block in the email header with an `<Img>` tag pointing at that URL, sized appropriately (~140px wide, auto height), centered on the orange header band, with `alt="Barakaz"` as a fallback for clients that block images.
-- Keep the existing orange (#ff420e) header background so the white logo (current navbar logo is white-on-transparent) reads cleanly. If the asset isn't already light-on-dark, we use a small white inner pill behind it so it's visible regardless.
+Result: every order today still has zero rows in `email_send_log` for `order-confirmation`, and `send-transactional-email`'s own logs are empty (because nothing actually invoked it).
+
+## Fix
+
+### 1. Stop the gateway from blocking internal calls
+Set `verify_jwt = false` for `send-transactional-email` in `supabase/config.toml`. The function is only ever invoked from other edge functions (server-to-server with the service role key) — there's no client-facing surface that needs gateway-level JWT enforcement. This matches how `auth-email-hook`, `handle-email-unsubscribe`, and `handle-email-suppression` are already configured.
+
+### 2. Use the proper SDK to invoke it from `create-order`
+Replace the raw `fetch(...)` block in `create-order/index.ts` with `supabase.functions.invoke('send-transactional-email', { body: { ... } })` using a service-role-authenticated Supabase client. This:
+- Constructs the auth header in the correct format
+- Doesn't depend on URL string-building
+- Surfaces a real `error` object we can log cleanly
+- Is the pattern Lovable's email infra recommends
+
+We keep:
+- The recipient-resolution priority (form email → JWT → `auth.admin.getUserById`)
+- The idempotency key (`order-confirm-${order.id}`) so retries can't double-send
+- The try/catch wrapper so email failures never fail the order
+- The existing detailed error logging
+
+### 3. Redeploy
+Deploy `send-transactional-email` (config change) and `create-order` (code change). Until both are deployed, the bug persists.
+
+### 4. Backfill the orders that didn't get an email
+After deploy, send the missing confirmations for the recent orders that hit the 401 (3 orders today: `3097d9f7…`, `415937b9…`, `462bbb5f…`, plus any others since the original "missing emails" backfill). Idempotency keys make this safe — already-sent ones won't duplicate.
 
 ## Files touched
 
 ```text
-supabase/functions/send-transactional-email/index.ts
-  - SITE_NAME: "shopclave-pro" → "Barakaz"
+supabase/config.toml
+  - [functions.send-transactional-email] verify_jwt: true → false
 
-public/email-logo.png   (new — copy of src/assets/barakaz-logo.png)
+supabase/functions/create-order/index.ts
+  - Replace raw fetch(send-transactional-email) with
+    supabase.functions.invoke('send-transactional-email', { body: ... })
+  - Keep try/catch + recipient resolution + detailed error logging
 
-supabase/functions/_shared/transactional-email-templates/order-confirmation.tsx
-  - Replace text Heading in header Section with <Img src="https://barakaz.com/email-logo.png" />
-  - Keep orange band; size logo to ~140px wide
+(deploy) send-transactional-email   (config change requires redeploy)
+(deploy) create-order               (code change requires redeploy)
 
-(deploy) send-transactional-email   (required — Edge Function code change won't take effect until redeployed)
+(one-off backfill) for the 3+ orders that failed with 401 today,
+  invoke send-transactional-email server-side with the same templateData
 ```
 
 ## Out of scope
-- Auth emails (signup, password reset) — same SITE_NAME fix can be applied later if those also show "shopclave-pro"
-- Changing the brand color or layout
-- Vendor / shipped / delivered emails (don't exist yet)
+- Vendor "new order received" email
+- Shipped / delivered notifications
+- Auth email branding ("shopclave-pro" → "Barakaz" was already fixed last turn)
 
