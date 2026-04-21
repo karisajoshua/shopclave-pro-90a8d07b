@@ -11,6 +11,7 @@ import { Store, ExternalLink } from "lucide-react";
 const VendorLayout = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
     queryKey: ["vendor", user?.id],
