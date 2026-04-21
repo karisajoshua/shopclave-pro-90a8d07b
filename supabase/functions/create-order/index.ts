@@ -261,7 +261,6 @@ Deno.serve(async (req) => {
           `[order ${order.id}] No recipient email found (user ${user.id}). Skipping confirmation email.`
         );
       } else {
-        const supabaseFunctionsUrl = `${supabaseUrl}/functions/v1/send-transactional-email`;
         const emailPayload = {
           templateName: "order-confirmation",
           recipientEmail,
@@ -280,23 +279,18 @@ Deno.serve(async (req) => {
           },
         };
 
-        const res = await fetch(supabaseFunctionsUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify(emailPayload),
-        });
+        const { data: invokeData, error: invokeError } = await adminClient.functions.invoke(
+          "send-transactional-email",
+          { body: emailPayload }
+        );
 
-        if (!res.ok) {
-          const errBody = await res.text().catch(() => "<no body>");
+        if (invokeError) {
           console.error(
-            `[order ${order.id}] send-transactional-email failed: status=${res.status} recipient=${recipientEmail} body=${errBody}`
+            `[order ${order.id}] send-transactional-email invoke failed: recipient=${recipientEmail} error=${JSON.stringify(invokeError)}`
           );
         } else {
           console.log(
-            `[order ${order.id}] order-confirmation enqueued for ${recipientEmail}`
+            `[order ${order.id}] order-confirmation enqueued for ${recipientEmail} response=${JSON.stringify(invokeData)}`
           );
         }
       }
