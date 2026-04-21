@@ -614,9 +614,15 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Size Chart (Fashion only) */}
-            {(product.category_id === FASHION_CATEGORY_ID ||
-              (product as any).categories?.parent_id === FASHION_CATEGORY_ID) && (
+            {/* Size Chart (Fashion clothing only — exclude bags, shoes, jewelry, accessories) */}
+            {(() => {
+              const isFashionCategory =
+                product.category_id === FASHION_CATEGORY_ID ||
+                (product as any).categories?.parent_id === FASHION_CATEGORY_ID;
+              const categoryName = ((product as any).categories?.name || '').toLowerCase();
+              const isNonClothing = /bag|shoe|jewelry|jewellery|accessor|luggage|watch|belt|hat|cap|sunglass/.test(categoryName);
+              return isFashionCategory && !isNonClothing;
+            })() && (
               <Dialog>
                 <DialogTrigger asChild>
                   <button
