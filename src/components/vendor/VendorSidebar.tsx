@@ -18,17 +18,38 @@ import {
 } from "@/components/ui/sidebar";
 import barakazLogo from "@/assets/barakaz-logo.png";
 
-const items = [
-  { title: "Dashboard", url: "/vendor/dashboard", icon: LayoutDashboard },
-  { title: "Products", url: "/vendor/products", icon: Package },
-  { title: "Add Product", url: "/vendor/products/new", icon: Plus },
-  { title: "Bulk Import", url: "/vendor/bulk-import", icon: Upload },
-  { title: "Media", url: "/vendor/media", icon: Images },
-  { title: "Orders", url: "/vendor/orders", icon: ShoppingBag },
-  { title: "Earnings", url: "/vendor/earnings", icon: DollarSign },
-  { title: "Notifications", url: "/vendor/notifications", icon: Bell },
-  { title: "Messages", url: "/vendor/messages", icon: MessageCircle },
-  { title: "Store Settings", url: "/vendor/settings", icon: Settings },
+const groups: { label: string; items: { title: string; url: string; icon: any }[] }[] = [
+  {
+    label: "Overview",
+    items: [{ title: "Dashboard", url: "/vendor/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { title: "Products", url: "/vendor/products", icon: Package },
+      { title: "Add Product", url: "/vendor/products/new", icon: Plus },
+      { title: "Bulk Import", url: "/vendor/bulk-import", icon: Upload },
+      { title: "Media", url: "/vendor/media", icon: Images },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { title: "Orders", url: "/vendor/orders", icon: ShoppingBag },
+      { title: "Earnings", url: "/vendor/earnings", icon: DollarSign },
+    ],
+  },
+  {
+    label: "Engage",
+    items: [
+      { title: "Messages", url: "/vendor/messages", icon: MessageCircle },
+      { title: "Notifications", url: "/vendor/notifications", icon: Bell },
+    ],
+  },
+  {
+    label: "System",
+    items: [{ title: "Store Settings", url: "/vendor/settings", icon: Settings }],
+  },
 ];
 
 export function VendorSidebar() {
@@ -36,21 +57,15 @@ export function VendorSidebar() {
   const collapsed = state === "collapsed";
   const { user } = useAuth();
 
-  // Fetch vendor for this user
   const { data: vendor } = useQuery({
     queryKey: ["vendor-for-sidebar", user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vendors")
-        .select("id")
-        .eq("user_id", user!.id)
-        .single();
+      const { data } = await supabase.from("vendors").select("id").eq("user_id", user!.id).single();
       return data;
     },
     enabled: !!user,
   });
 
-  // Fetch unread message count
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["vendor-unread-messages", vendor?.id],
     queryFn: async () => {
@@ -66,61 +81,96 @@ export function VendorSidebar() {
     refetchInterval: 15000,
   });
 
+  const { data: unreadNotifs = 0 } = useQuery({
+    queryKey: ["vendor-unread-notifs", user?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("recipient_id", user!.id)
+        .eq("is_read", false);
+      return count || 0;
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+
+  const badgeFor = (title: string): number => {
+    if (title === "Messages") return unreadCount;
+    if (title === "Notifications") return unreadNotifs;
+    return 0;
+  };
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
-      <SidebarHeader className="border-b border-border px-4 py-4 flex items-center justify-center">
-        <Link to="/">
+    <Sidebar
+      collapsible="icon"
+      className="border-r-0 [&_[data-sidebar=sidebar]]:bg-[hsl(var(--vendor-sidebar-bg))] [&_[data-sidebar=sidebar]]:text-[hsl(var(--vendor-sidebar-fg))]"
+    >
+      <SidebarHeader className="border-b border-[hsl(var(--vendor-sidebar-border))] px-4 py-4 flex items-center justify-center bg-[hsl(var(--vendor-sidebar-bg))]">
+        <Link to="/" className="flex items-center justify-center">
           <img
             src={barakazLogo}
             alt="Barakaz"
-            className="h-10 w-auto group-data-[collapsible=icon]:h-7 transition-all"
+            className="h-9 w-auto group-data-[collapsible=icon]:h-7 transition-all brightness-0 invert"
           />
         </Link>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Vendor Panel</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && (
-                        <span className="flex-1 flex items-center justify-between">
-                          {item.title}
-                          {item.title === "Messages" && unreadCount > 0 && (
-                            <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                              {unreadCount > 99 ? "99+" : unreadCount}
+      <SidebarContent className="bg-[hsl(var(--vendor-sidebar-bg))]">
+        {groups.map((group) => (
+          <SidebarGroup key={group.label}>
+            {!collapsed && (
+              <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--vendor-sidebar-fg-muted))] px-3 mt-1">
+                {group.label}
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const badge = badgeFor(item.title);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild className="hover:bg-transparent">
+                        <NavLink
+                          to={item.url}
+                          end
+                          className="relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-[hsl(var(--vendor-sidebar-fg))] hover:bg-[hsl(var(--vendor-sidebar-bg-elevated))] hover:text-white transition-colors"
+                          activeClassName="!bg-[hsl(var(--vendor-sidebar-active-bg))] !text-[hsl(var(--vendor-sidebar-active-fg))] font-medium shadow-sm"
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && (
+                            <span className="flex-1 flex items-center justify-between">
+                              {item.title}
+                              {badge > 0 && (
+                                <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                  {badge > 99 ? "99+" : badge}
+                                </span>
+                              )}
                             </span>
                           )}
-                        </span>
-                      )}
-                      {collapsed && item.title === "Messages" && unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[8px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                          {collapsed && badge > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[8px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">
+                              {badge > 9 ? "9+" : badge}
+                            </span>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
 
-        <SidebarGroup>
+        <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+                <SidebarMenuButton asChild className="hover:bg-transparent">
+                  <Link
+                    to="/"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-[hsl(var(--vendor-sidebar-fg-muted))] hover:bg-[hsl(var(--vendor-sidebar-bg-elevated))] hover:text-white transition-colors"
+                  >
                     <Home className="h-4 w-4 shrink-0" />
                     {!collapsed && <span>Back to Site</span>}
                   </Link>
