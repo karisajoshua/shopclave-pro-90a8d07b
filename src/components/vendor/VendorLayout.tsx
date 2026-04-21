@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { VendorSidebar } from "./VendorSidebar";
 import { Button } from "@/components/ui/button";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import { Store, ExternalLink } from "lucide-react";
 
 const VendorLayout = () => {
   const { user, loading } = useAuth();
@@ -29,40 +29,52 @@ const VendorLayout = () => {
 
   if (!vendor) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-muted-foreground">You haven't registered as a vendor yet.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--vendor-surface))]">
+        <div className="text-center space-y-4 max-w-sm px-6">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Store className="h-7 w-7 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">No vendor account yet</h2>
+            <p className="text-sm text-muted-foreground">Set up your storefront to start selling on Barakaz.</p>
+          </div>
           <Link to="/vendor/register"><Button>Register as Vendor</Button></Link>
         </div>
       </div>
     );
   }
 
+  const statusStyles =
+    vendor.status === "approved"
+      ? "bg-success/10 text-success border-success/20"
+      : vendor.status === "pending"
+      ? "bg-warning/10 text-warning border-warning/20"
+      : "bg-destructive/10 text-destructive border-destructive/20";
+
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-[hsl(var(--vendor-surface))]">
         <VendorSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b border-border px-4 gap-3 bg-card">
+          <header className="h-14 flex items-center border-b border-border px-4 gap-3 bg-card sticky top-0 z-20">
             <SidebarTrigger />
-            <h1 className="font-display text-lg font-bold">{vendor.store_name}</h1>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ml-2 ${vendor.status === "approved" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-              {vendor.status}
-            </span>
-          </header>
-          <main
-            className="flex-1 p-4 md:p-6 overflow-auto relative"
-            style={{
-              backgroundImage: `url(${barakazIcon})`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "center",
-              backgroundSize: "300px",
-            }}
-          >
-            <div className="absolute inset-0 bg-background/95 pointer-events-none" />
-            <div className="relative z-10">
-              <Outlet context={{ vendor }} />
+            <div className="flex items-center gap-2 min-w-0">
+              <Store className="h-4 w-4 text-primary shrink-0" />
+              <h1 className="font-display text-base font-semibold truncate">{vendor.store_name}</h1>
+              <span className={`status-pill border ${statusStyles} capitalize`}>{vendor.status}</span>
             </div>
+            <div className="ml-auto flex items-center gap-2">
+              {vendor.slug && vendor.status === "approved" && (
+                <Link to={`/vendor/${vendor.slug}`} target="_blank">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                    <ExternalLink className="h-3.5 w-3.5" /> View store
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </header>
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
+            <Outlet context={{ vendor }} />
           </main>
         </div>
       </div>

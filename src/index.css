@@ -81,6 +81,21 @@
     --shadow-admin-card: 0 1px 2px 0 hsl(220 20% 10% / 0.04), 0 1px 3px 0 hsl(220 20% 10% / 0.04);
     --shadow-admin-card-hover: 0 4px 12px -2px hsl(220 20% 10% / 0.08), 0 2px 4px -2px hsl(220 20% 10% / 0.04);
 
+    /* Vendor cockpit tokens (warm orange-tinted variant of admin shell) */
+    --vendor-surface: 30 30% 98%;
+    --vendor-card: 0 0% 100%;
+    --vendor-sidebar-bg: 222 28% 11%;
+    --vendor-sidebar-bg-elevated: 222 25% 14%;
+    --vendor-sidebar-fg: 220 15% 75%;
+    --vendor-sidebar-fg-muted: 220 12% 55%;
+    --vendor-sidebar-active-bg: 13 100% 53%;
+    --vendor-sidebar-active-fg: 0 0% 100%;
+    --vendor-sidebar-border: 222 25% 18%;
+    --vendor-accent-revenue: 142 71% 45%;
+    --vendor-accent-orders: 217 91% 60%;
+    --vendor-accent-products: 13 100% 53%;
+    --vendor-accent-warning: 38 92% 50%;
+
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
