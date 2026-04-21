@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { PLANS, type Plan, isAdminUnlimited } from "@/lib/subscriptionPlans";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 const VendorDashboard = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
@@ -150,17 +151,20 @@ const VendorDashboard = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold">Overview</h2>
+    <div className="space-y-5">
+      <AdminPageHeader
+        title="Vendor Overview"
+        subtitle={`Welcome back to ${vendor?.store_name || "your store"}. Here's what's happening today.`}
+      />
 
       {/* Pending payment banner */}
       {pendingPayment && (
-        <div className="flex items-start gap-2 bg-primary/10 border border-primary/30 rounded-lg p-3 text-sm">
+        <div className="admin-card flex items-start gap-2.5 p-3 text-sm border-primary/30 bg-primary/5">
           <Clock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">Payment pending verification</p>
             <p className="text-muted-foreground text-xs mt-0.5">
-              Your <span className="capitalize">{pendingPayment.plan_name}</span> plan is active. M-Pesa code <span className="font-mono">{pendingPayment.transaction_code}</span> awaiting admin review.
+              Your <span className="capitalize font-medium text-foreground">{pendingPayment.plan_name}</span> plan is active. M-Pesa code <span className="font-mono">{pendingPayment.transaction_code}</span> awaiting admin review.
             </p>
           </div>
         </div>
@@ -168,28 +172,30 @@ const VendorDashboard = () => {
 
       {/* Subscription warning */}
       {isExpiring && !pendingPayment && (
-        <div className="flex items-center gap-2 bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm">
+        <div className="admin-card flex items-center gap-2.5 p-3 text-sm border-warning/30 bg-warning/5">
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
           <span>Your subscription expires on {new Date(subscription!.expires_at!).toLocaleDateString()}. Upgrade or renew below.</span>
         </div>
       )}
 
       {/* Subscription info */}
-      <div className="bg-card rounded-lg border border-border p-4">
+      <div className="admin-card p-4">
         <p className="text-sm text-muted-foreground">
           Plan: <span className="font-semibold text-foreground capitalize">{isAdmin ? "Admin (Unlimited)" : (subscription?.plan_name || "Free")}</span>
           {!isAdmin && subscription?.expires_at && (
-            <> · Expires: <span className="font-medium">{new Date(subscription.expires_at).toLocaleDateString()}</span></>
+            <> · Expires: <span className="font-medium text-foreground">{new Date(subscription.expires_at).toLocaleDateString()}</span></>
           )}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-card rounded-lg border border-border p-4">
+          <div key={stat.label} className="admin-card admin-card-hover p-4">
             <div className="flex items-center gap-2 mb-2">
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-muted ${stat.color}`}>
+                <stat.icon className="h-4 w-4" />
+              </div>
+              <span className="text-xs text-muted-foreground">{stat.label}</span>
             </div>
             <p className="text-xl font-bold">{stat.value}</p>
           </div>
@@ -198,48 +204,50 @@ const VendorDashboard = () => {
 
       {/* Top Viewed Products */}
       {products && products.length > 0 && (
-        <div>
-          <h3 className="font-semibold mb-3">Your Products</h3>
-          <div className="bg-card rounded-lg border border-border overflow-x-auto">
-            <table className="w-full text-sm min-w-[400px]">
-              <thead className="bg-secondary">
-                <tr>
-                  <th className="text-left p-3 font-medium">#</th>
-                  <th className="text-left p-3 font-medium">Product</th>
-                  <th className="text-left p-3 font-medium">Price</th>
-                  <th className="text-left p-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.slice(0, 10).map((p: any, idx: number) => (
-                  <tr key={p.id} className="border-t border-border">
-                    <td className="p-3 text-muted-foreground">{idx + 1}</td>
-                    <td className="p-3 font-medium">{p.name}</td>
-                    <td className="p-3">KSh {Number(p.price).toLocaleString()}</td>
-                    <td className="p-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                        {p.status}
-                      </span>
-                    </td>
+        <div className="space-y-3">
+          <h3 className="admin-section-label">Your Products</h3>
+          <div className="admin-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="admin-table min-w-[400px]">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {products.slice(0, 10).map((p: any, idx: number) => (
+                    <tr key={p.id}>
+                      <td className="text-muted-foreground">{idx + 1}</td>
+                      <td className="font-medium">{p.name}</td>
+                      <td className="font-semibold">KSh {Number(p.price).toLocaleString()}</td>
+                      <td>
+                        <span className={`status-pill ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                          {p.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* Subscription Upgrade — hidden for admins */}
       {!isAdmin && (
-        <div>
-          <h3 className="font-semibold mb-3 flex items-center gap-2">
-            <ArrowUpCircle className="h-4 w-4 text-primary" /> Upgrade Your Plan
+        <div className="space-y-3">
+          <h3 className="admin-section-label flex items-center gap-1.5">
+            <ArrowUpCircle className="h-3.5 w-3.5 text-primary" /> Upgrade Your Plan
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {PLANS.filter(p => p.key !== "free").map((plan) => {
               const isCurrent = subscription?.plan_name?.toLowerCase() === plan.key;
               return (
-                <div key={plan.key} className={`bg-card rounded-lg border p-4 text-center ${isCurrent ? "border-primary" : "border-border"}`}>
+                <div key={plan.key} className={`admin-card admin-card-hover p-4 text-center ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""}`}>
                   <p className="font-semibold text-sm">{plan.name}</p>
                   <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">/month</p>
