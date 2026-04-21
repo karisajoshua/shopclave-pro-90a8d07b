@@ -87,9 +87,10 @@ export const AdminHeader = () => {
           <Home className="h-4 w-4" /> Site
         </Link>
       </Button>
-      <Link
-        to="/admin/notifications"
-        className="relative h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground"
+      <a
+        href="/admin/notifications"
+        onClick={handleBellClick}
+        className="relative h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground cursor-pointer"
         aria-label="Notifications"
       >
         <Bell className="h-4 w-4" />
@@ -98,7 +99,7 @@ export const AdminHeader = () => {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </Link>
+      </a>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-md hover:bg-muted/60 transition-colors">
