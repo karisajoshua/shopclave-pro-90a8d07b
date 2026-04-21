@@ -1,73 +1,47 @@
 
 
-# Fix order confirmation emails not sending
+# Fix order email branding: sender name + logo
 
-## Root cause
+## Two issues
 
-Orders are being placed successfully, but **zero rows ever appear** in `email_send_log` for `order-confirmation`, and the `send-transactional-email` Edge Function has **no log entries** corresponding to those orders. That means the email-send block inside `create-order` is being skipped entirely.
-
-The cause is in `supabase/functions/create-order/index.ts`:
-
-```ts
-const recipientEmail = user.email;
-if (recipientEmail) {  // ← silently skipped when user.email is null
-  await fetch(...);
-}
+### 1. From header says "shopclave-pro" instead of "Barakaz"
+In `supabase/functions/send-transactional-email/index.ts`, line 8:
 ```
+const SITE_NAME = "shopclave-pro"
+```
+This was baked in from the original Lovable project name. It's used to build the `From:` header:
+```
+From: shopclave-pro <noreply@barakaz.com>
+```
+So buyers see the email come from "shopclave-pro" in their inbox.
 
-Two real problems:
+**Fix**: Change `SITE_NAME` to `"Barakaz"`. After the change, the From line becomes `Barakaz <noreply@barakaz.com>`.
 
-1. **`user.email` is empty for many sessions.** Google-OAuth users and users whose email is not in the JWT `email` claim come back from `auth.getUser()` with `email: null`. The block is silently bypassed.
-2. **Even when the fetch runs, there's no response check.** If `send-transactional-email` returns 401/500/anything non-2xx, the code logs nothing and the order returns success. That's why we can't see what's going wrong.
+### 2. The order-confirmation email has no logo
+The template (`_shared/transactional-email-templates/order-confirmation.tsx`) renders the brand as a plain text `<Heading>` ("Barakaz") on an orange band — no image. Buyers don't see the actual logo.
 
-There's also a smaller issue: the `user_id` is the canonical recipient, but we never look it up in the `profiles` table or `auth.users` as a fallback, so we miss every email that isn't on the JWT.
-
-## Fix
-
-### 1. Resolve recipient email reliably (`create-order/index.ts`)
-
-Order of resolution:
-1. `user.email` from the JWT (current behavior)
-2. If empty, fetch from `auth.admin.getUserById(user.id)` using the admin client — this always has the verified email
-3. If still empty, fall back to the `shipping_address` if it contains an `email` field (we'll add an optional `email` to the checkout schema as well)
-4. If none of the above, log a warning explaining no email was sent — but still return order success
-
-### 2. Make the email send observable (`create-order/index.ts`)
-
-Replace the bare `await fetch(...)` with:
-- Capture the `Response` and check `res.ok`
-- On non-2xx, read the body and `console.error` with status, body, recipient, order id
-- On success, `console.log` confirming enqueue
-- Wrap in try/catch as today (never fails the order)
-
-This way, the next failed send shows up in the edge function logs immediately and we can diagnose without guessing.
-
-### 3. Allow optional buyer email at checkout (`CheckoutPage.tsx` + `create-order` schema)
-
-Add an **optional "Email for order updates"** field to the checkout shipping form (prefilled from `user.email` if present, editable). Pass it through to `create-order`, validate as `z.string().email().optional()`, and use it as the highest-priority recipient. This guarantees the buyer always controls where the receipt goes, even if their auth account has no email on file.
-
-### 4. Backfill confirmation emails for the 5 recent orders that didn't get one
-
-After the fix is deployed, send a one-off confirmation for each of the 5 orders placed today (21:45, 21:40, 20:59, 11:40, 11:29 UTC) so those buyers actually get their receipt. This is run server-side via the same `send-transactional-email` function with each order's data — idempotency keys prevent duplicates if already sent.
+**Fix**:
+- Copy the existing brand logo (`src/assets/barakaz-logo.png`, used in the navbar) into `public/email-logo.png` so it's served at a stable, publicly reachable URL: `https://barakaz.com/email-logo.png`. Email clients can't load `src/assets/...` (bundled) — they need an absolute HTTPS URL.
+- Replace the `<Heading>{SITE_NAME}</Heading>` block in the email header with an `<Img>` tag pointing at that URL, sized appropriately (~140px wide, auto height), centered on the orange header band, with `alt="Barakaz"` as a fallback for clients that block images.
+- Keep the existing orange (#ff420e) header background so the white logo (current navbar logo is white-on-transparent) reads cleanly. If the asset isn't already light-on-dark, we use a small white inner pill behind it so it's visible regardless.
 
 ## Files touched
 
 ```text
-supabase/functions/create-order/index.ts
-  - Add OrderSchema.shipping_address.email (optional)
-  - Resolve recipient: form email → user.email → auth.admin.getUserById → profiles
-  - Check fetch response status and log failures with full context
-  - Log success on enqueue
+supabase/functions/send-transactional-email/index.ts
+  - SITE_NAME: "shopclave-pro" → "Barakaz"
 
-src/pages/CheckoutPage.tsx
-  - Add optional "Email for order updates" input, prefilled from auth user
+public/email-logo.png   (new — copy of src/assets/barakaz-logo.png)
 
-(one-off) Backfill script run inside an exec call
-  - For each of the 5 recent orders missing a confirmation email,
-    invoke send-transactional-email with the proper templateData
+supabase/functions/_shared/transactional-email-templates/order-confirmation.tsx
+  - Replace text Heading in header Section with <Img src="https://barakaz.com/email-logo.png" />
+  - Keep orange band; size logo to ~140px wide
+
+(deploy) send-transactional-email   (required — Edge Function code change won't take effect until redeployed)
 ```
 
 ## Out of scope
-- Vendor "new order received" email
-- Shipped / delivered notifications
+- Auth emails (signup, password reset) — same SITE_NAME fix can be applied later if those also show "shopclave-pro"
+- Changing the brand color or layout
+- Vendor / shipped / delivered emails (don't exist yet)
 
