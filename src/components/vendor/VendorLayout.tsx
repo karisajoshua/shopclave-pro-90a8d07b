@@ -66,7 +66,7 @@ const VendorLayout = () => {
             </div>
             <div className="ml-auto flex items-center gap-2">
               {vendor.slug && vendor.status === "approved" && (
-                <Link to={`/vendor/${vendor.slug}`} target="_blank">
+                <Link to={`/store/${vendor.slug}`} target="_blank">
                   <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
                     <ExternalLink className="h-3.5 w-3.5" /> View store
                   </Button>
