@@ -1,54 +1,27 @@
 
 
-# Fix: Show size chart only for clothing products
+# Update "Top in Electronics" and "Fashion Deals" thumbnails
 
-## Problem
-The "View Size Chart" button currently appears for ALL products in the Fashion category, including bags, shoes, jewelry, and accessories — items that don't need bust/waist measurements. This creates confusion for buyers.
+Replace the 8 Unsplash thumbnail URLs with the user-uploaded images for these two cards on the homepage hero section.
 
-## Root cause
-The current check at line 618-619 only verifies if the product is in Fashion category:
-```tsx
-{(product.category_id === FASHION_CATEGORY_ID ||
-  (product as any).categories?.parent_id === FASHION_CATEGORY_ID) && ...
-```
+## Steps
 
-This includes non-clothing subcategories like Bags & Luggage, Handbags, Jewelry, Men's Accessories, Men's Shoes, and Women's Shoes.
+1. Copy the 8 uploaded images into `src/assets/` so they're bundled and optimized:
+   - `Smartphones.jpeg` → `src/assets/cat-smartphones.jpg`
+   - `Laptops.jpeg` → `src/assets/cat-laptops.jpg`
+   - `Headphones.jpeg` → `src/assets/cat-headphones.jpg`
+   - `Smart_TVs.jpeg` → `src/assets/cat-smart-tvs.jpg`
+   - `Men_s_fashion.jpeg` → `src/assets/cat-mens-fashion.jpg`
+   - `Women_s_Fashion.jpeg` → `src/assets/cat-womens-fashion.jpg`
+   - `Kids_fashion.jpeg` → `src/assets/cat-kids-fashion.jpg`
+   - `Shoes.jpeg` → `src/assets/cat-shoes.jpg`
 
-## Fix
-Modify `src/pages/ProductDetailPage.tsx` to exclude non-clothing categories by checking if the category name contains "bag", "shoe", "jewelry", or "accessories" (case-insensitive).
-
-**New condition:**
-```tsx
-{(() => {
-  const isFashionCategory = product.category_id === FASHION_CATEGORY_ID ||
-    (product as any).categories?.parent_id === FASHION_CATEGORY_ID;
-  const categoryName = (product as any).categories?.name?.toLowerCase() || '';
-  const isNonClothing = /bag|shoe|jewelry|accessories|luggage/.test(categoryName);
-  return isFashionCategory && !isNonClothing;
-})() && (
-  <Dialog>...</Dialog>
-)}
-```
-
-This keeps the size chart visible for:
-- Men, Women, Kids, Traditional Wear (clothing)
-- Any other fashion subcategories that might be added later
-
-And hides it for:
-- Bags & Luggage, Handbags
-- Men's Shoes, Women's Shoes  
-- Jewelry
-- Men's Accessories
-
-## Files touched
-
-```text
-src/pages/ProductDetailPage.tsx
-  - Replace lines 617-724 (Size Chart section) with updated condition
-```
+2. Edit `src/components/marketplace/HeroBanner.tsx`:
+   - Add 8 ES6 imports for the new assets at the top.
+   - Replace the `image:` URLs in the `"Top in Electronics"` block (lines 32–35) and the `"Fashion Deals"` block (lines 42–45) with the imported variables.
 
 ## Out of scope
-- No database changes
-- No changes to other product types
-- The size chart content/tables remain unchanged
+- Other category cards (Home, Health & Beauty, Sports, Phones & Tablets) — unchanged.
+- No layout, sizing, or styling changes.
+- No DB or category record changes.
 
