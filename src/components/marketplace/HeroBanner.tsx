@@ -13,6 +13,15 @@ import catMensFashion from "@/assets/cat-mens-fashion.jpg";
 import catWomensFashion from "@/assets/cat-womens-fashion.jpg";
 import catKidsFashion from "@/assets/cat-kids-fashion.jpg";
 import catShoes from "@/assets/cat-shoes.jpg";
+import catFurniture from "@/assets/cat-furniture.jpg";
+import catKitchen from "@/assets/cat-kitchen.jpg";
+import catDecor from "@/assets/cat-decor.jpg";
+import catAppliances from "@/assets/cat-appliances.jpg";
+import catSkincare from "@/assets/cat-skincare.jpg";
+import catMakeup from "@/assets/cat-makeup.jpg";
+import catHaircare from "@/assets/cat-haircare.jpg";
+import catSportswear from "@/assets/cat-sportswear.jpg";
+import catFootball from "@/assets/cat-football.jpg";
 
 const HERO_SLIDES = [
   {
@@ -57,20 +66,20 @@ const CATEGORY_CARDS = [
   {
     title: "Home Essentials",
     items: [
-      { name: "Furniture", slug: "furniture", image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=200&q=80" },
-      { name: "Kitchen", slug: "kitchen-dining", image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80" },
-      { name: "Decor", slug: "home-decor", image: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=200&q=80" },
-      { name: "Appliances", slug: "appliances", image: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=200&q=80" },
+      { name: "Furniture", slug: "furniture", image: catFurniture },
+      { name: "Kitchen", slug: "kitchen-dining", image: catKitchen },
+      { name: "Decor", slug: "home-decor", image: catDecor },
+      { name: "Appliances", slug: "appliances", image: catAppliances },
     ],
     seeAllLink: "/search?category=home-garden",
   },
   {
     title: "Health & Beauty",
     items: [
-      { name: "Skincare", slug: "skincare", image: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=200&q=80" },
-      { name: "Makeup", slug: "makeup", image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80" },
+      { name: "Skincare", slug: "skincare", image: catSkincare },
+      { name: "Makeup", slug: "makeup", image: catMakeup },
       { name: "Fragrances", slug: "fragrances", image: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=200&q=80" },
-      { name: "Hair Care", slug: "haircare", image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&q=80" },
+      { name: "Hair Care", slug: "haircare", image: catHaircare },
     ],
     seeAllLink: "/search?category=health-beauty",
   },
@@ -78,8 +87,8 @@ const CATEGORY_CARDS = [
     title: "Sports & Fitness",
     items: [
       { name: "Fitness Gear", slug: "fitness-equipment", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200&q=80" },
-      { name: "Football", slug: "football", image: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=200&q=80" },
-      { name: "Sportswear", slug: "sportswear", image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&q=80" },
+      { name: "Football", slug: "football", image: catFootball },
+      { name: "Sportswear", slug: "sportswear", image: catSportswear },
       { name: "Cycling", slug: "cycling", image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200&q=80" },
     ],
     seeAllLink: "/search?category=sports",
