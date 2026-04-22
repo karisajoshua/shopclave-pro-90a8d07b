@@ -5,6 +5,14 @@ import heroBanner1 from "@/assets/hero-banner-1.png";
 import heroBanner2 from "@/assets/hero-banner-2.png";
 import heroBanner3 from "@/assets/hero-banner-3.png";
 import heroBanner4 from "@/assets/hero-banner-4.png";
+import catSmartphones from "@/assets/cat-smartphones.jpg";
+import catLaptops from "@/assets/cat-laptops.jpg";
+import catHeadphones from "@/assets/cat-headphones.jpg";
+import catSmartTvs from "@/assets/cat-smart-tvs.jpg";
+import catMensFashion from "@/assets/cat-mens-fashion.jpg";
+import catWomensFashion from "@/assets/cat-womens-fashion.jpg";
+import catKidsFashion from "@/assets/cat-kids-fashion.jpg";
+import catShoes from "@/assets/cat-shoes.jpg";
 
 const HERO_SLIDES = [
   {
@@ -29,20 +37,20 @@ const CATEGORY_CARDS = [
   {
     title: "Top in Electronics",
     items: [
-      { name: "Smartphones", slug: "smartphones", image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&q=80" },
-      { name: "Laptops", slug: "laptops", image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=200&q=80" },
-      { name: "Headphones", slug: "headphones", image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80" },
-      { name: "Smart TVs", slug: "smart-tvs", image: "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=200&q=80" },
+      { name: "Smartphones", slug: "smartphones", image: catSmartphones },
+      { name: "Laptops", slug: "laptops", image: catLaptops },
+      { name: "Headphones", slug: "headphones", image: catHeadphones },
+      { name: "Smart TVs", slug: "smart-tvs", image: catSmartTvs },
     ],
     seeAllLink: "/search?category=electronics",
   },
   {
     title: "Fashion Deals",
     items: [
-      { name: "Men's Fashion", slug: "men", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80" },
-      { name: "Women's Fashion", slug: "women", image: "https://images.unsplash.com/photo-1487222477894-f702e4571b60?w=200&q=80" },
-      { name: "Kids' Fashion", slug: "kids", image: "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=200&q=80" },
-      { name: "Shoes", slug: "sneakers", image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&q=80" },
+      { name: "Men's Fashion", slug: "men", image: catMensFashion },
+      { name: "Women's Fashion", slug: "women", image: catWomensFashion },
+      { name: "Kids' Fashion", slug: "kids", image: catKidsFashion },
+      { name: "Shoes", slug: "sneakers", image: catShoes },
     ],
     seeAllLink: "/search?category=fashion",
   },
