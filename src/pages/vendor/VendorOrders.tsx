@@ -66,15 +66,6 @@ const VendorOrders = () => {
     }
   };
 
-  const copyOrderId = async (orderId: string) => {
-    try {
-      await navigator.clipboard.writeText(orderId);
-      toast.success("Order ID copied");
-    } catch {
-      toast.error("Failed to copy order ID");
-    }
-  };
-
   const statusColor = (s: string) => {
     if (s === "delivered") return "bg-success/10 text-success";
     if (s === "shipped") return "bg-primary/10 text-primary";
@@ -109,7 +100,6 @@ const VendorOrders = () => {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Order</th>
                     <th>Product</th>
                     <th className="min-w-[260px]">Deliver to</th>
                     <th>Qty</th>
@@ -129,16 +119,6 @@ const VendorOrders = () => {
                     const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
                     return (
                       <tr key={item.id}>
-                        <td>
-                          <button
-                            type="button"
-                            onClick={() => copyOrderId(item.order_id)}
-                            className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold hover:bg-muted/70 transition-colors"
-                            title="Click to copy full order ID"
-                          >
-                            #{item.order_id.slice(0, 8).toUpperCase()}
-                          </button>
-                        </td>
                         <td className="font-medium">
                           <div>{(item.products as any)?.name || "—"}</div>
                           {(item.variant_options as any)?.label && (
@@ -216,17 +196,6 @@ const VendorOrders = () => {
               const cityCountry = [addr?.city, addr?.country].filter(Boolean).join(", ");
               return (
                 <div key={item.id} className="admin-card p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => copyOrderId(item.order_id)}
-                      className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold hover:bg-muted/70 transition-colors"
-                      title="Click to copy full order ID"
-                    >
-                      #{item.order_id.slice(0, 8).toUpperCase()}
-                    </button>
-                    <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
-                  </div>
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm line-clamp-1">{(item.products as any)?.name || "—"}</p>
@@ -236,6 +205,7 @@ const VendorOrders = () => {
                         </span>
                       )}
                     </div>
+                    <span className={`status-pill ${statusColor(item.status)}`}>{item.status}</span>
                   </div>
 
                   {addr && (
