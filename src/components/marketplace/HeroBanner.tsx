@@ -22,6 +22,16 @@ import catMakeup from "@/assets/cat-makeup.jpg";
 import catHaircare from "@/assets/cat-haircare.jpg";
 import catSportswear from "@/assets/cat-sportswear.jpg";
 import catFootball from "@/assets/cat-football.jpg";
+import catAccessories from "@/assets/cat-accessories.jpg";
+import catSmartwatches from "@/assets/cat-smartwatches.jpg";
+import catTablets from "@/assets/cat-tablets.jpg";
+import catFragrances from "@/assets/cat-fragrances.jpg";
+import catNewArrivals from "@/assets/cat-new-arrivals.jpg";
+import catRegisterStore from "@/assets/cat-register-store.jpg";
+import catAddProducts from "@/assets/cat-add-products.jpg";
+import catManageOrders from "@/assets/cat-manage-orders.jpg";
+import catGrowBusiness from "@/assets/cat-grow-business.jpg";
+import catClearance from "@/assets/cat-clearance.jpg";
 
 const HERO_SLIDES = [
   {
