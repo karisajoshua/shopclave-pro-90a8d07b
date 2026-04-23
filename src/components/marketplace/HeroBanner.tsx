@@ -101,7 +101,7 @@ const CATEGORY_CARDS = [
       { name: "Fitness Gear", slug: "fitness-equipment", image: catNewArrivals },
       { name: "Football", slug: "football", image: catFootball },
       { name: "Sportswear", slug: "sportswear", image: catSportswear },
-      { name: "Cycling", slug: "cycling", image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200&q=80" },
+      { name: "Cycling", slug: "cycling", image: catCycling },
     ],
     seeAllLink: "/search?category=sports",
   },
@@ -128,7 +128,7 @@ const CATEGORY_CARDS = [
   {
     title: "Deals of the Day",
     items: [
-      { name: "Flash Sales", slug: "flash-sales", image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=200&q=80" },
+      { name: "Flash Sales", slug: "flash-sales", image: catFlashSales },
       { name: "Clearance", slug: "clearance", image: catClearance },
       { name: "Bundles", slug: "bundles", image: "https://images.unsplash.com/photo-1556742031-c6961e8560b0?w=200&q=80" },
       { name: "New Arrivals", slug: "new-arrivals", image: catNewArrivals },
