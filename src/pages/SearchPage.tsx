@@ -13,21 +13,63 @@ import barakazIcon from "@/assets/barakaz-icon.png";
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
+  const categorySlug = searchParams.get("category") || "";
   const [query, setQuery] = useState(initialQuery);
   const { t } = useTranslation();
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ["search-products", query],
+  // Resolve category slug -> category id + descendant ids
+  const { data: categoryInfo, isLoading: categoryLoading } = useQuery({
+    queryKey: ["category-resolve", categorySlug],
+    enabled: !!categorySlug,
     queryFn: async () => {
+      const { data: cat } = await supabase
+        .from("categories")
+        .select("id, name")
+        .eq("slug", categorySlug)
+        .maybeSingle();
+      if (!cat) return { ids: [] as string[], name: "" };
+
+      const { data: children } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("parent_id", cat.id);
+      const childIds = (children || []).map((c: any) => c.id);
+
+      let grandIds: string[] = [];
+      if (childIds.length) {
+        const { data: grand } = await supabase
+          .from("categories")
+          .select("id")
+          .in("parent_id", childIds);
+        grandIds = (grand || []).map((g: any) => g.id);
+      }
+
+      return { ids: [cat.id, ...childIds, ...grandIds], name: cat.name };
+    },
+  });
+
+  const categoryIds = categoryInfo?.ids || [];
+  const categoryReady = !categorySlug || !categoryLoading;
+
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["search-products", query, categorySlug, categoryIds.join(",")],
+    enabled: categoryReady,
+    queryFn: async () => {
+      if (categorySlug && categoryIds.length === 0) return [];
+
       let q = supabase
         .from("products")
         .select("*, vendors(store_name), product_images(url)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .limit(24);
+        .limit(48);
 
       if (query.trim()) {
         q = q.ilike("name", `%${query.trim()}%`);
+      }
+
+      if (categorySlug && categoryIds.length > 0) {
+        q = q.in("category_id", categoryIds);
       }
 
       const { data } = await q;
@@ -49,6 +91,12 @@ const SearchPage = () => {
     dealEndsAt: p.deal_ends_at || null,
   }));
 
+  const headingText = query
+    ? `${t("search.resultsFor")} "${query}"`
+    : categoryInfo?.name
+      ? categoryInfo.name
+      : t("search.allProducts");
+
   return (
     <MarketplaceLayout>
       <div className="container py-8">
@@ -65,7 +113,7 @@ const SearchPage = () => {
         </div>
 
         <h1 className="font-display text-xl font-bold mb-6">
-          {query ? `${t("search.resultsFor")} "${query}"` : t("search.allProducts")}
+          {headingText}
           {displayProducts.length > 0 && (
             <span className="text-muted-foreground font-normal text-base ml-2">({displayProducts.length})</span>
           )}
