@@ -34,6 +34,7 @@ import catGrowBusiness from "@/assets/cat-grow-business.jpg";
 import catClearance from "@/assets/cat-clearance.jpg";
 import catFlashSales from "@/assets/cat-flash-sales.jpg";
 import catCycling from "@/assets/cat-cycling.jpg";
+import catFitnessGear from "@/assets/cat-fitness-gear.jpg";
 
 const HERO_SLIDES = [
   {
@@ -98,7 +99,7 @@ const CATEGORY_CARDS = [
   {
     title: "Sports & Fitness",
     items: [
-      { name: "Fitness Gear", slug: "fitness-equipment", image: catNewArrivals },
+      { name: "Fitness Gear", slug: "fitness-equipment", image: catFitnessGear },
       { name: "Football", slug: "football", image: catFootball },
       { name: "Sportswear", slug: "sportswear", image: catSportswear },
       { name: "Cycling", slug: "cycling", image: catCycling },
