@@ -32,6 +32,8 @@ import catAddProducts from "@/assets/cat-add-products.jpg";
 import catManageOrders from "@/assets/cat-manage-orders.jpg";
 import catGrowBusiness from "@/assets/cat-grow-business.jpg";
 import catClearance from "@/assets/cat-clearance.jpg";
+import catFlashSales from "@/assets/cat-flash-sales.jpg";
+import catCycling from "@/assets/cat-cycling.jpg";
 
 const HERO_SLIDES = [
   {
