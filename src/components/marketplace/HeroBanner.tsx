@@ -88,7 +88,7 @@ const CATEGORY_CARDS = [
     items: [
       { name: "Skincare", slug: "skincare", image: catSkincare },
       { name: "Makeup", slug: "makeup", image: catMakeup },
-      { name: "Fragrances", slug: "fragrances", image: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=200&q=80" },
+      { name: "Fragrances", slug: "fragrances", image: catFragrances },
       { name: "Hair Care", slug: "haircare", image: catHaircare },
     ],
     seeAllLink: "/search?category=health-beauty",
@@ -96,7 +96,7 @@ const CATEGORY_CARDS = [
   {
     title: "Sports & Fitness",
     items: [
-      { name: "Fitness Gear", slug: "fitness-equipment", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200&q=80" },
+      { name: "Fitness Gear", slug: "fitness-equipment", image: catNewArrivals },
       { name: "Football", slug: "football", image: catFootball },
       { name: "Sportswear", slug: "sportswear", image: catSportswear },
       { name: "Cycling", slug: "cycling", image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200&q=80" },
@@ -106,20 +106,20 @@ const CATEGORY_CARDS = [
   {
     title: "Phones & Tablets",
     items: [
-      { name: "Smartphones", slug: "smartphones-pt", image: "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=200&q=80" },
-      { name: "Tablets", slug: "tablets-pt", image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=200&q=80" },
-      { name: "Accessories", slug: "phone-accessories", image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=200&q=80" },
-      { name: "Smartwatches", slug: "smartwatches", image: "https://images.unsplash.com/photo-1546868871-af0de0ae72be?w=200&q=80" },
+      { name: "Smartphones", slug: "smartphones-pt", image: catSmartphones },
+      { name: "Tablets", slug: "tablets-pt", image: catTablets },
+      { name: "Accessories", slug: "phone-accessories", image: catAccessories },
+      { name: "Smartwatches", slug: "smartwatches", image: catSmartwatches },
     ],
     seeAllLink: "/search?category=phones-tablets",
   },
   {
     title: "Start Selling",
     items: [
-      { name: "Register Store", slug: "_vendor_register", image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=200&q=80" },
-      { name: "Add Products", slug: "_vendor_register", image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&q=80" },
-      { name: "Manage Orders", slug: "_vendor_register", image: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=200&q=80" },
-      { name: "Grow Business", slug: "_vendor_register", image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=200&q=80" },
+      { name: "Register Store", slug: "_vendor_register", image: catRegisterStore },
+      { name: "Add Products", slug: "_vendor_register", image: catAddProducts },
+      { name: "Manage Orders", slug: "_vendor_register", image: catManageOrders },
+      { name: "Grow Business", slug: "_vendor_register", image: catGrowBusiness },
     ],
     seeAllLink: "/vendor/register",
   },
@@ -127,9 +127,9 @@ const CATEGORY_CARDS = [
     title: "Deals of the Day",
     items: [
       { name: "Flash Sales", slug: "flash-sales", image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=200&q=80" },
-      { name: "Clearance", slug: "clearance", image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=200&q=80" },
+      { name: "Clearance", slug: "clearance", image: catClearance },
       { name: "Bundles", slug: "bundles", image: "https://images.unsplash.com/photo-1556742031-c6961e8560b0?w=200&q=80" },
-      { name: "New Arrivals", slug: "new-arrivals", image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&q=80" },
+      { name: "New Arrivals", slug: "new-arrivals", image: catNewArrivals },
     ],
     seeAllLink: "/search",
   },
