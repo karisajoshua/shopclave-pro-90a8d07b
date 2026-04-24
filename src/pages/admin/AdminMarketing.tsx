@@ -58,6 +58,298 @@ const SpecCard = ({ spec }: { spec: { w: number; h: number; maxKB: number; label
   </div>
 );
 
+// ===== Destination picker =====
+// Lets the admin map a banner/promotion click to a real destination instead
+// of typing a raw URL. Stored value is always a resolved path written to link_url.
+
+type DestMode = "category" | "product" | "vendor" | "custom";
+
+const parseDestination = (url: string): { mode: DestMode; slug: string; raw: string } => {
+  if (!url) return { mode: "custom", slug: "", raw: "/" };
+  // /category/{slug}  OR  /search?category={slug}
+  const catPath = url.match(/^\/category\/([^/?#]+)/);
+  if (catPath) return { mode: "category", slug: catPath[1], raw: url };
+  const catQuery = url.match(/^\/search\?category=([^&#]+)/);
+  if (catQuery) return { mode: "category", slug: decodeURIComponent(catQuery[1]), raw: url };
+  const prod = url.match(/^\/product\/([^/?#]+)/);
+  if (prod) return { mode: "product", slug: prod[1], raw: url };
+  const store = url.match(/^\/store\/([^/?#]+)/);
+  if (store) return { mode: "vendor", slug: store[1], raw: url };
+  return { mode: "custom", slug: "", raw: url };
+};
+
+const buildUrl = (mode: DestMode, slug: string, custom: string): string => {
+  if (mode === "category" && slug) return `/category/${slug}`;
+  if (mode === "product" && slug) return `/product/${slug}`;
+  if (mode === "vendor" && slug) return `/store/${slug}`;
+  return custom || "/";
+};
+
+// Debounce hook
+const useDebounced = <T,>(value: T, ms = 300): T => {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+};
+
+const SearchableCombobox = ({
+  table,
+  selectColumns,
+  searchColumn,
+  selectedSlug,
+  onSelect,
+  placeholder,
+  extraFilter,
+}: {
+  table: "products" | "vendors";
+  selectColumns: string;
+  searchColumn: string;
+  selectedSlug: string;
+  onSelect: (item: { slug: string; name: string }) => void;
+  placeholder: string;
+  extraFilter?: (q: any) => any;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const debounced = useDebounced(query, 300);
+
+  const { data: results = [], isFetching } = useQuery({
+    queryKey: ["dest-search", table, debounced],
+    queryFn: async () => {
+      let q: any = supabase.from(table).select(selectColumns).limit(20);
+      if (debounced.trim()) q = q.ilike(searchColumn, `%${debounced.trim()}%`);
+      if (extraFilter) q = extraFilter(q);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  // Look up the currently-selected item's display name
+  const { data: selectedItem } = useQuery({
+    queryKey: ["dest-selected", table, selectedSlug],
+    enabled: !!selectedSlug,
+    queryFn: async () => {
+      const { data } = await supabase.from(table).select(selectColumns).eq("slug", selectedSlug).maybeSingle();
+      return data as any;
+    },
+  });
+
+  const displayName = selectedItem
+    ? (table === "products" ? selectedItem.name : selectedItem.store_name)
+    : selectedSlug
+      ? `(missing — slug: ${selectedSlug})`
+      : "";
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          <span className="truncate text-left">
+            {displayName || <span className="text-muted-foreground">{placeholder}</span>}
+          </span>
+          <Search className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />
+          <CommandList>
+            <CommandEmpty>{isFetching ? "Searching…" : "No matches"}</CommandEmpty>
+            <CommandGroup>
+              {results.map((r: any) => {
+                const name = table === "products" ? r.name : r.store_name;
+                return (
+                  <CommandItem
+                    key={r.id}
+                    value={r.slug}
+                    onSelect={() => {
+                      onSelect({ slug: r.slug, name });
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="truncate">{name}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+const DestinationPicker = ({
+  value,
+  onChange,
+  required = true,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  required?: boolean;
+}) => {
+  const initial = useMemo(() => parseDestination(value), [value]);
+  const [mode, setMode] = useState<DestMode>(initial.mode);
+  const [slug, setSlug] = useState(initial.slug);
+  const [custom, setCustom] = useState(initial.mode === "custom" ? initial.raw : "");
+
+  // Re-parse when the parent value changes (e.g. switching from edit to create)
+  useEffect(() => {
+    const next = parseDestination(value);
+    setMode(next.mode);
+    setSlug(next.slug);
+    setCustom(next.mode === "custom" ? next.raw : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  // Push resolved url upstream whenever inputs change
+  useEffect(() => {
+    onChange(buildUrl(mode, slug, custom));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, slug, custom]);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["dest-categories"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("id,name,slug,parent_id")
+        .order("name");
+      return data || [];
+    },
+  });
+
+  const categoryOptions = useMemo(() => {
+    const map = new Map(categories.map((c: any) => [c.id, c.name]));
+    return categories.map((c: any) => ({
+      slug: c.slug,
+      label: c.parent_id ? `${c.name}  (in ${map.get(c.parent_id) || "—"})` : c.name,
+    }));
+  }, [categories]);
+
+  // Validate selection
+  const selectedCategoryMissing =
+    mode === "category" && slug && categories.length > 0 && !categories.find((c: any) => c.slug === slug);
+
+  const resolvedUrl = buildUrl(mode, slug, custom);
+  const hasValidSelection =
+    (mode === "category" && !!slug) ||
+    (mode === "product" && !!slug) ||
+    (mode === "vendor" && !!slug) ||
+    (mode === "custom" && !!custom.trim());
+
+  return (
+    <div className="space-y-2">
+      <Label>When clicked, go to {required && "*"}</Label>
+
+      <div className="inline-flex rounded-md border p-0.5 bg-muted/40 text-xs">
+        {(
+          [
+            { v: "category", label: "Category" },
+            { v: "product", label: "Product" },
+            { v: "vendor", label: "Vendor store" },
+            { v: "custom", label: "Custom URL" },
+          ] as { v: DestMode; label: string }[]
+        ).map((opt) => (
+          <button
+            key={opt.v}
+            type="button"
+            onClick={() => {
+              setMode(opt.v);
+              if (opt.v !== "custom") setSlug("");
+              if (opt.v === "custom" && !custom) setCustom("/");
+            }}
+            className={`px-2.5 py-1 rounded ${
+              mode === opt.v ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "category" && (
+        <Select value={slug || undefined} onValueChange={setSlug}>
+          <SelectTrigger>
+            <SelectValue placeholder="Pick a category…" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {categoryOptions.map((c) => (
+              <SelectItem key={c.slug} value={c.slug}>
+                {c.label}
+              </SelectItem>
+            ))}
+            {categoryOptions.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">No categories yet.</div>
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {mode === "product" && (
+        <SearchableCombobox
+          table="products"
+          selectColumns="id,name,slug"
+          searchColumn="name"
+          selectedSlug={slug}
+          placeholder="Search products by name…"
+          extraFilter={(q) => q.eq("status", "active")}
+          onSelect={({ slug: s }) => setSlug(s)}
+        />
+      )}
+
+      {mode === "vendor" && (
+        <SearchableCombobox
+          table="vendors"
+          selectColumns="id,store_name,slug"
+          searchColumn="store_name"
+          selectedSlug={slug}
+          placeholder="Search vendor stores…"
+          extraFilter={(q) => q.eq("status", "approved")}
+          onSelect={({ slug: s }) => setSlug(s)}
+        />
+      )}
+
+      {mode === "custom" && (
+        <Input
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          placeholder="/vendor/register or https://example.com"
+        />
+      )}
+
+      {selectedCategoryMissing && (
+        <div className="flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-500">
+          <AlertTriangle className="h-3 w-3 mt-px shrink-0" />
+          Original category is gone — pick a new destination.
+        </div>
+      )}
+
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span>Will link to:</span>
+        {hasValidSelection ? (
+          <a
+            href={resolvedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-primary hover:underline inline-flex items-center gap-0.5"
+          >
+            {resolvedUrl}
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
+        ) : (
+          <span className="italic">— pick a destination above —</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
 // ----- Upload helper -----
 async function uploadToBucket(file: File, prefix: string): Promise<string> {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
