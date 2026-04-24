@@ -1,46 +1,39 @@
-# Fix Marketing image uploads + enforce exact dimensions
+# Hero carousel: multiple images + clearer promo placement
 
-## Why uploads currently fail
+## What's actually happening today
 
-The Marketing page tries to upload to the `product-images` bucket under `marketing/...`. But the storage RLS policy on that bucket only allows INSERTs under `vendors/{vendor_id}/...` for the matching vendor owner. Admins uploading marketing assets are blocked by RLS, so every upload errors out.
-
-Additionally, the dimension validator currently tolerates ±25% drift, but you asked for the **exact** required size.
+- **Hero banners** already supports multiple slides — every row in `hero_banners` is one slide, and the homepage carousel rotates through all active rows. But the admin form only lets you create slides **one at a time** (one desktop + one mobile per save), which feels like "only one image".
+- **Promotions** already has a "Placement" dropdown (Featured Brands / Sponsored Products), but it sits next to "Type" with no explanation, and the list view doesn't group items by where they will appear, so it's not obvious where each promo will show up.
 
 ## What will change
 
-### 1. New dedicated storage bucket: `marketing-assets`
-- Public-read (banners and promo images need to render to all visitors).
-- INSERT / UPDATE / DELETE limited to:
-  - users with the `admin` role, OR
-  - users whose team role has the `marketing.manage` permission.
-- Backed by a `SECURITY DEFINER` helper `public.can_manage_marketing(uid)` so the storage policy stays simple and avoids recursive RLS.
+### 1. Hero Banners tab — bulk slide upload
+Add a second action **"Bulk add slides"** next to "Add banner". It opens a streamlined dialog where the admin can:
 
-### 2. Update `AdminMarketing.tsx` upload logic
-- Switch `uploadToBucket` from `product-images` → `marketing-assets`.
-- Tighten `validateFile`:
-  - Reject if `img.width !== spec.w` or `img.height !== spec.h` (exact match, no tolerance).
-  - Error message tells the user the detected vs required size, so they know what to re-export.
-- Surface the real Supabase error message in the toast (currently a denied upload shows a generic message).
-- Show the exact required dimensions more prominently in the `SpecCard` (already there, but reword: "Image must be exactly 1920 × 600 px").
+- Drop / select **multiple desktop images at once** (each becomes one carousel slide, in the order picked).
+- Optionally drop / select **multiple mobile images** — paired with desktops by order (1st mobile → 1st desktop, etc.). Any desktop without a paired mobile just falls back to the desktop image on phones, which is what the homepage already does.
+- Each file is validated against the exact size rules (1920×600 desktop, 750×500 mobile) and shows a per-file ✓ / ✗ status before saving.
+- Hitting "Create N slides" uploads all valid pairs to the `marketing-assets` bucket and inserts one `hero_banners` row per slide, with `display_order` continuing from the current max so they append to the existing carousel.
+- All new slides default to `is_active = true` and link to `/`. The admin can fine-tune title / link / CTA per slide afterwards using the existing edit pencil.
 
-### 3. Required dimensions (unchanged, just enforced strictly)
-| Asset | Exact size | Max file |
-|---|---|---|
-| Desktop hero banner | 1920 × 600 px | 2 MB |
-| Mobile hero banner | 750 × 500 px | 1 MB |
-| Brand logo | 600 × 600 px | 1 MB |
-| Product spotlight | 800 × 800 px | 1 MB |
+The single-slide "Add banner" dialog stays for fine-grained edits and CTAs.
 
-Accepted formats remain JPG / PNG / WebP.
+### 2. Promotions tab — clearer placement
+- Rename the "Placement" select to **"Display section"** with a short helper line under it: *"Where this promo appears on the homepage."*
+- Each option label gets a description:
+  - **Featured Brands** — small logo grid below the hero (uses Brand 600×600 image).
+  - **Sponsored Products** — large product cards under Featured Brands (uses Product 800×800 image).
+- When the admin picks a section, the **Type** auto-syncs (Featured Brands → Brand, Sponsored Products → Product) so the right image spec is shown. Type stays editable for power users but is no longer a separate decision in 90% of cases.
+- The promotions list view is **grouped by section** with a section header ("Featured Brands — 4 live", "Sponsored Products — 2 live") so it's obvious at a glance what shows where.
+- The card badge changes from "Brands" / "Sponsored" to the full section name.
 
-### 4. Side fixes spotted in console
-- Wrap `ImageField` in `React.forwardRef` (or drop the ref forwarding entirely) to silence the "Function components cannot be given refs" warning triggered inside the Promotions dialog.
-- Add a `DialogDescription` (or `aria-describedby={undefined}`) to the two marketing dialogs to clear the a11y warning.
+### 3. Carousel rendering (no change needed)
+The homepage `HeroBanner.tsx` already loops through every active `hero_banners` row, auto-rotates every 5s, and renders dots + prev/next arrows when there's more than one slide. Once the bulk-upload flow lands, all newly added slides show up in the carousel automatically.
 
 ## Files touched
-- New SQL migration: create `marketing-assets` bucket + RLS policies + `can_manage_marketing` helper.
-- `src/pages/admin/AdminMarketing.tsx`: bucket name, exact-size validator, better error toasts, ref/a11y cleanup.
+- `src/pages/admin/AdminMarketing.tsx` — add `BulkBannersDialog`, rewire "Display section" UI, group promotions list by placement.
 
 ## Out of scope
-- No changes to the public homepage rendering — `HeroBanner` and `PromoStrip` already read URLs from the DB, so swapping the storage bucket is transparent to them.
-- Existing banners/promotions (if any were saved) keep working since their stored URLs are absolute.
+- No DB migration needed — `hero_banners` and `promotions` schemas already support everything.
+- No change to the public homepage — carousel and PromoStrip already render whatever is in the DB.
+- Drag-and-drop reordering across both lists stays as-is (up/down arrows).
