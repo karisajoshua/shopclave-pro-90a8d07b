@@ -185,13 +185,13 @@ const SiteAnalytics = () => {
           {cacheUpdatedAt && (
             <p className={`text-xs mt-0.5 flex items-center gap-1 ${isStale ? "text-destructive" : "text-muted-foreground"}`}>
               {isStale && <AlertCircle className="h-3 w-3" />}
-              Data refreshed {formatStale()}{isStale && " — ask AI to refresh"}
+              Data refreshed {formatStale()}{isStale && " — click refresh"}
             </p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1">
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span className="text-xs">Refresh data</span>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-1">
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          <span className="text-xs">{refreshing ? "Refreshing…" : "Refresh data"}</span>
         </Button>
       </div>
 
