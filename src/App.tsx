@@ -44,6 +44,9 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminTeam from "./pages/admin/AdminTeam";
+import RequirePermission from "./components/admin/RequirePermission";
+import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
 
 // Vendor
