@@ -101,7 +101,9 @@ const ImageField = ({
       onChange(url);
       toast.success("Uploaded");
     } catch (e: any) {
-      toast.error(e.message);
+      const msg = e?.message || "Upload failed";
+      console.error("Marketing upload failed:", e);
+      toast.error(`Upload failed: ${msg}`, { duration: 6000 });
     } finally {
       setUploading(false);
     }
