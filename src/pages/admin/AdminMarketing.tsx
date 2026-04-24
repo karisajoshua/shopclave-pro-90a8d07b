@@ -636,6 +636,13 @@ const BulkBannersDialog = ({
           />
         </div>
 
+        <div className="rounded-md border p-3 bg-muted/20">
+          <DestinationPicker value={defaultLink} onChange={setDefaultLink} required={false} />
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            All new slides will use this destination. You can fine-tune each slide individually after they're created.
+          </p>
+        </div>
+
         <div className="rounded-md border bg-muted/40 p-3 text-xs">
           <div className="font-semibold mb-1">Preview pairing</div>
           {validDesktops.length === 0 ? (
