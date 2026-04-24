@@ -12,7 +12,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Megaphone, Upload, Layers, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Megaphone, Upload, Layers, CheckCircle2, XCircle, Loader2, ExternalLink, Search, AlertTriangle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useEffect } from "react";
 
 // ----- Spec definitions shown in the UI -----
 const SPECS = {
