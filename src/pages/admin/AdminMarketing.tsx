@@ -554,6 +554,7 @@ const BulkBannersDialog = ({
 }) => {
   const [desktops, setDesktops] = useState<BulkItem[]>([]);
   const [mobiles, setMobiles] = useState<BulkItem[]>([]);
+  const [defaultLink, setDefaultLink] = useState("/");
   const [submitting, setSubmitting] = useState(false);
 
   const validDesktops = desktops.filter((d) => d.status === "valid");
@@ -563,6 +564,7 @@ const BulkBannersDialog = ({
   const reset = () => {
     setDesktops([]);
     setMobiles([]);
+    setDefaultLink("/");
   };
 
   const submit = async () => {
