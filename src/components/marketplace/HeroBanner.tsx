@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import heroBanner1 from "@/assets/hero-banner-1.png";
 import heroBanner2 from "@/assets/hero-banner-2.png";
 import heroBanner3 from "@/assets/hero-banner-3.png";
@@ -141,50 +143,99 @@ const CATEGORY_CARDS = [
 const HeroBanner = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Load admin-managed banners; fall back to static slides if none
+  const { data: dbBanners } = useQuery({
+    queryKey: ["public-hero-banners"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("hero_banners")
+        .select("id,title,subtitle,cta_label,link_url,desktop_image_url,mobile_image_url")
+        .order("display_order");
+      return data || [];
+    },
+  });
+
+  const slides = (dbBanners && dbBanners.length > 0)
+    ? dbBanners.map((b: any) => ({
+        image: b.desktop_image_url,
+        mobileImage: b.mobile_image_url || b.desktop_image_url,
+        link: b.link_url || "/",
+        title: b.title,
+        subtitle: b.subtitle,
+        cta: b.cta_label,
+      }))
+    : HERO_SLIDES.map((s) => ({ image: s.image, mobileImage: s.image, link: s.link, title: null, subtitle: null, cta: null }));
+
   useEffect(() => {
+    if (!slides.length) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
-  const slide = HERO_SLIDES[currentSlide];
+  const safeIdx = slides.length ? currentSlide % slides.length : 0;
+  const slide = slides[safeIdx];
+
+  if (!slide) return null;
 
   return (
     <div>
       {/* Hero carousel */}
       <section className="relative">
         <Link to={slide.link} className="block">
-          <div className="w-full overflow-hidden">
-            <img
-              src={slide.image}
-              alt="Hero banner"
-              className="w-full h-[200px] sm:h-[300px] md:h-[400px] lg:h-[450px] object-cover transition-all duration-700"
-            />
+          <div className="w-full overflow-hidden relative">
+            <picture>
+              <source media="(max-width: 767px)" srcSet={slide.mobileImage} />
+              <img
+                src={slide.image}
+                alt={slide.title || "Hero banner"}
+                className="w-full h-[200px] sm:h-[300px] md:h-[400px] lg:h-[450px] object-cover transition-all duration-700"
+              />
+            </picture>
+            {(slide.title || slide.cta) && (
+              <div className="absolute inset-0 flex items-center">
+                <div className="container">
+                  <div className="max-w-md text-primary-foreground">
+                    {slide.title && <h2 className="font-display text-2xl md:text-4xl font-bold drop-shadow-md">{slide.title}</h2>}
+                    {slide.subtitle && <p className="mt-2 text-sm md:text-base drop-shadow">{slide.subtitle}</p>}
+                    {slide.cta && (
+                      <span className="inline-block mt-4 bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold">
+                        {slide.cta}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Link>
         {/* Navigation dots */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-          {HERO_SLIDES.map((_, i) => (
+        {slides.length > 1 && (
+          <>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentSlide(i)}
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${i === safeIdx ? "bg-primary-foreground" : "bg-primary-foreground/40"}`}
+                />
+              ))}
+            </div>
             <button
-              key={i}
-              onClick={() => setCurrentSlide(i)}
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${i === currentSlide ? "bg-primary-foreground" : "bg-primary-foreground/40"}`}
-            />
-          ))}
-        </div>
-        <button
-          onClick={() => setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
-          className="absolute left-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card rounded-full p-2 shadow-lg"
-        >
-          <ChevronLeft className="h-6 w-6 text-foreground" />
-        </button>
-        <button
-          onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card rounded-full p-2 shadow-lg"
-        >
-          <ChevronRight className="h-6 w-6 text-foreground" />
-        </button>
+              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card rounded-full p-2 shadow-lg"
+            >
+              <ChevronLeft className="h-6 w-6 text-foreground" />
+            </button>
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card rounded-full p-2 shadow-lg"
+            >
+              <ChevronRight className="h-6 w-6 text-foreground" />
+            </button>
+          </>
+        )}
       </section>
 
       {/* Category cards grid */}

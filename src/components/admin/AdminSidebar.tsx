@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree,
   Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield, UserCog,
+  Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -56,6 +57,10 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "Insights",
     items: [{ title: "Analytics", url: "/admin/analytics", icon: BarChart3, permission: PERMISSIONS.ANALYTICS_VIEW }],
+  },
+  {
+    label: "Content",
+    items: [{ title: "Marketing", url: "/admin/marketing", icon: Megaphone, permission: PERMISSIONS.MARKETING_MANAGE }],
   },
   {
     label: "System",
