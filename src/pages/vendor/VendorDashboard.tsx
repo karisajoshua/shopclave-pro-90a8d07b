@@ -243,15 +243,24 @@ const VendorDashboard = () => {
           <h3 className="admin-section-label flex items-center gap-1.5">
             <ArrowUpCircle className="h-3.5 w-3.5 text-primary" /> Upgrade Your Plan
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {PLANS.filter(p => p.key !== "free").map((plan) => {
               const isCurrent = subscription?.plan_name?.toLowerCase() === plan.key;
               return (
-                <div key={plan.key} className={`admin-card admin-card-hover p-4 text-center ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""}`}>
-                  <p className="font-semibold text-sm">{plan.name}</p>
-                  <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">/month</p>
-                  <p className="text-xs text-muted-foreground mt-2">{plan.listings} listings</p>
+                <div key={plan.key} className={`admin-card admin-card-hover p-4 flex flex-col ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""}`}>
+                  <div className="text-center">
+                    <p className="font-semibold text-sm">{plan.name}</p>
+                    <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">/month</p>
+                  </div>
+                  <ul className="mt-3 space-y-1.5 flex-1">
+                    {plan.features.map((feat) => (
+                      <li key={feat} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Check className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
                   {isCurrent ? (
                     <p className="text-xs text-primary font-medium mt-3 flex items-center justify-center gap-1">
                       <CheckCircle2 className="h-3 w-3" /> Current
