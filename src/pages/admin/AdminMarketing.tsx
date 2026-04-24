@@ -586,7 +586,7 @@ const BulkBannersDialog = ({
           const { error } = await supabase.from("hero_banners").insert({
             desktop_image_url: desktopUrl,
             mobile_image_url: mobileUrl,
-            link_url: "/",
+            link_url: defaultLink || "/",
             display_order: baseOrder + i,
             is_active: true,
           });
