@@ -79,7 +79,7 @@ const parseDestination = (url: string): { mode: DestMode; slug: string; raw: str
 };
 
 const buildUrl = (mode: DestMode, slug: string, custom: string): string => {
-  if (mode === "category" && slug) return `/category/${slug}`;
+  if (mode === "category" && slug) return `/search?category=${encodeURIComponent(slug)}`;
   if (mode === "product" && slug) return `/product/${slug}`;
   if (mode === "vendor" && slug) return `/store/${slug}`;
   return custom || "/";
