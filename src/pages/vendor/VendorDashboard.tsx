@@ -132,7 +132,7 @@ const VendorDashboard = () => {
         notes: notes.trim() || null,
       } as any);
       if (error) throw error;
-      toast.success("Payment submitted! Your plan is active. Admin will verify shortly.");
+      toast.success("Payment submitted. Your plan will activate once an admin verifies your M-Pesa code.");
       setSelectedPlan(null);
       queryClient.invalidateQueries({ queryKey: ["vendor-subscription", vendor.id] });
       queryClient.invalidateQueries({ queryKey: ["vendor-pending-payment", vendor.id] });
