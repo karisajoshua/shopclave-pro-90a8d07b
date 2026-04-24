@@ -104,7 +104,7 @@ const AdminTeam = () => {
   // ---------- Member mutations ----------
   const inviteMember = useMutation({
     mutationFn: async () => {
-      const email = memberEmail.trim().toLowerCase();
+      const email = memberUserId.trim().toLowerCase();
       if (!email) throw new Error("Email required");
       if (!memberRoleId) throw new Error("Pick a role");
 
@@ -227,7 +227,7 @@ const AdminTeam = () => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Select onValueChange={(v) => setMemberEmail(v)}>
+              <Select onValueChange={(v) => setMemberUserId(v)}>
                 <SelectTrigger className="sm:w-64"><SelectValue placeholder="Select an admin" /></SelectTrigger>
                 <SelectContent>
                   {(eligibleAdmins || []).length === 0 && (
@@ -247,8 +247,8 @@ const AdminTeam = () => {
                 </SelectContent>
               </Select>
               <Button
-                disabled={!memberEmail || !memberRoleId || assignRole.isPending}
-                onClick={() => assignRole.mutate({ user_id: memberEmail, team_role_id: memberRoleId })}
+                disabled={!memberUserId || !memberRoleId || assignRole.isPending}
+                onClick={() => assignRole.mutate({ user_id: memberUserId, team_role_id: memberRoleId })}
               >
                 <UserPlus className="h-4 w-4 mr-1.5" /> Assign
               </Button>
