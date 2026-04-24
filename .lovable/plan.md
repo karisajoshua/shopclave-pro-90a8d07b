@@ -1,46 +1,52 @@
-# Fix: Vendor plans should activate only after admin approval
 
-## Problem
-When a vendor submits a M-Pesa payment for a paid plan, they immediately get full access to that plan (e.g. higher listing limit) before the admin has verified the M-Pesa code. The activation is happening in a database trigger that fires on INSERT of the payment row, regardless of payment status.
+# Update subscription plans: competitive pricing + feature lists
 
-## Root cause
-In migration `20260417082414_...sql`, the trigger `handle_new_subscription_payment` runs `BEFORE INSERT` on `vendor_subscription_payments` and unconditionally:
-1. Expires the vendor's current active subscription
-2. Inserts a brand-new row in `vendor_subscriptions` with `status = 'active'`
+## Goals
+1. Make the 4 paid plans more competitive for the Kenyan classifieds/marketplace market.
+2. Show vendors exactly what they get in each plan (a benefits checklist) on the upgrade cards.
 
-So the moment the vendor types any M-Pesa code, they are upgraded — even though the payment is still `pending_verification`.
+## Proposed new pricing (KSh / month)
 
-## Fix overview
-Move plan activation from "payment submitted" to "payment verified by admin". Submission only records the payment + notifies admins. Verification by an admin is what creates the active subscription.
+Current pricing is too steep at the top end (Premium KSh 5,000, Enterprise KSh 15,000) for a Kenyan vendor classifieds market and the gaps between tiers are uneven. New pricing:
 
-## Steps
+| Plan | Old price | New price | Listings | Duration |
+|------|-----------|-----------|----------|----------|
+| Free | 0 | 0 | 5 | 365 days |
+| Basic | 500 | **299** | 15 | 30 days |
+| Standard | 1,500 | **799** | 60 | 30 days |
+| Premium | 5,000 | **1,999** | 250 | 30 days |
+| Enterprise | 15,000 | **4,999** | Unlimited (9,999) | 30 days |
 
-### 1. Database migration — change trigger behavior
+Rationale: pricing now starts low to convert Free users, scales ~2.5–3x between tiers, and the top tier is positioned as a "go big" option rather than premium-priced. Listing caps also increase to make each tier feel meaningfully better.
 
-- **Rewrite `handle_new_subscription_payment()`** so on INSERT it only:
-  - Sends a notification to all admins
-  - Does NOT touch `vendor_subscriptions` and does NOT set `subscription_id`
-  - Does NOT expire the existing active subscription (so the vendor keeps whatever plan they had — typically free — until verified)
+## Feature lists per plan
 
-- **Rewrite `handle_subscription_payment_status_change()`** so on UPDATE:
-  - When `status` transitions to `verified`: expire the vendor's current active subscription, insert a new active `vendor_subscriptions` row using the payment's plan/listings/price/expires_days, and update the payment's `subscription_id` to point to it.
-  - When `status` transitions to `rejected`: do nothing to subscriptions (there's nothing to cancel because no sub was created on submission). Just leave the payment row marked rejected.
+Each plan card on the vendor dashboard will display a bullet list of benefits using check icons.
 
-- **One-time data cleanup**: For any existing `vendor_subscriptions` row whose linked payment in `vendor_subscription_payments` is still `pending_verification`, set that subscription's `status` to `cancelled`. This rolls back any vendors who were auto-activated under the old behavior and are still waiting on admin review.
+- **Free** — 5 active listings · Basic store page · Standard support
+- **Basic** — 15 active listings · Store page with logo & banner · WhatsApp/Call buttons · Email support
+- **Standard** — 60 active listings · Everything in Basic · Featured in category pages · Vendor analytics dashboard · Priority email support
+- **Premium** — 250 active listings · Everything in Standard · Homepage feature rotation · Promoted in search results · Bulk product import · Priority chat support
+- **Enterprise** — Unlimited listings · Everything in Premium · Top placement across the site · Dedicated account manager · Custom store branding · 24/7 priority support
 
-### 2. Vendor dashboard UX (`src/pages/vendor/VendorDashboard.tsx`)
+## Technical changes
 
-- Change the success toast on payment submission from "Your plan is active. Admin will verify shortly." to: "Payment submitted. Your plan will activate once admin verifies your M-Pesa code." 
-- The existing "Pending payment" banner already covers the awaiting-verification state, and the listing-limit display already reads from the active `vendor_subscriptions` row, so it will correctly show the vendor's old (free) plan limits until approval.
+### `src/lib/subscriptionPlans.ts`
+- Update `PLANS` array with new prices and listing caps above.
+- Extend the `Plan` interface with a `features: string[]` field and populate it for each plan.
+- Keep `getPlanLimit` and `isAdminUnlimited` unchanged.
 
-### 3. Admin side — no UI changes needed
-`AdminSubscriptions.tsx` already updates `vendor_subscription_payments.status` to `verified` or `rejected` via the review action. With the new trigger logic, that update will be what creates the active subscription.
+### `src/pages/vendor/VendorDashboard.tsx`
+- In the "Upgrade Your Plan" grid (currently filtering out `free`), redesign each plan card so it stretches to fit the feature list:
+  - Plan name + price (unchanged)
+  - Listing count line (unchanged)
+  - New `<ul>` rendering `plan.features` with a small `Check` icon (lucide) and muted text
+  - "Current" badge or "Upgrade" button at the bottom (unchanged behaviour)
+- Switch the grid to `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` so feature lists stay readable on mobile.
+- Make cards `flex flex-col` with the action button pushed to the bottom (`mt-auto`) so cards align even when feature lists differ in length.
 
 ## Out of scope
-- No changes to plan pricing, payment form, or M-Pesa details
-- No changes to RLS policies
-- No new admin UI — the existing verify/reject buttons drive the activation
-
-## Files touched
-- New SQL migration replacing both trigger functions and cleaning stale data
-- `src/pages/vendor/VendorDashboard.tsx` (toast copy only)
+- No DB schema changes. Existing `vendor_subscriptions.price` / `max_listings` rows stay as-is; new payments will use the new pricing.
+- No changes to `AdminSubscriptions.tsx` (admins can still manually override price/listings when creating a subscription).
+- No marketing copy or pricing page outside the vendor dashboard.
+- Features shown are descriptive of what already exists in the platform — no new gating or enforcement of per-plan features in this change.
