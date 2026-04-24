@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { hasPerm } from "@/lib/permissions";
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +11,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   userRoles: string[];
+  permissions: string[];
+  hasPermission: (perm: string) => boolean;
+  isSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,13 +23,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  const fetchRoles = async (userId: string) => {
-    const { data } = await supabase
+  const fetchRolesAndPerms = async (userId: string) => {
+    const { data: roleRows } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    setUserRoles(data?.map((r: any) => r.role) || []);
+    const roles = roleRows?.map((r: any) => r.role) || [];
+    setUserRoles(roles);
+
+    if (!roles.includes("admin")) {
+      setPermissions([]);
+      setIsSuperAdmin(false);
+      return;
+    }
+
+    // Resolve team membership → permissions
+    const { data: membership } = await supabase
+      .from("team_members")
+      .select("team_role_id, team_roles ( permissions )")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!membership) {
+      // Admin without a team_role assignment ⇒ super admin (back-compat)
+      setPermissions(["*"]);
+      setIsSuperAdmin(true);
+    } else {
+      const perms = ((membership as any).team_roles?.permissions as string[]) || [];
+      setPermissions(perms);
+      setIsSuperAdmin(perms.includes("*"));
+    }
   };
 
   useEffect(() => {
@@ -33,9 +63,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        setTimeout(() => fetchRoles(session.user.id), 0);
+        setTimeout(() => fetchRolesAndPerms(session.user.id), 0);
       } else {
         setUserRoles([]);
+        setPermissions([]);
+        setIsSuperAdmin(false);
       }
       setLoading(false);
     });
@@ -43,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchRoles(session.user.id);
+      if (session?.user) fetchRolesAndPerms(session.user.id);
       setLoading(false);
     });
 
@@ -68,8 +100,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
   };
 
+  const hasPermission = (perm: string) => hasPerm(permissions, perm);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, userRoles }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, signUp, signIn, signOut, userRoles, permissions, hasPermission, isSuperAdmin }}
+    >
       {children}
     </AuthContext.Provider>
   );
