@@ -451,6 +451,54 @@ export type Database = {
         }
         Relationships: []
       }
+      hero_banners: {
+        Row: {
+          created_at: string
+          cta_label: string | null
+          desktop_image_url: string
+          display_order: number
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          link_url: string
+          mobile_image_url: string | null
+          starts_at: string | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cta_label?: string | null
+          desktop_image_url: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          link_url?: string
+          mobile_image_url?: string | null
+          starts_at?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cta_label?: string | null
+          desktop_image_url?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          link_url?: string
+          mobile_image_url?: string | null
+          starts_at?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_edit_history: {
         Row: {
           edited_at: string
@@ -849,6 +897,54 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      promotions: {
+        Row: {
+          created_at: string
+          display_order: number
+          ends_at: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          kind: string
+          link_url: string
+          placement: string
+          starts_at: string | null
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          kind: string
+          link_url?: string
+          placement: string
+          starts_at?: string | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          kind?: string
+          link_url?: string
+          placement?: string
+          starts_at?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

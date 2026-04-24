@@ -1,112 +1,125 @@
-## Plan: Plan entitlements view + Team roles & permissions
+# Marketing Manager: Hero Banners & Brand Promotions
 
-Two parts:
-1. **Plan visibility** — admin can see exactly what each vendor is entitled to based on their active plan.
-2. **Team roles** — admin can invite/assign team members to scoped roles (e.g. Orders Manager, Catalog Manager) that only see the admin sections their role permits.
+Give the super admin (and a new "Marketing Manager" role) a dashboard to upload, schedule and reorder homepage hero banners (separate desktop + mobile images) and brand/product promotional cards — with the required image dimensions shown on screen so the right person uploads correctly sized art.
 
----
+## What changes for the user
 
-### Part 1 — Plan entitlements in admin
+### New admin page: `/admin/marketing`
+Two tabs:
 
-**`src/pages/admin/AdminSubscriptions.tsx`**
-- Enrich the "All Vendor Subscriptions" table by joining each row to the matching plan in `PLANS` (by `plan_name` key).
-- Add a new column "Entitlements" with a "View" button → opens a dialog showing:
-  - Plan name, price, listing cap, expiry
-  - Full feature checklist from `PLANS[].features` (Check icons)
-  - Listing usage: `current_active_products / max_listings` (from `products` count where `vendor_id = X AND status = 'active'`)
-- Also add a small "Plan" pill to the existing **Vendors** admin page (`src/pages/admin/AdminVendors.tsx`) showing each vendor's current active plan — quick at-a-glance on the vendor list.
+1. **Hero Banners** — full-width carousel slides at the top of the homepage
+   - Upload **desktop image** (1920×600 px, JPG/PNG/WebP, ≤2 MB)
+   - Upload **mobile image** (750×500 px, JPG/PNG/WebP, ≤1 MB)
+   - Headline (optional), subtitle (optional), CTA label, link URL
+   - Display order (drag handle)
+   - Active toggle + optional Start/End date for scheduling
+   - Live preview swatch with the spec overlay
 
-No DB changes needed for Part 1.
+2. **Promotions** — brand & product advertising cards shown below the hero
+   - Type: **Brand** (logo + tagline) or **Product Spotlight** (image + price tag + link)
+   - Image (square 600×600 px for brand, 800×800 px for product, ≤1 MB)
+   - Title, subtitle, link URL
+   - Section placement: "Featured Brands" or "Sponsored Products"
+   - Display order, active toggle, scheduling
 
----
-
-### Part 2 — Team roles & granular permissions
-
-**Concept**
-- Keep core `app_role` enum (`admin`, `vendor`, `customer`) untouched — RLS depends on it.
-- Add a **team membership** layer on top: a user with the `admin` role can be a "full admin" OR can be granted a scoped "team role" that limits which admin pages they see.
-- The first admin (existing) remains a super-admin. New team members get `admin` role + a team_role that gates the UI.
-
-**New tables (migration)**
-```sql
--- Team role definitions (admin can create/edit)
-create table public.team_roles (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,           -- e.g. "Orders Manager"
-  description text,
-  permissions text[] not null default '{}', -- e.g. {'orders.view','orders.update','messages.view'}
-  is_system boolean not null default false, -- super_admin built-in
-  created_at timestamptz not null default now()
-);
-
--- Assignment of team role to a user
-create table public.team_members (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique,
-  team_role_id uuid not null references public.team_roles(id) on delete restrict,
-  assigned_by uuid,
-  created_at timestamptz not null default now()
-);
-
--- RLS: only admins can read/write
--- has_permission(user, perm) security-definer helper:
--- returns true if user is super_admin OR their team_role.permissions @> ARRAY[perm]
+Each upload form shows a clear spec card:
+```text
+Desktop hero
+- Size: 1920 × 600 px
+- Format: JPG, PNG or WebP
+- Max file size: 2 MB
+- Safe area: keep text within center 60%
 ```
 
-Seed system roles: `super_admin` (all perms, `is_system=true`), `orders_manager`, `catalog_manager`, `finance_manager`, `support_agent`, `vendor_manager` — with sensible default perm sets.
+### Homepage changes
+- `HeroBanner` reads slides from the database (falls back to current static slides if none exist).
+- Picks the **mobile image at <768 px** and **desktop image otherwise** via `<picture>`.
+- New "Featured Brands" strip and "Sponsored Products" rail render below the hero when promotions exist.
 
-**Permission keys** (flat strings, grouped by section):
-- `dashboard.view`
-- `orders.view`, `orders.update`
-- `products.view`, `products.update`, `categories.manage`, `bulk_import.use`, `media.manage`
-- `vendors.view`, `vendors.update`
-- `users.view`, `users.assign_roles`
-- `withdrawals.view`, `withdrawals.update`
-- `subscriptions.view`, `subscriptions.update`
-- `analytics.view`
-- `messages.view`, `evidence.view`, `notifications.send`
-- `settings.manage`
-- `team.manage` (manage team roles & members — super_admin only by default)
+### Permissions / roles
+- Add a new permission `marketing.manage` and a seeded **Marketing Manager** team role with only that permission + `dashboard.view`.
+- Sidebar gains a "Marketing" entry under a new "Content" group, visible only to users with `marketing.manage`.
+- Super admins (no team membership) keep full access automatically.
 
-**Frontend changes**
+## Technical details
 
-1. **`src/contexts/AuthContext.tsx`**
-   - After fetching `userRoles`, also fetch the user's `team_role` + permissions (or "super_admin" if none assigned and they are admin) and expose `permissions: string[]` and `hasPermission(perm)` helper.
+### Database (new migration)
+```sql
+create table public.hero_banners (
+  id uuid primary key default gen_random_uuid(),
+  title text,
+  subtitle text,
+  cta_label text,
+  link_url text not null default '/',
+  desktop_image_url text not null,
+  mobile_image_url text,
+  display_order int not null default 0,
+  is_active boolean not null default true,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-2. **`src/components/admin/AdminLayout.tsx`**
-   - Already gates on `admin` role. No change to the gate, but now uses `hasPermission` for child routing.
+create table public.promotions (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('brand','product')),
+  placement text not null check (placement in ('featured_brands','sponsored_products')),
+  title text not null,
+  subtitle text,
+  image_url text not null,
+  link_url text not null default '/',
+  display_order int not null default 0,
+  is_active boolean not null default true,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-3. **`src/components/admin/AdminSidebar.tsx`**
-   - Each sidebar item gets a `permission` field. Filter the rendered groups/items by `hasPermission(item.permission)`.
+alter table public.hero_banners enable row level security;
+alter table public.promotions enable row level security;
 
-4. **Per-page gates** — wrap each admin page with a small `<RequirePermission perm="...">` component that redirects to `/admin` (dashboard) with a toast if the user lacks the perm. Apply in `App.tsx` route definitions.
+-- Public read of active + within schedule
+create policy "Public can read live banners" on public.hero_banners
+for select using (
+  is_active and (starts_at is null or starts_at <= now())
+                and (ends_at is null or ends_at > now())
+);
+create policy "Public can read live promotions" on public.promotions
+for select using (
+  is_active and (starts_at is null or starts_at <= now())
+                and (ends_at is null or ends_at > now())
+);
 
-5. **New page `src/pages/admin/AdminTeam.tsx`** (route `/admin/team`, sidebar group "System")
-   - **Roles tab**: list `team_roles`, create/edit a role with a checkbox grid of all permissions, delete (blocked if `is_system` or in use).
-   - **Members tab**: list users with admin role + their team_role, assign/change team_role via a select, "Invite teammate" flow that:
-     - Looks up an existing user by email (from `profiles`), grants them `admin` role in `user_roles`, then inserts into `team_members` with chosen `team_role_id`.
-     - If user not found, show a message asking them to sign up first (no auto-invite to keep scope tight).
+-- Marketing managers (and super admins via has_permission fallback) manage rows
+create policy "Marketing can manage banners" on public.hero_banners
+for all to authenticated
+using (public.has_permission(auth.uid(), 'marketing.manage'))
+with check (public.has_permission(auth.uid(), 'marketing.manage'));
 
-**RLS for new tables**
-- `team_roles`: `SELECT/ALL` only where `has_permission(auth.uid(),'team.manage')`; all admins can `SELECT` (so AdminLayout can resolve perms).
-- `team_members`: same — admins can `SELECT` own row + super_admin/team.manage can `ALL`.
+create policy "Marketing can manage promotions" on public.promotions
+for all to authenticated
+using (public.has_permission(auth.uid(), 'marketing.manage'))
+with check (public.has_permission(auth.uid(), 'marketing.manage'));
+```
 
----
+Seed a `Marketing Manager` row in `team_roles` with permissions `{dashboard.view, marketing.manage}`.
 
-### Technical notes
+### Storage
+Reuse the existing public `product-images` bucket under a `marketing/` prefix (no extra bucket needed). Files are uploaded via the standard supabase-js upload path.
 
-- Existing `AdminUsers.tsx` "+ Admin" button keeps working but now grants only base admin role; the super_admin uses the new Team page to attach a scoped team_role. If no team_role is assigned, treat them as super_admin (backwards compatible with the current single-admin setup).
-- Sidebar groups become empty for some roles; hide the whole group if all items are filtered out.
-- Permission checks are **UI gating only**; data-level safety is still enforced by existing RLS (which keys off `admin`). This is acceptable because team members are trusted staff, not external users — the goal is workflow scoping, not zero-trust isolation. Document this in code comments.
+### Code changes
+- `src/lib/permissions.ts` — add `MARKETING_MANAGE = "marketing.manage"` and a new "Content" group with that permission.
+- `src/components/admin/AdminSidebar.tsx` — new "Content" group with a "Marketing" item.
+- `src/App.tsx` — new route `/admin/marketing` wrapped in `RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}`.
+- `src/pages/admin/AdminMarketing.tsx` (new) — Tabs for Banners / Promotions with create/edit dialogs, drag-to-reorder, active toggle, and a `BannerSpecCard` component showing the required dimensions/format/size limits.
+- `src/components/marketplace/HeroBanner.tsx` — fetch from `hero_banners`; render `<picture>` with mobile + desktop sources; fall back to current static `HERO_SLIDES` when the table is empty.
+- `src/components/marketplace/PromoStrip.tsx` (new) — renders Featured Brands and Sponsored Products rows from `promotions`.
+- `src/pages/Index.tsx` — render `<PromoStrip />` below the hero (only when promotions exist).
 
-### Files touched
-
-- New: `supabase/migrations/<timestamp>_team_roles.sql`
-- New: `src/lib/permissions.ts` (permission key constants + role presets)
-- New: `src/components/admin/RequirePermission.tsx`
-- New: `src/pages/admin/AdminTeam.tsx`
-- Edit: `src/contexts/AuthContext.tsx` (add permissions + hasPermission)
-- Edit: `src/components/admin/AdminSidebar.tsx` (filter by perms)
-- Edit: `src/App.tsx` (wrap admin routes with RequirePermission, add `/admin/team`)
-- Edit: `src/pages/admin/AdminSubscriptions.tsx` (entitlements dialog + usage)
-- Edit: `src/pages/admin/AdminVendors.tsx` (plan pill column)
+### Validation on upload
+Client-side checks (with friendly toasts) before upload:
+- File type ∈ {jpg, png, webp}
+- File size under the documented limit
+- Image natural dimensions match the required size (warn if off by >10%, block if drastically wrong)
