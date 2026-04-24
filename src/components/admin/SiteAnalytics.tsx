@@ -161,13 +161,20 @@ const SiteAnalytics = () => {
     return `${Math.floor(minutesStale / (60 * 24))}d ago`;
   };
 
-  const handleRefresh = () => {
-    refetch();
-    toast.info("Site analytics is provided by Lovable.", {
-      description:
-        'No public API exists to auto-pull this. To refresh, ask the AI in chat: "refresh site analytics" — it will fetch and update for you.',
-      duration: 8000,
-    });
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const { error } = await supabase.functions.invoke("refresh-site-analytics");
+      if (error) throw error;
+      // Realtime subscription will push the new row in within ~1s
+      await refetch();
+      toast.success("Site analytics refreshed");
+    } catch (err: any) {
+      toast.error("Could not refresh analytics", { description: err?.message ?? "Unknown error" });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -178,13 +185,13 @@ const SiteAnalytics = () => {
           {cacheUpdatedAt && (
             <p className={`text-xs mt-0.5 flex items-center gap-1 ${isStale ? "text-destructive" : "text-muted-foreground"}`}>
               {isStale && <AlertCircle className="h-3 w-3" />}
-              Data refreshed {formatStale()}{isStale && " — ask AI to refresh"}
+              Data refreshed {formatStale()}{isStale && " — click refresh"}
             </p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1">
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span className="text-xs">Refresh data</span>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-1">
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          <span className="text-xs">{refreshing ? "Refreshing…" : "Refresh data"}</span>
         </Button>
       </div>
 
