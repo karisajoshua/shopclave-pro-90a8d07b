@@ -45,6 +45,7 @@ import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminTeam from "./pages/admin/AdminTeam";
+import AdminMarketing from "./pages/admin/AdminMarketing";
 import RequirePermission from "./components/admin/RequirePermission";
 import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
@@ -126,6 +127,7 @@ const App = () => (
                   <Route path="evidence" element={<RequirePermission perm={PERMISSIONS.EVIDENCE_VIEW}><AdminEvidence /></RequirePermission>} />
                   <Route path="team" element={<RequirePermission perm={PERMISSIONS.TEAM_MANAGE}><AdminTeam /></RequirePermission>} />
                   <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
+                  <Route path="marketing" element={<RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}><AdminMarketing /></RequirePermission>} />
                 </Route>
 
                 {/* Vendor routes */}
