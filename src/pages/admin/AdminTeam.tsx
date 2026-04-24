@@ -102,30 +102,6 @@ const AdminTeam = () => {
   });
 
   // ---------- Member mutations ----------
-  const inviteMember = useMutation({
-    mutationFn: async () => {
-      const email = memberUserId.trim().toLowerCase();
-      if (!email) throw new Error("Email required");
-      if (!memberRoleId) throw new Error("Pick a role");
-
-      // Find user by email through profiles+auth: profiles doesn't store email, so try a server-side lookup via RPC.
-      // Fallback: ask user to provide the user_id. We attempt to find via auth by listing profiles with matching name is unreliable.
-      // Use a simple approach: query profiles by email-like field is not available. So match via user_roles + auth not exposed.
-      // We'll surface a helpful error if not found by joining auth indirectly: use profiles + a server function would be ideal,
-      // but for scope we attempt to look up by email using the admin-only auth.users via RPC is not allowed.
-      // Instead, search profiles whose user_id belongs to a session holding that email is not possible client-side.
-      // Practical compromise: require the teammate to already be signed up, then find them via the existing user_roles list.
-      // We expose an RPC-style search over profiles by matching email through auth metadata is not safe.
-      // Use the email exactly as stored in auth: try the supabase.rpc lookup if available; otherwise require manual selection by name.
-
-      // Lightweight resolver: find a profile whose linked auth user has that email by using the admin endpoint is not available.
-      // We'll just throw if not resolvable and hint to use Users page.
-      throw new Error(
-        "Use the Users page to grant the Admin role first, then come back here to assign a Team Role."
-      );
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const assignRole = useMutation({
     mutationFn: async ({ user_id, team_role_id }: { user_id: string; team_role_id: string }) => {
