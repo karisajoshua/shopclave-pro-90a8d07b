@@ -1541,6 +1541,7 @@ export type Database = {
           original_message: string
         }[]
       }
+      can_manage_marketing: { Args: { _user_id: string }; Returns: boolean }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
