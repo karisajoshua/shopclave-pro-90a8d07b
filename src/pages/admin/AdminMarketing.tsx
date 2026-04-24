@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Megaphone, Upload, Layers, CheckCircle2, XCircle, Loader2, ExternalLink, Search, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { useEffect } from "react";
+
 
 // ----- Spec definitions shown in the UI -----
 const SPECS = {
