@@ -481,6 +481,9 @@ const PromotionsTab = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit promotion" : "New promotion"}</DialogTitle>
+            <DialogDescription>
+              Showcase brands or products on the homepage. Image must match the exact size shown below.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
