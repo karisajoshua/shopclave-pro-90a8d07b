@@ -31,8 +31,7 @@ const AdminTeam = () => {
   });
 
   // Members
-  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
-  const [memberEmail, setMemberEmail] = useState("");
+  const [memberUserId, setMemberUserId] = useState("");
   const [memberRoleId, setMemberRoleId] = useState("");
 
   const { data: roles } = useQuery({
