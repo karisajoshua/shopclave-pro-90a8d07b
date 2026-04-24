@@ -110,21 +110,22 @@ const App = () => (
 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="vendors" element={<AdminVendors />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="categories" element={<AdminCategories />} />
-                  <Route path="bulk-import" element={<AdminBulkImport />} />
-                  <Route path="media" element={<AdminMedia />} />
-                  <Route path="withdrawals" element={<AdminWithdrawals />} />
-                  <Route path="analytics" element={<AdminAnalyticsPage />} />
-                  <Route path="subscriptions" element={<AdminSubscriptions />} />
-                  <Route path="notifications" element={<AdminNotifications />} />
-                  <Route path="messages" element={<AdminMessages />} />
-                  <Route path="evidence" element={<AdminEvidence />} />
-                  <Route path="settings" element={<AdminSettings />} />
+                  <Route index element={<RequirePermission perm={PERMISSIONS.DASHBOARD_VIEW}><AdminDashboard /></RequirePermission>} />
+                  <Route path="vendors" element={<RequirePermission perm={PERMISSIONS.VENDORS_VIEW}><AdminVendors /></RequirePermission>} />
+                  <Route path="products" element={<RequirePermission perm={PERMISSIONS.PRODUCTS_VIEW}><AdminProducts /></RequirePermission>} />
+                  <Route path="orders" element={<RequirePermission perm={PERMISSIONS.ORDERS_VIEW}><AdminOrders /></RequirePermission>} />
+                  <Route path="users" element={<RequirePermission perm={PERMISSIONS.USERS_VIEW}><AdminUsers /></RequirePermission>} />
+                  <Route path="categories" element={<RequirePermission perm={PERMISSIONS.CATEGORIES_MANAGE}><AdminCategories /></RequirePermission>} />
+                  <Route path="bulk-import" element={<RequirePermission perm={PERMISSIONS.BULK_IMPORT_USE}><AdminBulkImport /></RequirePermission>} />
+                  <Route path="media" element={<RequirePermission perm={PERMISSIONS.MEDIA_MANAGE}><AdminMedia /></RequirePermission>} />
+                  <Route path="withdrawals" element={<RequirePermission perm={PERMISSIONS.WITHDRAWALS_VIEW}><AdminWithdrawals /></RequirePermission>} />
+                  <Route path="analytics" element={<RequirePermission perm={PERMISSIONS.ANALYTICS_VIEW}><AdminAnalyticsPage /></RequirePermission>} />
+                  <Route path="subscriptions" element={<RequirePermission perm={PERMISSIONS.SUBSCRIPTIONS_VIEW}><AdminSubscriptions /></RequirePermission>} />
+                  <Route path="notifications" element={<RequirePermission perm={PERMISSIONS.NOTIFICATIONS_SEND}><AdminNotifications /></RequirePermission>} />
+                  <Route path="messages" element={<RequirePermission perm={PERMISSIONS.MESSAGES_VIEW}><AdminMessages /></RequirePermission>} />
+                  <Route path="evidence" element={<RequirePermission perm={PERMISSIONS.EVIDENCE_VIEW}><AdminEvidence /></RequirePermission>} />
+                  <Route path="team" element={<RequirePermission perm={PERMISSIONS.TEAM_MANAGE}><AdminTeam /></RequirePermission>} />
+                  <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
                 </Route>
 
                 {/* Vendor routes */}
