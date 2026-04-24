@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,9 @@ const SpecCard = ({ spec }: { spec: { w: number; h: number; maxKB: number; label
     <div className="font-semibold flex items-center gap-1.5">
       <ImageIcon className="h-3.5 w-3.5" /> {spec.label} requirements
     </div>
-    <div>Size: <span className="font-mono">{spec.w} × {spec.h} px</span></div>
+    <div>
+      Image must be <span className="font-mono font-semibold">exactly {spec.w} × {spec.h} px</span>
+    </div>
     <div>Format: JPG, PNG or WebP</div>
     <div>Max file size: {spec.maxKB >= 1024 ? `${spec.maxKB / 1024} MB` : `${spec.maxKB} KB`}</div>
     <div className="text-muted-foreground">Tip: keep important text within the centre 60%.</div>
@@ -36,15 +38,15 @@ const SpecCard = ({ spec }: { spec: { w: number; h: number; maxKB: number; label
 
 // ----- Upload helper -----
 async function uploadToBucket(file: File, prefix: string): Promise<string> {
-  const ext = file.name.split(".").pop() || "jpg";
-  const path = `marketing/${prefix}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from("product-images").upload(path, file, {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("marketing-assets").upload(path, file, {
     cacheControl: "3600",
     upsert: false,
     contentType: file.type,
   });
   if (error) throw error;
-  const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+  const { data } = supabase.storage.from("marketing-assets").getPublicUrl(path);
   return data.publicUrl;
 }
 
@@ -54,14 +56,13 @@ function validateFile(file: File, spec: { w: number; h: number; maxKB: number })
       return resolve("Use JPG, PNG or WebP only");
     }
     if (file.size > spec.maxKB * 1024) {
-      return resolve(`File too large (max ${spec.maxKB}KB)`);
+      const sizeKB = Math.round(file.size / 1024);
+      return resolve(`File is ${sizeKB}KB — max allowed is ${spec.maxKB}KB`);
     }
     const img = new Image();
     img.onload = () => {
-      const wOff = Math.abs(img.width - spec.w) / spec.w;
-      const hOff = Math.abs(img.height - spec.h) / spec.h;
-      if (wOff > 0.25 || hOff > 0.25) {
-        resolve(`Image is ${img.width}×${img.height}, expected ${spec.w}×${spec.h}`);
+      if (img.width !== spec.w || img.height !== spec.h) {
+        resolve(`Image is ${img.width}×${img.height}px. Required exact size: ${spec.w}×${spec.h}px. Please resize and try again.`);
       } else {
         resolve(null);
       }
@@ -100,7 +101,9 @@ const ImageField = ({
       onChange(url);
       toast.success("Uploaded");
     } catch (e: any) {
-      toast.error(e.message);
+      const msg = e?.message || "Upload failed";
+      console.error("Marketing upload failed:", e);
+      toast.error(`Upload failed: ${msg}`, { duration: 6000 });
     } finally {
       setUploading(false);
     }
@@ -291,6 +294,9 @@ const BannersTab = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit banner" : "New hero banner"}</DialogTitle>
+            <DialogDescription>
+              Upload images at the exact required size for each device. Desktop image is required.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <ImageField
@@ -475,6 +481,9 @@ const PromotionsTab = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit promotion" : "New promotion"}</DialogTitle>
+            <DialogDescription>
+              Showcase brands or products on the homepage. Image must match the exact size shown below.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
