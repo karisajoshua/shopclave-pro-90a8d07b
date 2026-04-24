@@ -27,7 +27,9 @@ const SpecCard = ({ spec }: { spec: { w: number; h: number; maxKB: number; label
     <div className="font-semibold flex items-center gap-1.5">
       <ImageIcon className="h-3.5 w-3.5" /> {spec.label} requirements
     </div>
-    <div>Size: <span className="font-mono">{spec.w} × {spec.h} px</span></div>
+    <div>
+      Image must be <span className="font-mono font-semibold">exactly {spec.w} × {spec.h} px</span>
+    </div>
     <div>Format: JPG, PNG or WebP</div>
     <div>Max file size: {spec.maxKB >= 1024 ? `${spec.maxKB / 1024} MB` : `${spec.maxKB} KB`}</div>
     <div className="text-muted-foreground">Tip: keep important text within the centre 60%.</div>
@@ -36,15 +38,15 @@ const SpecCard = ({ spec }: { spec: { w: number; h: number; maxKB: number; label
 
 // ----- Upload helper -----
 async function uploadToBucket(file: File, prefix: string): Promise<string> {
-  const ext = file.name.split(".").pop() || "jpg";
-  const path = `marketing/${prefix}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from("product-images").upload(path, file, {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("marketing-assets").upload(path, file, {
     cacheControl: "3600",
     upsert: false,
     contentType: file.type,
   });
   if (error) throw error;
-  const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+  const { data } = supabase.storage.from("marketing-assets").getPublicUrl(path);
   return data.publicUrl;
 }
 
@@ -54,14 +56,13 @@ function validateFile(file: File, spec: { w: number; h: number; maxKB: number })
       return resolve("Use JPG, PNG or WebP only");
     }
     if (file.size > spec.maxKB * 1024) {
-      return resolve(`File too large (max ${spec.maxKB}KB)`);
+      const sizeKB = Math.round(file.size / 1024);
+      return resolve(`File is ${sizeKB}KB — max allowed is ${spec.maxKB}KB`);
     }
     const img = new Image();
     img.onload = () => {
-      const wOff = Math.abs(img.width - spec.w) / spec.w;
-      const hOff = Math.abs(img.height - spec.h) / spec.h;
-      if (wOff > 0.25 || hOff > 0.25) {
-        resolve(`Image is ${img.width}×${img.height}, expected ${spec.w}×${spec.h}`);
+      if (img.width !== spec.w || img.height !== spec.h) {
+        resolve(`Image is ${img.width}×${img.height}px. Required exact size: ${spec.w}×${spec.h}px. Please resize and try again.`);
       } else {
         resolve(null);
       }
