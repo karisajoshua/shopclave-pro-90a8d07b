@@ -868,10 +868,10 @@ const BannersTab = () => {
               <Label>Subtitle (optional)</Label>
               <Input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} />
             </div>
-            <div>
-              <Label>Link URL *</Label>
-              <Input value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} placeholder="/search?category=fashion" />
-            </div>
+            <DestinationPicker
+              value={form.link_url}
+              onChange={(url) => setForm((prev: any) => ({ ...prev, link_url: url }))}
+            />
             <div className="flex items-center gap-2">
               <Switch checked={form.is_active} onCheckedChange={(c) => setForm({ ...form, is_active: c })} />
               <Label>Active</Label>
