@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Search, Plus, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Search, Plus, CheckCircle, XCircle, Clock, Check, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { PLANS } from "@/lib/subscriptionPlans";
 
 const AdminSubscriptions = () => {
   const queryClient = useQueryClient();
@@ -24,6 +25,7 @@ const AdminSubscriptions = () => {
   const [newSub, setNewSub] = useState({ vendor_id: "", plan_name: "basic", max_listings: 20, price: 1000, expires_days: 30 });
   const [reviewPayment, setReviewPayment] = useState<any>(null);
   const [adminNotes, setAdminNotes] = useState("");
+  const [entitlementSub, setEntitlementSub] = useState<any>(null);
 
   const { data: pendingPayments } = useQuery({
     queryKey: ["admin-pending-payments"],
@@ -54,7 +56,22 @@ const AdminSubscriptions = () => {
       const { data: vendors } = await supabase.from("vendors").select("id, store_name").in("id", vendorIds);
       const vendorMap = new Map((vendors || []).map((v: any) => [v.id, v.store_name]));
 
-      return subs.map((s: any) => ({ ...s, store_name: vendorMap.get(s.vendor_id) || "Unknown" }));
+      // active product counts per vendor for usage display
+      const { data: productCounts } = await supabase
+        .from("products")
+        .select("vendor_id")
+        .in("vendor_id", vendorIds)
+        .eq("status", "active");
+      const usageMap = new Map<string, number>();
+      (productCounts || []).forEach((p: any) => {
+        usageMap.set(p.vendor_id, (usageMap.get(p.vendor_id) || 0) + 1);
+      });
+
+      return subs.map((s: any) => ({
+        ...s,
+        store_name: vendorMap.get(s.vendor_id) || "Unknown",
+        active_listings: usageMap.get(s.vendor_id) || 0,
+      }));
     },
   });
 
@@ -119,6 +136,12 @@ const AdminSubscriptions = () => {
     if (s === "active") return "bg-success/10 text-success";
     if (s === "expired" || s === "cancelled") return "bg-destructive/10 text-destructive";
     return "bg-warning/10 text-warning";
+  };
+
+  const findPlan = (planName?: string | null) => {
+    if (!planName) return null;
+    const key = planName.toLowerCase();
+    return PLANS.find((p) => p.key === key || p.name.toLowerCase() === key) || null;
   };
 
   return (
@@ -228,32 +251,61 @@ const AdminSubscriptions = () => {
         </div>
 
         <div className="bg-card rounded-lg border border-border overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-secondary">
               <tr>
                 <th className="text-left p-3 font-medium">Vendor</th>
                 <th className="text-left p-3 font-medium">Plan</th>
-                <th className="text-left p-3 font-medium">Max Listings</th>
+                <th className="text-left p-3 font-medium">Usage</th>
                 <th className="text-left p-3 font-medium">Price</th>
                 <th className="text-left p-3 font-medium">Expires</th>
                 <th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium">Entitlements</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((s: any) => (
-                <tr key={s.id} className="border-t border-border">
-                  <td className="p-3 font-medium">{s.store_name}</td>
-                  <td className="p-3 capitalize">{s.plan_name}</td>
-                  <td className="p-3">{s.max_listings}</td>
-                  <td className="p-3">KSh {Number(s.price).toLocaleString()}</td>
-                  <td className="p-3 text-muted-foreground">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "Never"}</td>
-                  <td className="p-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(s.status)}`}>{s.status}</span>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((s: any) => {
+                const used = s.active_listings || 0;
+                const cap = s.max_listings || 0;
+                const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+                const overLimit = cap > 0 && used > cap;
+                return (
+                  <tr key={s.id} className="border-t border-border">
+                    <td className="p-3 font-medium">{s.store_name}</td>
+                    <td className="p-3 capitalize">{s.plan_name}</td>
+                    <td className="p-3">
+                      <div className="flex flex-col gap-1 min-w-[120px]">
+                        <span className={`text-xs ${overLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                          {used} / {cap === 9999 ? "Unlimited" : cap}
+                        </span>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${overLimit ? "bg-destructive" : pct > 80 ? "bg-warning" : "bg-primary"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3">KSh {Number(s.price).toLocaleString()}</td>
+                    <td className="p-3 text-muted-foreground">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "Never"}</td>
+                    <td className="p-3">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(s.status)}`}>{s.status}</span>
+                    </td>
+                    <td className="p-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => setEntitlementSub(s)}
+                      >
+                        <Sparkles className="h-3 w-3" /> View
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No subscriptions yet</td></tr>
+                <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No subscriptions yet</td></tr>
               )}
             </tbody>
           </table>
@@ -297,6 +349,67 @@ const AdminSubscriptions = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Entitlements Dialog */}
+      <Dialog open={!!entitlementSub} onOpenChange={(o) => !o && setEntitlementSub(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Plan Entitlements
+            </DialogTitle>
+          </DialogHeader>
+          {entitlementSub && (() => {
+            const plan = findPlan(entitlementSub.plan_name);
+            const used = entitlementSub.active_listings || 0;
+            const cap = entitlementSub.max_listings || 0;
+            return (
+              <div className="space-y-4 text-sm">
+                <div className="bg-secondary rounded-lg p-3 space-y-1.5">
+                  <p className="font-semibold text-base">{entitlementSub.store_name}</p>
+                  <p>
+                    <span className="text-muted-foreground">Plan:</span>{" "}
+                    <span className="font-medium capitalize">{entitlementSub.plan_name}</span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Price paid:</span>{" "}
+                    <span className="font-medium">KSh {Number(entitlementSub.price).toLocaleString()}</span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Listing usage:</span>{" "}
+                    <span className="font-medium">
+                      {used} / {cap === 9999 ? "Unlimited" : cap}
+                    </span>
+                  </p>
+                  {entitlementSub.expires_at && (
+                    <p>
+                      <span className="text-muted-foreground">Expires:</span>{" "}
+                      <span className="font-medium">{new Date(entitlementSub.expires_at).toLocaleDateString()}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="font-medium mb-2">What this vendor is entitled to:</p>
+                  {plan ? (
+                    <ul className="space-y-1.5">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-success mt-0.5 shrink-0" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      Custom subscription — no preset feature list. Cap: {cap} listings.
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

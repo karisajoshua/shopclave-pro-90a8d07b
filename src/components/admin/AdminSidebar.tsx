@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree,
-  Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield,
+  Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield, UserCog,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -18,56 +18,64 @@ import {
 } from "@/components/ui/sidebar";
 import barakazLogo from "@/assets/barakaz-logo.png";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import { useAuth } from "@/contexts/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 
-type Item = { title: string; url: string; icon: typeof Store; end?: boolean };
+type Item = { title: string; url: string; icon: typeof Store; end?: boolean; permission: string };
 
 const groups: { label: string; items: Item[] }[] = [
   {
     label: "Overview",
-    items: [{ title: "Dashboard", url: "/admin", icon: LayoutDashboard, end: true }],
+    items: [{ title: "Dashboard", url: "/admin", icon: LayoutDashboard, end: true, permission: PERMISSIONS.DASHBOARD_VIEW }],
   },
   {
     label: "Operations",
     items: [
-      { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
-      { title: "Evidence Vault", url: "/admin/evidence", icon: Shield },
-      { title: "Messages", url: "/admin/messages", icon: MessageCircle },
-      { title: "Notifications", url: "/admin/notifications", icon: Bell },
+      { title: "Orders", url: "/admin/orders", icon: ShoppingBag, permission: PERMISSIONS.ORDERS_VIEW },
+      { title: "Evidence Vault", url: "/admin/evidence", icon: Shield, permission: PERMISSIONS.EVIDENCE_VIEW },
+      { title: "Messages", url: "/admin/messages", icon: MessageCircle, permission: PERMISSIONS.MESSAGES_VIEW },
+      { title: "Notifications", url: "/admin/notifications", icon: Bell, permission: PERMISSIONS.NOTIFICATIONS_SEND },
     ],
   },
   {
     label: "Catalog",
     items: [
-      { title: "Products", url: "/admin/products", icon: Package },
-      { title: "Categories", url: "/admin/categories", icon: FolderTree },
-      { title: "Bulk Import", url: "/admin/bulk-import", icon: Upload },
-      { title: "Media", url: "/admin/media", icon: Images },
+      { title: "Products", url: "/admin/products", icon: Package, permission: PERMISSIONS.PRODUCTS_VIEW },
+      { title: "Categories", url: "/admin/categories", icon: FolderTree, permission: PERMISSIONS.CATEGORIES_MANAGE },
+      { title: "Bulk Import", url: "/admin/bulk-import", icon: Upload, permission: PERMISSIONS.BULK_IMPORT_USE },
+      { title: "Media", url: "/admin/media", icon: Images, permission: PERMISSIONS.MEDIA_MANAGE },
     ],
   },
   {
     label: "Finance",
     items: [
-      { title: "Withdrawals", url: "/admin/withdrawals", icon: Wallet },
-      { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
+      { title: "Withdrawals", url: "/admin/withdrawals", icon: Wallet, permission: PERMISSIONS.WITHDRAWALS_VIEW },
+      { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard, permission: PERMISSIONS.SUBSCRIPTIONS_VIEW },
     ],
   },
   {
     label: "Insights",
-    items: [{ title: "Analytics", url: "/admin/analytics", icon: BarChart3 }],
+    items: [{ title: "Analytics", url: "/admin/analytics", icon: BarChart3, permission: PERMISSIONS.ANALYTICS_VIEW }],
   },
   {
     label: "System",
     items: [
-      { title: "Vendors", url: "/admin/vendors", icon: Store },
-      { title: "Users", url: "/admin/users", icon: Users },
-      { title: "Settings", url: "/admin/settings", icon: Settings },
+      { title: "Vendors", url: "/admin/vendors", icon: Store, permission: PERMISSIONS.VENDORS_VIEW },
+      { title: "Users", url: "/admin/users", icon: Users, permission: PERMISSIONS.USERS_VIEW },
+      { title: "Team & Roles", url: "/admin/team", icon: UserCog, permission: PERMISSIONS.TEAM_MANAGE },
+      { title: "Settings", url: "/admin/settings", icon: Settings, permission: PERMISSIONS.SETTINGS_MANAGE },
     ],
   },
 ];
 
 export function AdminSidebar() {
   const { state } = useSidebar();
+  const { hasPermission } = useAuth();
   const collapsed = state === "collapsed";
+
+  const visibleGroups = groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => hasPermission(i.permission)) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <Sidebar
@@ -84,7 +92,7 @@ export function AdminSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent className="bg-admin-sidebar-bg stagger-children">
-        {groups.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.label}>
             {!collapsed && (
               <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-admin-sidebar-fg-muted px-3">

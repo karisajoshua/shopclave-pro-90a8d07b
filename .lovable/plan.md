@@ -1,52 +1,112 @@
+## Plan: Plan entitlements view + Team roles & permissions
 
-# Update subscription plans: competitive pricing + feature lists
+Two parts:
+1. **Plan visibility** — admin can see exactly what each vendor is entitled to based on their active plan.
+2. **Team roles** — admin can invite/assign team members to scoped roles (e.g. Orders Manager, Catalog Manager) that only see the admin sections their role permits.
 
-## Goals
-1. Make the 4 paid plans more competitive for the Kenyan classifieds/marketplace market.
-2. Show vendors exactly what they get in each plan (a benefits checklist) on the upgrade cards.
+---
 
-## Proposed new pricing (KSh / month)
+### Part 1 — Plan entitlements in admin
 
-Current pricing is too steep at the top end (Premium KSh 5,000, Enterprise KSh 15,000) for a Kenyan vendor classifieds market and the gaps between tiers are uneven. New pricing:
+**`src/pages/admin/AdminSubscriptions.tsx`**
+- Enrich the "All Vendor Subscriptions" table by joining each row to the matching plan in `PLANS` (by `plan_name` key).
+- Add a new column "Entitlements" with a "View" button → opens a dialog showing:
+  - Plan name, price, listing cap, expiry
+  - Full feature checklist from `PLANS[].features` (Check icons)
+  - Listing usage: `current_active_products / max_listings` (from `products` count where `vendor_id = X AND status = 'active'`)
+- Also add a small "Plan" pill to the existing **Vendors** admin page (`src/pages/admin/AdminVendors.tsx`) showing each vendor's current active plan — quick at-a-glance on the vendor list.
 
-| Plan | Old price | New price | Listings | Duration |
-|------|-----------|-----------|----------|----------|
-| Free | 0 | 0 | 5 | 365 days |
-| Basic | 500 | **299** | 15 | 30 days |
-| Standard | 1,500 | **799** | 60 | 30 days |
-| Premium | 5,000 | **1,999** | 250 | 30 days |
-| Enterprise | 15,000 | **4,999** | Unlimited (9,999) | 30 days |
+No DB changes needed for Part 1.
 
-Rationale: pricing now starts low to convert Free users, scales ~2.5–3x between tiers, and the top tier is positioned as a "go big" option rather than premium-priced. Listing caps also increase to make each tier feel meaningfully better.
+---
 
-## Feature lists per plan
+### Part 2 — Team roles & granular permissions
 
-Each plan card on the vendor dashboard will display a bullet list of benefits using check icons.
+**Concept**
+- Keep core `app_role` enum (`admin`, `vendor`, `customer`) untouched — RLS depends on it.
+- Add a **team membership** layer on top: a user with the `admin` role can be a "full admin" OR can be granted a scoped "team role" that limits which admin pages they see.
+- The first admin (existing) remains a super-admin. New team members get `admin` role + a team_role that gates the UI.
 
-- **Free** — 5 active listings · Basic store page · Standard support
-- **Basic** — 15 active listings · Store page with logo & banner · WhatsApp/Call buttons · Email support
-- **Standard** — 60 active listings · Everything in Basic · Featured in category pages · Vendor analytics dashboard · Priority email support
-- **Premium** — 250 active listings · Everything in Standard · Homepage feature rotation · Promoted in search results · Bulk product import · Priority chat support
-- **Enterprise** — Unlimited listings · Everything in Premium · Top placement across the site · Dedicated account manager · Custom store branding · 24/7 priority support
+**New tables (migration)**
+```sql
+-- Team role definitions (admin can create/edit)
+create table public.team_roles (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,           -- e.g. "Orders Manager"
+  description text,
+  permissions text[] not null default '{}', -- e.g. {'orders.view','orders.update','messages.view'}
+  is_system boolean not null default false, -- super_admin built-in
+  created_at timestamptz not null default now()
+);
 
-## Technical changes
+-- Assignment of team role to a user
+create table public.team_members (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique,
+  team_role_id uuid not null references public.team_roles(id) on delete restrict,
+  assigned_by uuid,
+  created_at timestamptz not null default now()
+);
 
-### `src/lib/subscriptionPlans.ts`
-- Update `PLANS` array with new prices and listing caps above.
-- Extend the `Plan` interface with a `features: string[]` field and populate it for each plan.
-- Keep `getPlanLimit` and `isAdminUnlimited` unchanged.
+-- RLS: only admins can read/write
+-- has_permission(user, perm) security-definer helper:
+-- returns true if user is super_admin OR their team_role.permissions @> ARRAY[perm]
+```
 
-### `src/pages/vendor/VendorDashboard.tsx`
-- In the "Upgrade Your Plan" grid (currently filtering out `free`), redesign each plan card so it stretches to fit the feature list:
-  - Plan name + price (unchanged)
-  - Listing count line (unchanged)
-  - New `<ul>` rendering `plan.features` with a small `Check` icon (lucide) and muted text
-  - "Current" badge or "Upgrade" button at the bottom (unchanged behaviour)
-- Switch the grid to `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` so feature lists stay readable on mobile.
-- Make cards `flex flex-col` with the action button pushed to the bottom (`mt-auto`) so cards align even when feature lists differ in length.
+Seed system roles: `super_admin` (all perms, `is_system=true`), `orders_manager`, `catalog_manager`, `finance_manager`, `support_agent`, `vendor_manager` — with sensible default perm sets.
 
-## Out of scope
-- No DB schema changes. Existing `vendor_subscriptions.price` / `max_listings` rows stay as-is; new payments will use the new pricing.
-- No changes to `AdminSubscriptions.tsx` (admins can still manually override price/listings when creating a subscription).
-- No marketing copy or pricing page outside the vendor dashboard.
-- Features shown are descriptive of what already exists in the platform — no new gating or enforcement of per-plan features in this change.
+**Permission keys** (flat strings, grouped by section):
+- `dashboard.view`
+- `orders.view`, `orders.update`
+- `products.view`, `products.update`, `categories.manage`, `bulk_import.use`, `media.manage`
+- `vendors.view`, `vendors.update`
+- `users.view`, `users.assign_roles`
+- `withdrawals.view`, `withdrawals.update`
+- `subscriptions.view`, `subscriptions.update`
+- `analytics.view`
+- `messages.view`, `evidence.view`, `notifications.send`
+- `settings.manage`
+- `team.manage` (manage team roles & members — super_admin only by default)
+
+**Frontend changes**
+
+1. **`src/contexts/AuthContext.tsx`**
+   - After fetching `userRoles`, also fetch the user's `team_role` + permissions (or "super_admin" if none assigned and they are admin) and expose `permissions: string[]` and `hasPermission(perm)` helper.
+
+2. **`src/components/admin/AdminLayout.tsx`**
+   - Already gates on `admin` role. No change to the gate, but now uses `hasPermission` for child routing.
+
+3. **`src/components/admin/AdminSidebar.tsx`**
+   - Each sidebar item gets a `permission` field. Filter the rendered groups/items by `hasPermission(item.permission)`.
+
+4. **Per-page gates** — wrap each admin page with a small `<RequirePermission perm="...">` component that redirects to `/admin` (dashboard) with a toast if the user lacks the perm. Apply in `App.tsx` route definitions.
+
+5. **New page `src/pages/admin/AdminTeam.tsx`** (route `/admin/team`, sidebar group "System")
+   - **Roles tab**: list `team_roles`, create/edit a role with a checkbox grid of all permissions, delete (blocked if `is_system` or in use).
+   - **Members tab**: list users with admin role + their team_role, assign/change team_role via a select, "Invite teammate" flow that:
+     - Looks up an existing user by email (from `profiles`), grants them `admin` role in `user_roles`, then inserts into `team_members` with chosen `team_role_id`.
+     - If user not found, show a message asking them to sign up first (no auto-invite to keep scope tight).
+
+**RLS for new tables**
+- `team_roles`: `SELECT/ALL` only where `has_permission(auth.uid(),'team.manage')`; all admins can `SELECT` (so AdminLayout can resolve perms).
+- `team_members`: same — admins can `SELECT` own row + super_admin/team.manage can `ALL`.
+
+---
+
+### Technical notes
+
+- Existing `AdminUsers.tsx` "+ Admin" button keeps working but now grants only base admin role; the super_admin uses the new Team page to attach a scoped team_role. If no team_role is assigned, treat them as super_admin (backwards compatible with the current single-admin setup).
+- Sidebar groups become empty for some roles; hide the whole group if all items are filtered out.
+- Permission checks are **UI gating only**; data-level safety is still enforced by existing RLS (which keys off `admin`). This is acceptable because team members are trusted staff, not external users — the goal is workflow scoping, not zero-trust isolation. Document this in code comments.
+
+### Files touched
+
+- New: `supabase/migrations/<timestamp>_team_roles.sql`
+- New: `src/lib/permissions.ts` (permission key constants + role presets)
+- New: `src/components/admin/RequirePermission.tsx`
+- New: `src/pages/admin/AdminTeam.tsx`
+- Edit: `src/contexts/AuthContext.tsx` (add permissions + hasPermission)
+- Edit: `src/components/admin/AdminSidebar.tsx` (filter by perms)
+- Edit: `src/App.tsx` (wrap admin routes with RequirePermission, add `/admin/team`)
+- Edit: `src/pages/admin/AdminSubscriptions.tsx` (entitlements dialog + usage)
+- Edit: `src/pages/admin/AdminVendors.tsx` (plan pill column)
