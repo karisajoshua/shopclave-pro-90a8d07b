@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Megaphone, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Megaphone, Upload, Layers, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 // ----- Spec definitions shown in the UI -----
 const SPECS = {
@@ -20,6 +20,25 @@ const SPECS = {
   mobileBanner: { w: 750, h: 500, maxKB: 1024, label: "Mobile Hero" },
   brand: { w: 600, h: 600, maxKB: 1024, label: "Brand Logo" },
   product: { w: 800, h: 800, maxKB: 1024, label: "Product Spotlight" },
+};
+
+// ----- Promotion placement metadata (single source of truth) -----
+const PLACEMENTS: Record<
+  string,
+  { label: string; description: string; kind: "brand" | "product"; spec: typeof SPECS.brand }
+> = {
+  featured_brands: {
+    label: "Featured Brands",
+    description: "Small logo grid below the hero. Best for brand logos.",
+    kind: "brand",
+    spec: SPECS.brand,
+  },
+  sponsored_products: {
+    label: "Sponsored Products",
+    description: "Large product cards under Featured Brands.",
+    kind: "product",
+    spec: SPECS.product,
+  },
 };
 
 const SpecCard = ({ spec }: { spec: { w: number; h: number; maxKB: number; label: string } }) => (
@@ -72,7 +91,7 @@ function validateFile(file: File, spec: { w: number; h: number; maxKB: number })
   });
 }
 
-// ----- Image upload field -----
+// ----- Image upload field (single) -----
 const ImageField = ({
   label,
   value,
@@ -139,6 +158,213 @@ const ImageField = ({
   );
 };
 
+// ----- Bulk file picker for multiple slides -----
+type BulkItem = {
+  file: File;
+  previewUrl: string;
+  status: "pending" | "valid" | "invalid";
+  error?: string;
+};
+
+const BulkFilePicker = ({
+  label,
+  spec,
+  items,
+  onChange,
+}: {
+  label: string;
+  spec: { w: number; h: number; maxKB: number; label: string };
+  items: BulkItem[];
+  onChange: (items: BulkItem[]) => void;
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = async (files: FileList) => {
+    const next: BulkItem[] = [];
+    for (const f of Array.from(files)) {
+      const err = await validateFile(f, spec);
+      next.push({
+        file: f,
+        previewUrl: URL.createObjectURL(f),
+        status: err ? "invalid" : "valid",
+        error: err || undefined,
+      });
+    }
+    onChange([...items, ...next]);
+  };
+
+  const removeAt = (idx: number) => {
+    const copy = items.slice();
+    copy.splice(idx, 1);
+    onChange(copy);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <SpecCard spec={spec} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={(e) => e.target.files?.length && handleFiles(e.target.files)}
+      />
+      <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+        <Upload className="h-3.5 w-3.5 mr-1.5" /> Add {items.length ? "more" : ""} images
+      </Button>
+      {items.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {items.map((it, i) => (
+            <div key={i} className="relative rounded-md border overflow-hidden bg-muted/30">
+              <img src={it.previewUrl} alt="" className="w-full h-20 object-cover" />
+              <div className="p-1.5 text-[10px] flex items-start gap-1">
+                {it.status === "valid" ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0 mt-px" />
+                ) : (
+                  <XCircle className="h-3 w-3 text-destructive shrink-0 mt-px" />
+                )}
+                <span className="truncate flex-1" title={it.error || it.file.name}>
+                  {it.status === "valid" ? `#${i + 1} • ok` : it.error}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeAt(i)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Remove"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ----- Bulk add slides dialog -----
+const BulkBannersDialog = ({
+  open,
+  onOpenChange,
+  baseOrder,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  baseOrder: number;
+  onCreated: () => void;
+}) => {
+  const [desktops, setDesktops] = useState<BulkItem[]>([]);
+  const [mobiles, setMobiles] = useState<BulkItem[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const validDesktops = desktops.filter((d) => d.status === "valid");
+  const invalidDesktops = desktops.length - validDesktops.length;
+  const validMobiles = mobiles.filter((m) => m.status === "valid");
+
+  const reset = () => {
+    setDesktops([]);
+    setMobiles([]);
+  };
+
+  const submit = async () => {
+    if (validDesktops.length === 0) {
+      toast.error("Add at least one valid desktop image.");
+      return;
+    }
+    setSubmitting(true);
+    let created = 0;
+    let failed = 0;
+    try {
+      for (let i = 0; i < validDesktops.length; i++) {
+        try {
+          const desktopUrl = await uploadToBucket(validDesktops[i].file, "banners/desktop");
+          let mobileUrl: string | null = null;
+          if (validMobiles[i]) {
+            mobileUrl = await uploadToBucket(validMobiles[i].file, "banners/mobile");
+          }
+          const { error } = await supabase.from("hero_banners").insert({
+            desktop_image_url: desktopUrl,
+            mobile_image_url: mobileUrl,
+            link_url: "/",
+            display_order: baseOrder + i,
+            is_active: true,
+          });
+          if (error) throw error;
+          created++;
+        } catch (err: any) {
+          console.error("Bulk slide failed", err);
+          failed++;
+        }
+      }
+      if (created > 0) {
+        toast.success(`Created ${created} slide${created > 1 ? "s" : ""}${failed ? ` (${failed} failed)` : ""}`);
+        onCreated();
+        reset();
+        onOpenChange(false);
+      } else {
+        toast.error("No slides were created. Check sizes and try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Bulk add hero slides</DialogTitle>
+          <DialogDescription>
+            Pick multiple desktop images at once — each becomes one slide in the carousel. Optionally pick mobile images;
+            they pair with desktops in the same order. Slots without a mobile image fall back to the desktop image on phones.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <BulkFilePicker
+            label={`Desktop images (${validDesktops.length} ready${invalidDesktops ? `, ${invalidDesktops} invalid` : ""})`}
+            spec={SPECS.desktopBanner}
+            items={desktops}
+            onChange={setDesktops}
+          />
+          <BulkFilePicker
+            label={`Mobile images (optional, paired by order)`}
+            spec={SPECS.mobileBanner}
+            items={mobiles}
+            onChange={setMobiles}
+          />
+        </div>
+
+        <div className="rounded-md border bg-muted/40 p-3 text-xs">
+          <div className="font-semibold mb-1">Preview pairing</div>
+          {validDesktops.length === 0 ? (
+            <div className="text-muted-foreground">Add desktop images to see the slide order.</div>
+          ) : (
+            <ol className="space-y-0.5 list-decimal list-inside">
+              {validDesktops.map((_, i) => (
+                <li key={i}>
+                  Slide {i + 1}: desktop ✓ · mobile {validMobiles[i] ? "✓" : "→ falls back to desktop"}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
+          <Button onClick={submit} disabled={submitting || validDesktops.length === 0}>
+            {submitting ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Creating…</> : `Create ${validDesktops.length || ""} slide${validDesktops.length === 1 ? "" : "s"}`}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ----- Banners tab -----
 const emptyBanner = {
   title: "",
@@ -154,6 +380,7 @@ const emptyBanner = {
 const BannersTab = () => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>(emptyBanner);
 
@@ -245,13 +472,22 @@ const BannersTab = () => {
     setOpen(true);
   };
 
+  const nextOrder = banners?.length
+    ? Math.max(...banners.map((b: any) => b.display_order || 0)) + 1
+    : 0;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm text-muted-foreground">
-          Banners shown in the rotating hero carousel at the top of the homepage. Mobile image is shown on phones.
+          Banners shown in the rotating hero carousel at the top of the homepage. Each saved banner = one slide.
         </p>
-        <Button onClick={startCreate} className="gap-1.5"><Plus className="h-4 w-4" /> Add banner</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-1.5">
+            <Layers className="h-4 w-4" /> Bulk add slides
+          </Button>
+          <Button onClick={startCreate} className="gap-1.5"><Plus className="h-4 w-4" /> Add banner</Button>
+        </div>
       </div>
 
       <div className="grid gap-3">
@@ -260,7 +496,7 @@ const BannersTab = () => {
             <CardContent className="p-3 flex items-center gap-3">
               <img src={b.desktop_image_url} alt="" className="w-32 h-12 object-cover rounded border" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{b.title || "(no title)"}</div>
+                <div className="font-medium truncate">{b.title || `Slide ${i + 1}`}</div>
                 <div className="text-xs text-muted-foreground truncate">{b.link_url}</div>
                 <div className="flex gap-1 mt-1">
                   <Badge variant={b.is_active ? "default" : "secondary"} className="text-[10px]">
@@ -289,6 +525,16 @@ const BannersTab = () => {
           <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">No banners yet. Add one to get started.</CardContent></Card>
         )}
       </div>
+
+      <BulkBannersDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        baseOrder={nextOrder}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["admin-hero-banners"] });
+          queryClient.invalidateQueries({ queryKey: ["public-hero-banners"] });
+        }}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -421,9 +667,10 @@ const PromotionsTab = () => {
     },
   });
 
-  const startCreate = () => {
+  const startCreate = (placement?: keyof typeof PLACEMENTS) => {
     setEditing(null);
-    setForm({ ...emptyPromo });
+    const p = placement || "featured_brands";
+    setForm({ ...emptyPromo, placement: p, kind: PLACEMENTS[p].kind });
     setOpen(true);
   };
 
@@ -437,77 +684,117 @@ const PromotionsTab = () => {
     setOpen(true);
   };
 
-  const currentSpec = form.kind === "brand" ? SPECS.brand : SPECS.product;
+  // When the placement (display section) changes, auto-sync the image kind/spec
+  const handlePlacementChange = (v: string) => {
+    const meta = PLACEMENTS[v];
+    if (!meta) return;
+    setForm((prev: any) => ({ ...prev, placement: v, kind: meta.kind, image_url: "" }));
+  };
+
+  const currentSpec = PLACEMENTS[form.placement]?.spec || SPECS.brand;
+
+  // Group promos by placement for the list view
+  const grouped = useMemo(() => {
+    const map: Record<string, any[]> = { featured_brands: [], sponsored_products: [] };
+    (promos || []).forEach((p: any) => {
+      if (!map[p.placement]) map[p.placement] = [];
+      map[p.placement].push(p);
+    });
+    return map;
+  }, [promos]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm text-muted-foreground">
-          Brand and product spotlights shown below the hero. Group them under "Featured Brands" or "Sponsored Products".
+          Brand and product spotlights shown below the hero. Choose which homepage section each promo appears in.
         </p>
-        <Button onClick={startCreate} className="gap-1.5"><Plus className="h-4 w-4" /> Add promotion</Button>
+        <Button onClick={() => startCreate()} className="gap-1.5"><Plus className="h-4 w-4" /> Add promotion</Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {(promos || []).map((p: any) => (
-          <Card key={p.id}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded border" />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{p.title}</div>
-                <div className="text-xs text-muted-foreground truncate">{p.subtitle}</div>
-                <div className="flex gap-1 mt-1">
-                  <Badge variant="outline" className="text-[10px]">{p.kind}</Badge>
-                  <Badge variant="outline" className="text-[10px]">{p.placement === "featured_brands" ? "Brands" : "Sponsored"}</Badge>
-                  <Badge variant={p.is_active ? "default" : "secondary"} className="text-[10px]">
-                    {p.is_active ? "Live" : "Hidden"}
-                  </Badge>
-                </div>
+      {Object.entries(PLACEMENTS).map(([key, meta]) => {
+        const list = grouped[key] || [];
+        const liveCount = list.filter((p) => p.is_active).length;
+        return (
+          <div key={key} className="space-y-2">
+            <div className="flex items-center justify-between border-b pb-1.5">
+              <div>
+                <h3 className="font-semibold text-sm">{meta.label}</h3>
+                <p className="text-xs text-muted-foreground">{meta.description}</p>
               </div>
-              <Switch checked={p.is_active} onCheckedChange={(c) => toggleActive.mutate({ id: p.id, is_active: c })} />
-              <Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" onClick={() => confirm("Delete this promotion?") && remove.mutate(p.id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-        {!promos?.length && (
-          <Card className="sm:col-span-2"><CardContent className="p-6 text-center text-sm text-muted-foreground">No promotions yet.</CardContent></Card>
-        )}
-      </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">
+                  {liveCount} live · {list.length} total
+                </Badge>
+                <Button size="sm" variant="ghost" onClick={() => startCreate(key as keyof typeof PLACEMENTS)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {list.map((p: any) => (
+                <Card key={p.id}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded border" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{p.title}</div>
+                      <div className="text-xs text-muted-foreground truncate">{p.subtitle}</div>
+                      <div className="flex gap-1 mt-1">
+                        <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+                        <Badge variant={p.is_active ? "default" : "secondary"} className="text-[10px]">
+                          {p.is_active ? "Live" : "Hidden"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Switch checked={p.is_active} onCheckedChange={(c) => toggleActive.mutate({ id: p.id, is_active: c })} />
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => confirm("Delete this promotion?") && remove.mutate(p.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+              {list.length === 0 && (
+                <Card className="sm:col-span-2">
+                  <CardContent className="p-4 text-center text-xs text-muted-foreground">
+                    No promotions in this section yet.
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        );
+      })}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit promotion" : "New promotion"}</DialogTitle>
             <DialogDescription>
-              Showcase brands or products on the homepage. Image must match the exact size shown below.
+              Choose where this promotion appears on the homepage, then upload an image at the exact required size.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Type</Label>
-                <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="brand">Brand</SelectItem>
-                    <SelectItem value="product">Product spotlight</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Placement</Label>
-                <Select value={form.placement} onValueChange={(v) => setForm({ ...form, placement: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="featured_brands">Featured Brands</SelectItem>
-                    <SelectItem value="sponsored_products">Sponsored Products</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label>Display section *</Label>
+              <Select value={form.placement} onValueChange={handlePlacementChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PLACEMENTS).map(([key, meta]) => (
+                    <SelectItem key={key} value={key}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{meta.label}</span>
+                        <span className="text-[11px] text-muted-foreground">{meta.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Where this promo appears on the homepage. Image size requirement updates automatically.
+              </p>
             </div>
+
             <ImageField
               label="Image *"
               value={form.image_url}
