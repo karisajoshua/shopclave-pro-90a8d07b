@@ -161,13 +161,20 @@ const SiteAnalytics = () => {
     return `${Math.floor(minutesStale / (60 * 24))}d ago`;
   };
 
-  const handleRefresh = () => {
-    refetch();
-    toast.info("Site analytics is provided by Lovable.", {
-      description:
-        'No public API exists to auto-pull this. To refresh, ask the AI in chat: "refresh site analytics" — it will fetch and update for you.',
-      duration: 8000,
-    });
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const { error } = await supabase.functions.invoke("refresh-site-analytics");
+      if (error) throw error;
+      // Realtime subscription will push the new row in within ~1s
+      await refetch();
+      toast.success("Site analytics refreshed");
+    } catch (err: any) {
+      toast.error("Could not refresh analytics", { description: err?.message ?? "Unknown error" });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
