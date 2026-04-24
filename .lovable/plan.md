@@ -1,39 +1,40 @@
-# Hero carousel: multiple images + clearer promo placement
+## Make banner clicks land on real destinations
 
-## What's actually happening today
+### Problem
+Today the banner "Link URL" is a free-text field. Admins have to know the exact path (e.g. `/search?category=fashion` or `/product/some-slug`) and typos silently break the click-through. You want a guided way to map each banner to a real destination — a category, a specific product, a vendor store, or a custom URL.
 
-- **Hero banners** already supports multiple slides — every row in `hero_banners` is one slide, and the homepage carousel rotates through all active rows. But the admin form only lets you create slides **one at a time** (one desktop + one mobile per save), which feels like "only one image".
-- **Promotions** already has a "Placement" dropdown (Featured Brands / Sponsored Products), but it sits next to "Type" with no explanation, and the list view doesn't group items by where they will appear, so it's not obvious where each promo will show up.
+### What changes (Hero Banners + Promotions)
 
-## What will change
+Replace the single "Link URL" text input with a **"When clicked, go to…"** picker that has 4 modes:
 
-### 1. Hero Banners tab — bulk slide upload
-Add a second action **"Bulk add slides"** next to "Add banner". It opens a streamlined dialog where the admin can:
+1. **Category** — dropdown of all categories from the `categories` table (loaded live). Saves as `/search?category={slug}`.
+2. **Specific product** — searchable combobox that queries `products` (active only) by name. Picking one saves `/product/{slug}`.
+3. **Vendor store** — searchable combobox over `vendors` (approved only). Saves `/store/{slug}`.
+4. **Custom URL** — the existing free-text input, for edge cases (external links, static pages like `/vendor/register`, etc.).
 
-- Drop / select **multiple desktop images at once** (each becomes one carousel slide, in the order picked).
-- Optionally drop / select **multiple mobile images** — paired with desktops by order (1st mobile → 1st desktop, etc.). Any desktop without a paired mobile just falls back to the desktop image on phones, which is what the homepage already does.
-- Each file is validated against the exact size rules (1920×600 desktop, 750×500 mobile) and shows a per-file ✓ / ✗ status before saving.
-- Hitting "Create N slides" uploads all valid pairs to the `marketing-assets` bucket and inserts one `hero_banners` row per slide, with `display_order` continuing from the current max so they append to the existing carousel.
-- All new slides default to `is_active = true` and link to `/`. The admin can fine-tune title / link / CTA per slide afterwards using the existing edit pencil.
+The mode selector is a small segmented control above the destination field. When the admin picks "Category", the dropdown appears; when they pick "Specific product", the searchable picker appears; etc. The resolved URL is shown read-only underneath as a preview ("Will link to: /search?category=fashion") so the admin always sees where the click goes.
 
-The single-slide "Add banner" dialog stays for fine-grained edits and CTAs.
+On **edit**, the existing `link_url` is parsed back into the right mode automatically:
+- starts with `/search?category=` → Category mode, with that slug pre-selected
+- starts with `/product/` → Product mode, with that product pre-selected
+- starts with `/store/` → Vendor mode
+- anything else → Custom URL mode
 
-### 2. Promotions tab — clearer placement
-- Rename the "Placement" select to **"Display section"** with a short helper line under it: *"Where this promo appears on the homepage."*
-- Each option label gets a description:
-  - **Featured Brands** — small logo grid below the hero (uses Brand 600×600 image).
-  - **Sponsored Products** — large product cards under Featured Brands (uses Product 800×800 image).
-- When the admin picks a section, the **Type** auto-syncs (Featured Brands → Brand, Sponsored Products → Product) so the right image spec is shown. Type stays editable for power users but is no longer a separate decision in 90% of cases.
-- The promotions list view is **grouped by section** with a section header ("Featured Brands — 4 live", "Sponsored Products — 2 live") so it's obvious at a glance what shows where.
-- The card badge changes from "Brands" / "Sponsored" to the full section name.
+### Where this applies
+- **Hero Banners dialog** (single add + edit) — replaces the current "Link URL *" field.
+- **Bulk add slides dialog** — adds an optional "Default destination" picker at the top so all newly-uploaded slides share one link (e.g. all 5 fashion banners → `/search?category=fashion`). Admin can still fine-tune each slide afterwards via the edit pencil.
+- **Promotions dialog** — same picker replaces the current Link URL field, so a Featured Brand promo can map directly to that vendor's store and a Sponsored Product promo can map to the product page.
 
-### 3. Carousel rendering (no change needed)
-The homepage `HeroBanner.tsx` already loops through every active `hero_banners` row, auto-rotates every 5s, and renders dots + prev/next arrows when there's more than one slide. Once the bulk-upload flow lands, all newly added slides show up in the carousel automatically.
+### UX details
+- Product / vendor pickers use `Command` (shadcn combobox) with a 300ms debounced search, capped at 20 results.
+- Category dropdown shows the parent category in parentheses for child categories so duplicates like "Smartphones" are distinguishable.
+- The preview line under the picker is clickable in a new tab so admin can sanity-check the destination before saving.
+- If a previously-linked product or vendor gets deleted, the edit form falls back to "Custom URL" mode and shows a small warning: *"Original product no longer exists — pick a new destination or update the URL."*
 
-## Files touched
-- `src/pages/admin/AdminMarketing.tsx` — add `BulkBannersDialog`, rewire "Display section" UI, group promotions list by placement.
+### Files touched
+- `src/pages/admin/AdminMarketing.tsx` — add a shared `<DestinationPicker>` component, wire it into the banner dialog, bulk dialog, and promotion dialog, and handle parse-on-edit.
 
-## Out of scope
-- No DB migration needed — `hero_banners` and `promotions` schemas already support everything.
-- No change to the public homepage — carousel and PromoStrip already render whatever is in the DB.
-- Drag-and-drop reordering across both lists stays as-is (up/down arrows).
+### Out of scope
+- No DB changes. `hero_banners.link_url` and `promotions.link_url` already store the resolved path — we're just upgrading how it's chosen.
+- No change to the public homepage rendering — `HeroBanner.tsx` already uses `link_url` as-is.
+- No change to existing banners' stored URLs unless the admin re-saves them.
