@@ -596,7 +596,7 @@ const AdminResources = () => {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        title="Vendor Resource Center"
+        title="Barakaz Academy"
         subtitle="Publish videos, articles, and step-by-step guides to help vendors succeed."
       />
 
