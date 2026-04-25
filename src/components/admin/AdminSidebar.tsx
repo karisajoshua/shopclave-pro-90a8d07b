@@ -62,7 +62,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Content",
     items: [
       { title: "Marketing", url: "/admin/marketing", icon: Megaphone, permission: PERMISSIONS.MARKETING_MANAGE },
-      { title: "Resource Center", url: "/admin/resources", icon: GraduationCap, permission: PERMISSIONS.RESOURCES_MANAGE },
+      { title: "Barakaz Academy", url: "/admin/resources", icon: GraduationCap, permission: PERMISSIONS.RESOURCES_MANAGE },
     ],
   },
   {
