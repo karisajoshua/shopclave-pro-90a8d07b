@@ -390,7 +390,7 @@ const ResourcesPanel = () => {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit lesson" : "New lesson"}</DialogTitle>
-            <DialogDescription>Vendors will see this in their Help Center.</DialogDescription>
+            <DialogDescription>Vendors will see this in Barakaz Academy.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">

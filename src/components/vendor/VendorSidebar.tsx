@@ -48,7 +48,7 @@ const groups: { label: string; items: { title: string; url: string; icon: any }[
   },
   {
     label: "Learn",
-    items: [{ title: "Help Center", url: "/vendor/resources", icon: GraduationCap }],
+    items: [{ title: "Barakaz Academy", url: "/vendor/resources", icon: GraduationCap }],
   },
   {
     label: "System",
