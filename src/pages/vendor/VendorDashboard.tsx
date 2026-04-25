@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useOutletContext } from "react-router-dom";
-import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle, Clock, CheckCircle2, Check } from "lucide-react";
+import { useOutletContext, Link } from "react-router-dom";
+import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle, Clock, CheckCircle2, Check, GraduationCap, ChevronRight, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
