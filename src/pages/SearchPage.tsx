@@ -152,8 +152,12 @@ const SearchPage = () => {
           </div>
         ) : (
           <div className="text-center py-16">
-            <p className="text-lg text-muted-foreground">{t("search.noProducts")}</p>
-            <p className="text-sm text-muted-foreground mt-1">{t("search.tryDifferent")}</p>
+            <p className="text-lg text-muted-foreground">
+              {dealsMode ? "No active deals right now." : t("search.noProducts")}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {dealsMode ? "Check back soon!" : t("search.tryDifferent")}
+            </p>
           </div>
         )}
       </div>
