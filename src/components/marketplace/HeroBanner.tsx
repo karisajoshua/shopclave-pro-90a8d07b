@@ -136,7 +136,7 @@ const CATEGORY_CARDS = [
       { name: "Bundles", slug: "bundles", image: "https://images.unsplash.com/photo-1556742031-c6961e8560b0?w=200&q=80" },
       { name: "New Arrivals", slug: "new-arrivals", image: catNewArrivals },
     ],
-    seeAllLink: "/search",
+    seeAllLink: "/search?deals=1",
   },
 ];
 
