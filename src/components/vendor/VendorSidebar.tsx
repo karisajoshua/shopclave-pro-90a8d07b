@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle, Images } from "lucide-react";
+import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle, Images, GraduationCap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -45,6 +45,10 @@ const groups: { label: string; items: { title: string; url: string; icon: any }[
       { title: "Messages", url: "/vendor/messages", icon: MessageCircle },
       { title: "Notifications", url: "/vendor/notifications", icon: Bell },
     ],
+  },
+  {
+    label: "Learn",
+    items: [{ title: "Help Center", url: "/vendor/resources", icon: GraduationCap }],
   },
   {
     label: "System",
