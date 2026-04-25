@@ -38,6 +38,8 @@ export const PERMISSIONS = {
   TEAM_MANAGE: "team.manage",
 
   MARKETING_MANAGE: "marketing.manage",
+
+  RESOURCES_MANAGE: "resources.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -83,7 +85,10 @@ export const PERMISSION_GROUPS: { label: string; perms: { key: PermissionKey; la
   },
   {
     label: "Content",
-    perms: [{ key: PERMISSIONS.MARKETING_MANAGE, label: "Manage marketing (banners & promotions)" }],
+    perms: [
+      { key: PERMISSIONS.MARKETING_MANAGE, label: "Manage marketing (banners & promotions)" },
+      { key: PERMISSIONS.RESOURCES_MANAGE, label: "Manage vendor resource center" },
+    ],
   },
   {
     label: "System",

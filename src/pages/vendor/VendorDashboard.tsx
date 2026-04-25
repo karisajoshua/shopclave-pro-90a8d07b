@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useOutletContext } from "react-router-dom";
-import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle, Clock, CheckCircle2, Check } from "lucide-react";
+import { useOutletContext, Link } from "react-router-dom";
+import { Eye, MousePointer, Package, Users, AlertTriangle, ArrowUpCircle, Clock, CheckCircle2, Check, GraduationCap, ChevronRight, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,6 +97,21 @@ const VendorDashboard = () => {
     },
     enabled: !!vendor,
   });
+
+  const { data: featuredResources = [] } = useQuery({
+    queryKey: ["dash-featured-resources"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("resources")
+        .select("id, slug, title, summary, cover_image_url, resource_type, duration_minutes")
+        .eq("is_published", true)
+        .eq("is_featured", true)
+        .order("display_order")
+        .limit(3);
+      return data || [];
+    },
+  });
+
 
   const totalViews = analytics?.filter((a: any) => a.event_type === "view").length || 0;
   const totalClicks = analytics?.filter((a: any) => ["call_click", "whatsapp_click", "website_click"].includes(a.event_type)).length || 0;
@@ -200,6 +215,47 @@ const VendorDashboard = () => {
             <p className="text-xl font-bold">{stat.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Help & Tutorials */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="admin-section-label flex items-center gap-1.5">
+            <GraduationCap className="h-3.5 w-3.5 text-primary" /> Help & Tutorials
+          </h3>
+          <Link to="/vendor/resources" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+            Browse all guides <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {featuredResources.length === 0 ? (
+          <Link to="/vendor/resources" className="admin-card admin-card-hover p-4 flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><GraduationCap className="h-5 w-5" /></div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm">Visit the Help Center</p>
+              <p className="text-xs text-muted-foreground">Watch quick videos and read step-by-step guides on how to grow your store.</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+          </Link>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {featuredResources.map((r: any) => (
+              <Link key={r.id} to={`/vendor/resources/r/${r.slug}`} className="admin-card admin-card-hover overflow-hidden group">
+                <div className="aspect-video bg-muted relative">
+                  {r.cover_image_url ? (
+                    <img src={r.cover_image_url} alt={r.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground"><PlayCircle className="h-10 w-10" /></div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="font-semibold text-sm line-clamp-1">{r.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{r.summary}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{r.duration_minutes} min · {r.resource_type}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Top Viewed Products */}

@@ -948,6 +948,221 @@ export type Database = {
         }
         Relationships: []
       }
+      resource_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      resource_feedback: {
+        Row: {
+          created_at: string
+          helpful: boolean
+          id: string
+          resource_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          helpful: boolean
+          id?: string
+          resource_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          helpful?: boolean
+          id?: string
+          resource_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_feedback_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          position: number
+          resource_id: string
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          position?: number
+          resource_id: string
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          position?: number
+          resource_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_images_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_progress: {
+        Row: {
+          id: string
+          last_viewed_at: string
+          progress_percent: number
+          resource_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_viewed_at?: string
+          progress_percent?: number
+          resource_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_viewed_at?: string
+          progress_percent?: number
+          resource_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_progress_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          attachments: Json
+          category_id: string | null
+          content: string | null
+          cover_image_url: string | null
+          created_at: string
+          difficulty: string
+          display_order: number
+          duration_minutes: number
+          id: string
+          is_featured: boolean
+          is_published: boolean
+          resource_type: string
+          slug: string
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          video_provider: string | null
+          video_url: string | null
+          view_count: number
+        }
+        Insert: {
+          attachments?: Json
+          category_id?: string | null
+          content?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          difficulty?: string
+          display_order?: number
+          duration_minutes?: number
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          resource_type?: string
+          slug: string
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          video_provider?: string | null
+          video_url?: string | null
+          view_count?: number
+        }
+        Update: {
+          attachments?: Json
+          category_id?: string | null
+          content?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          difficulty?: string
+          display_order?: number
+          duration_minutes?: number
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          resource_type?: string
+          slug?: string
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          video_provider?: string | null
+          video_url?: string | null
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "resource_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -1542,6 +1757,7 @@ export type Database = {
         }[]
       }
       can_manage_marketing: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_resources: { Args: { _user_id: string }; Returns: boolean }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1581,6 +1797,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_resource_view: {
+        Args: { _resource_id: string }
+        Returns: undefined
       }
       increment_short_link_click: {
         Args: { _code: string }
