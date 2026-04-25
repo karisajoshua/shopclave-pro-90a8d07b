@@ -46,6 +46,7 @@ import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminTeam from "./pages/admin/AdminTeam";
 import AdminMarketing from "./pages/admin/AdminMarketing";
+import AdminResources from "./pages/admin/AdminResources";
 import RequirePermission from "./components/admin/RequirePermission";
 import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
@@ -66,6 +67,9 @@ import AdminMessages from "./pages/admin/AdminMessages";
 import AdminEvidence from "./pages/admin/AdminEvidence";
 import AdminMedia from "./pages/admin/AdminMedia";
 import VendorMedia from "./pages/vendor/VendorMedia";
+import VendorResources from "./pages/vendor/VendorResources";
+import VendorResourceCategory from "./pages/vendor/VendorResourceCategory";
+import VendorResourceDetail from "./pages/vendor/VendorResourceDetail";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 import OrderChatPage from "./pages/OrderChatPage";
 import EmailUnsubscribePage from "./pages/EmailUnsubscribePage";
@@ -128,6 +132,7 @@ const App = () => (
                   <Route path="team" element={<RequirePermission perm={PERMISSIONS.TEAM_MANAGE}><AdminTeam /></RequirePermission>} />
                   <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
                   <Route path="marketing" element={<RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}><AdminMarketing /></RequirePermission>} />
+                  <Route path="resources" element={<RequirePermission perm={PERMISSIONS.RESOURCES_MANAGE}><AdminResources /></RequirePermission>} />
                 </Route>
 
                 {/* Vendor routes */}
@@ -143,6 +148,9 @@ const App = () => (
                   <Route path="settings" element={<VendorSettings />} />
                   <Route path="bulk-import" element={<VendorBulkImport />} />
                   <Route path="media" element={<VendorMedia />} />
+                  <Route path="resources" element={<VendorResources />} />
+                  <Route path="resources/c/:slug" element={<VendorResourceCategory />} />
+                  <Route path="resources/r/:slug" element={<VendorResourceDetail />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
