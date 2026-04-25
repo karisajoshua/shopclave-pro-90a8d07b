@@ -98,7 +98,21 @@ const VendorDashboard = () => {
     enabled: !!vendor,
   });
 
-  const totalViews = analytics?.filter((a: any) => a.event_type === "view").length || 0;
+  const { data: featuredResources = [] } = useQuery({
+    queryKey: ["dash-featured-resources"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("resources")
+        .select("id, slug, title, summary, cover_image_url, resource_type, duration_minutes")
+        .eq("is_published", true)
+        .eq("is_featured", true)
+        .order("display_order")
+        .limit(3);
+      return data || [];
+    },
+  });
+
+
   const totalClicks = analytics?.filter((a: any) => ["call_click", "whatsapp_click", "website_click"].includes(a.event_type)).length || 0;
   const activeListings = products?.filter((p: any) => p.status === "active").length || 0;
   const maxListings = subscription?.max_listings ?? 5;
