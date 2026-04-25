@@ -14,6 +14,7 @@ const SearchPage = () => {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const categorySlug = searchParams.get("category") || "";
+  const dealsMode = searchParams.get("deals") === "1";
   const [query, setQuery] = useState(initialQuery);
   const { t } = useTranslation();
 
@@ -52,7 +53,7 @@ const SearchPage = () => {
   const categoryReady = !categorySlug || !categoryLoading;
 
   const { data: products, isLoading } = useQuery({
-    queryKey: ["search-products", query, categorySlug, categoryIds.join(",")],
+    queryKey: ["search-products", query, categorySlug, categoryIds.join(","), dealsMode],
     enabled: categoryReady,
     queryFn: async () => {
       if (categorySlug && categoryIds.length === 0) return [];
@@ -62,7 +63,7 @@ const SearchPage = () => {
         .select("*, vendors(store_name), product_images(url)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .limit(48);
+        .limit(dealsMode ? 96 : 48);
 
       if (query.trim()) {
         q = q.ilike("name", `%${query.trim()}%`);
@@ -72,8 +73,24 @@ const SearchPage = () => {
         q = q.in("category_id", categoryIds);
       }
 
+      if (dealsMode) {
+        q = q.not("compare_at_price", "is", null);
+      }
+
       const { data } = await q;
-      return data || [];
+      let list = data || [];
+
+      if (dealsMode) {
+        list = list
+          .filter((p: any) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price))
+          .sort((a: any, b: any) => {
+            const da = (Number(a.compare_at_price) - Number(a.price)) / Number(a.compare_at_price);
+            const db = (Number(b.compare_at_price) - Number(b.price)) / Number(b.compare_at_price);
+            return db - da;
+          });
+      }
+
+      return list;
     },
   });
 
@@ -93,9 +110,11 @@ const SearchPage = () => {
 
   const headingText = query
     ? `${t("search.resultsFor")} "${query}"`
-    : categoryInfo?.name
-      ? categoryInfo.name
-      : t("search.allProducts");
+    : dealsMode
+      ? "Today's Deals"
+      : categoryInfo?.name
+        ? categoryInfo.name
+        : t("search.allProducts");
 
   return (
     <MarketplaceLayout>
@@ -133,8 +152,12 @@ const SearchPage = () => {
           </div>
         ) : (
           <div className="text-center py-16">
-            <p className="text-lg text-muted-foreground">{t("search.noProducts")}</p>
-            <p className="text-sm text-muted-foreground mt-1">{t("search.tryDifferent")}</p>
+            <p className="text-lg text-muted-foreground">
+              {dealsMode ? "No active deals right now." : t("search.noProducts")}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {dealsMode ? "Check back soon!" : t("search.tryDifferent")}
+            </p>
           </div>
         )}
       </div>

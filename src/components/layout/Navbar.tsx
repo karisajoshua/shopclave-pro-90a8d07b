@@ -190,7 +190,7 @@ const Navbar = () => {
         {/* === MOBILE QUICK LINKS === */}
         <div className="md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground">
           <div className="flex items-center gap-0 h-9 text-xs overflow-x-auto scrollbar-hide px-1">
-            <Link to="/search" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
+            <Link to="/search?deals=1" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
             <Link to="/vendor/register" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
             <Link to="/search?category=electronics" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.electronics")}</Link>
             <Link to="/search?category=fashion" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.fashion")}</Link>
@@ -219,7 +219,7 @@ const Navbar = () => {
               <Menu className="h-5 w-5" />
               <span>{t("nav.all")}</span>
             </button>
-            <Link to="/search" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
+            <Link to="/search?deals=1" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
             <Link to="/vendor/register" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
             <Link to="/search?category=electronics" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.electronics")}</Link>
             <Link to="/search?category=fashion" className="px-3 py-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded shrink-0 whitespace-nowrap">{t("nav.fashion")}</Link>
