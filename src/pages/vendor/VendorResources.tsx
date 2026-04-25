@@ -60,7 +60,7 @@ const VendorResources = () => {
       <div className="rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border p-5 md:p-6">
         <div className="flex items-center gap-2 mb-2">
           <GraduationCap className="h-5 w-5 text-primary" />
-          <h1 className="text-xl md:text-2xl font-bold">Vendor Help Center</h1>
+          <h1 className="text-xl md:text-2xl font-bold">Barakaz Academy</h1>
         </div>
         <p className="text-sm text-muted-foreground mb-4 max-w-2xl">
           Watch quick videos and read step-by-step guides on how to grow your store, manage orders, and use every Barakaz feature.

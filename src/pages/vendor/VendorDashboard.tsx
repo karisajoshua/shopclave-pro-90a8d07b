@@ -221,7 +221,7 @@ const VendorDashboard = () => {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="admin-section-label flex items-center gap-1.5">
-            <GraduationCap className="h-3.5 w-3.5 text-primary" /> Help & Tutorials
+            <GraduationCap className="h-3.5 w-3.5 text-primary" /> Barakaz Academy
           </h3>
           <Link to="/vendor/resources" className="text-xs text-primary hover:underline flex items-center gap-0.5">
             Browse all guides <ChevronRight className="h-3 w-3" />
@@ -231,7 +231,7 @@ const VendorDashboard = () => {
           <Link to="/vendor/resources" className="admin-card admin-card-hover p-4 flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><GraduationCap className="h-5 w-5" /></div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm">Visit the Help Center</p>
+              <p className="font-semibold text-sm">Visit Barakaz Academy</p>
               <p className="text-xs text-muted-foreground">Watch quick videos and read step-by-step guides on how to grow your store.</p>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />

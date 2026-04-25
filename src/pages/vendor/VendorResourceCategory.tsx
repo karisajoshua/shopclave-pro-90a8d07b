@@ -41,7 +41,7 @@ const VendorResourceCategory = () => {
 
   return (
     <div className="space-y-5">
-      <Link to="/vendor/resources"><Button variant="ghost" size="sm"><ChevronLeft className="h-4 w-4 mr-1" />Back to Help Center</Button></Link>
+      <Link to="/vendor/resources"><Button variant="ghost" size="sm"><ChevronLeft className="h-4 w-4 mr-1" />Back to Barakaz Academy</Button></Link>
 
       {category ? (
         <>
