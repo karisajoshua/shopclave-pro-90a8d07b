@@ -134,6 +134,7 @@ const App = () => (
                   <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
                   <Route path="marketing" element={<RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}><AdminMarketing /></RequirePermission>} />
                   <Route path="resources" element={<RequirePermission perm={PERMISSIONS.RESOURCES_MANAGE}><AdminResources /></RequirePermission>} />
+                  <Route path="documentation" element={<RequirePermission perm={PERMISSIONS.DOCUMENTATION_VIEW}><AdminDocumentation /></RequirePermission>} />
                 </Route>
 
                 {/* Vendor routes */}
