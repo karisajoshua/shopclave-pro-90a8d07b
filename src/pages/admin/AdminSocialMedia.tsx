@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet-async";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,10 +73,6 @@ const AdminSocialMedia = () => {
 
   return (
     <div className="space-y-6">
-      <Helmet>
-        <title>Social Media | Admin</title>
-        <meta name="description" content="Plan, schedule and publish posts to your connected social accounts via Ocoya." />
-      </Helmet>
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
