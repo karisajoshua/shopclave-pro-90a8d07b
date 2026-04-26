@@ -23,6 +23,7 @@ import ProductReviews from "@/components/product/ProductReviews";
 import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs";
 import ChatDialog from "@/components/shared/ChatDialog";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import { getDisplayProductRating, seededRandom } from "@/lib/product-rating-fallback";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,25 +32,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-// Deterministic seeded random from product ID
-const seededRandom = (seed: string, min: number, max: number) => {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
-  }
-  return min + (Math.abs(hash) % (max - min + 1));
-};
-
-const seededFloat = (seed: string, min: number, max: number, decimals = 1) => {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
-  }
-  const range = (max - min) * Math.pow(10, decimals);
-  const val = min + (Math.abs(hash) % (range + 1)) / Math.pow(10, decimals);
-  return parseFloat(val.toFixed(decimals));
-};
 
 // Social share buttons component
 const SocialShare = ({ url, title }: { url: string; title: string }) => {
@@ -535,9 +517,7 @@ const ProductDetailPage = () => {
 
             {/* Rating */}
             {(() => {
-              const hasRealReviews = (reviewStats?.count || 0) > 0;
-              const displayRating = hasRealReviews ? reviewStats!.avg : seededFloat(product.id, 4.2, 4.7);
-              const displayCount = hasRealReviews ? reviewStats!.count : seededRandom(product.id + "rc", 24, 156);
+              const displayReviewStats = getDisplayProductRating(product.id, reviewStats?.avg ?? 0, reviewStats?.count ?? 0);
               const soldCount = seededRandom(product.id + "sold", 50, 500);
               return (
                 <div className="flex items-center gap-2 flex-wrap">
@@ -545,12 +525,12 @@ const ProductDetailPage = () => {
                     {[1, 2, 3, 4, 5].map((i) => (
                       <Star
                         key={i}
-                        className={`h-4 w-4 ${i <= Math.round(displayRating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
+                        className={`h-4 w-4 ${i <= Math.round(displayReviewStats.rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
                       />
                     ))}
                   </div>
                   <button onClick={scrollToReviews} className="text-sm text-primary hover:underline">
-                    {displayRating.toFixed(1)} ({displayCount} {displayCount === 1 ? "rating" : "ratings"})
+                    {displayReviewStats.rating.toFixed(1)} ({displayReviewStats.reviewCount} {displayReviewStats.reviewCount === 1 ? "rating" : "ratings"})
                   </button>
                   <span className="text-sm text-muted-foreground">•</span>
                   <span className="text-sm text-muted-foreground">{soldCount} sold</span>
