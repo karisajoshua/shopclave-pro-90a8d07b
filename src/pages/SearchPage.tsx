@@ -14,6 +14,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 type SortKey = "discount_desc" | "price_asc" | "price_desc" | "newest";
 
