@@ -1778,6 +1778,14 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_product_ratings: {
+        Args: { product_ids: string[] }
+        Returns: {
+          avg_rating: number
+          product_id: string
+          review_count: number
+        }[]
+      }
       get_public_profiles: {
         Args: { user_ids: string[] }
         Returns: {

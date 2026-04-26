@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Phone, MessageCircle, Globe, Users, ShieldCheck, Calendar, Store as StoreIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 type SortOption = "newest" | "price_asc" | "price_desc";
 
@@ -119,6 +120,8 @@ const VendorStorePage = () => {
     else if (sort === "price_desc") arr.sort((a, b) => b.price - a.price);
     return arr;
   }, [products, sort]);
+
+  const { data: ratingsMap = {} } = useProductRatings(sortedProducts.map((p: any) => p.id));
 
   if (vendorLoading) {
     return (
@@ -289,6 +292,8 @@ const VendorStorePage = () => {
                       vendorId={vendor.id}
                       vendorName={vendor.store_name}
                       dealEndsAt={p.deal_ends_at}
+                      rating={ratingsMap[p.id]?.avg ?? 0}
+                      reviewCount={ratingsMap[p.id]?.count ?? 0}
                     />
                   );
                 })}

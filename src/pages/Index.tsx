@@ -11,6 +11,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 const DEFAULT_CATEGORIES = [
   { name: "Electronics", slug: "electronics", image: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80" },
@@ -92,6 +93,8 @@ const Index = () => {
     image: c.image_url || barakazIcon,
   })) : DEFAULT_CATEGORIES;
 
+  const { data: ratingsMap = {} } = useProductRatings(products.map((p: any) => p.id));
+
   const displayProducts = products.length
     ? products.map((p: any) => ({
         id: p.id,
@@ -102,8 +105,8 @@ const Index = () => {
         vendorId: p.vendor_id,
         vendorName: p.vendors?.store_name || "Unknown Seller",
         slug: p.slug,
-        rating: 4.5,
-        reviewCount: 0,
+        rating: ratingsMap[p.id]?.avg ?? 0,
+        reviewCount: ratingsMap[p.id]?.count ?? 0,
         dealEndsAt: p.deal_ends_at || null,
       }))
     : isFirstRunDemo

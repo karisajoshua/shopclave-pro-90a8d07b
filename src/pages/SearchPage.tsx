@@ -14,6 +14,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 type SortKey = "discount_desc" | "price_asc" | "price_desc" | "newest";
 
@@ -258,6 +259,8 @@ const SearchPage = () => {
     return sorted;
   }, [products, effectivePriceRange, minDiscount, sort, dealsMode]);
 
+  const { data: ratingsMap = {} } = useProductRatings(filteredSorted.map((p: any) => p.id));
+
   const displayProducts = filteredSorted.map((p: any) => ({
     id: p.id,
     name: p.name,
@@ -267,8 +270,8 @@ const SearchPage = () => {
     vendorId: p.vendor_id,
     vendorName: p.vendors?.store_name || "Unknown Seller",
     slug: p.slug,
-    rating: 4.5,
-    reviewCount: 0,
+    rating: ratingsMap[p.id]?.avg ?? 0,
+    reviewCount: ratingsMap[p.id]?.count ?? 0,
     dealEndsAt: p.deal_ends_at || null,
   }));
 
