@@ -121,6 +121,8 @@ const VendorStorePage = () => {
     return arr;
   }, [products, sort]);
 
+  const { data: ratingsMap = {} } = useProductRatings(sortedProducts.map((p: any) => p.id));
+
   if (vendorLoading) {
     return (
       <MarketplaceLayout>
