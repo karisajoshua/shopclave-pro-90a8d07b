@@ -47,6 +47,7 @@ import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminTeam from "./pages/admin/AdminTeam";
 import AdminMarketing from "./pages/admin/AdminMarketing";
 import AdminResources from "./pages/admin/AdminResources";
+import AdminDocumentation from "./pages/admin/AdminDocumentation";
 import RequirePermission from "./components/admin/RequirePermission";
 import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
