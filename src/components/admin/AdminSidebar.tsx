@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree,
   Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield, UserCog,
-  Megaphone, GraduationCap,
+  Megaphone, GraduationCap, BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -72,6 +72,7 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Users", url: "/admin/users", icon: Users, permission: PERMISSIONS.USERS_VIEW },
       { title: "Team & Roles", url: "/admin/team", icon: UserCog, permission: PERMISSIONS.TEAM_MANAGE },
       { title: "Settings", url: "/admin/settings", icon: Settings, permission: PERMISSIONS.SETTINGS_MANAGE },
+      { title: "Documentation", url: "/admin/documentation", icon: BookOpen, permission: PERMISSIONS.DOCUMENTATION_VIEW },
     ],
   },
 ];
