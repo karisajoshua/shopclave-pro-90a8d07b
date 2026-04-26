@@ -292,6 +292,8 @@ const VendorStorePage = () => {
                       vendorId={vendor.id}
                       vendorName={vendor.store_name}
                       dealEndsAt={p.deal_ends_at}
+                      rating={ratingsMap[p.id]?.avg ?? 0}
+                      reviewCount={ratingsMap[p.id]?.count ?? 0}
                     />
                   );
                 })}
