@@ -1243,6 +1243,63 @@ export type Database = {
         }
         Relationships: []
       }
+      social_media_post_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ocoya_post_id: string | null
+          payload: Json
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ocoya_post_id?: string | null
+          payload?: Json
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ocoya_post_id?: string | null
+          payload?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      social_media_settings: {
+        Row: {
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string | null
+          workspace_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string | null
+          workspace_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string | null
+          workspace_name?: string | null
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string

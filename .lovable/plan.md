@@ -1,85 +1,125 @@
-# Comprehensive Admin Documentation — Plan
+## Social Media Marketing (Ocoya) — Admin Section
 
-Deliver a single canonical "Barakaz Admin Manual" in **three synchronized formats** (Markdown master → PDF + DOCX), covering every feature visible to admin users, with a workflows-first section followed by a technical appendix.
+Add a new **Social Media** module in the admin dashboard that lets admins compose, schedule, list, update and delete posts across their connected social accounts (Instagram, Facebook, X, LinkedIn, TikTok, etc.) using the **Ocoya API**. All API calls go through a Supabase Edge Function so the API key stays server-side (Ocoya explicitly forbids client-side use).
 
-## Deliverables (in `/mnt/documents/`)
+---
 
-- `Barakaz-Admin-Manual.md` — master source
-- `Barakaz-Admin-Manual.pdf` — branded printable manual (cover, TOC, page numbers)
-- `Barakaz-Admin-Manual.docx` — editable Word doc with same structure
+### What the user gets
 
-## Document Structure
+A new sidebar entry **Social Media** under the **Content** group, with three tabs:
 
-### Front matter
-- Cover page (Barakaz brand, doc title, version, generated date)
-- Table of contents (auto-generated, hyperlinked)
-- "How to read this manual" (audience: admin staff first, technical appendix second)
-- Glossary of key terms (vendor, order item, dispute, evidence vault, team role, permission key, RLS, edge function)
+1. **Compose & Schedule** — write caption, attach images from the existing Media Library (or paste URLs), pick which social profiles to post to, and either save as draft or schedule for a future date/time. Optionally pre-fill from a selected product (uses product title, description, and first image).
+2. **Scheduled & Drafts** — paginated list of upcoming/draft posts pulled from Ocoya, with edit / delete actions and status badges (draft, scheduled, published, failed).
+3. **Connected Accounts** — read-only list of social profiles connected in Ocoya (network, handle, avatar). Includes a "Connect more accounts" button that deep-links to the user's Ocoya workspace, since social accounts are linked inside Ocoya itself, not here.
 
-### Part 1 — Getting Around the Admin Panel
-- Signing in & role check (admin role required, redirect logic)
-- Admin layout: sidebar groups, collapsible icon mode, header (notifications bell, search, profile menu)
-- Permission gating model (Super Admin vs scoped Team Roles)
-- Mobile vs desktop behavior
+A status banner at the top shows the connected Ocoya workspace name; a settings icon lets the admin switch workspace if more than one exists.
 
-### Part 2 — Feature Reference (one chapter per sidebar item)
+---
 
-Each chapter follows the same template:
-**Purpose → How to access → Page anatomy → Step-by-step workflows → Filters & search → Bulk actions → Edge cases & validation → Required permission → Underlying tables/RLS**
+### Workflow
 
-Chapters:
-1. **Dashboard** (`/admin`) — KPI cards, performance graphs, Action Required panel, Quick Nav grid, Recent Activity feed, Site Analytics widget
-2. **Orders** (`/admin/orders`) — order list, status filter, order details, status transitions, payment status, shipping address view
-3. **Evidence Vault** (`/admin/evidence`) — disputes list, opening/closing disputes, admin notes, chat snapshot, attachments, audit log, risk flags
-4. **Messages** (`/admin/messages`) — buyer↔vendor conversations, message edit history, soft-deleted messages, system messages
-5. **Notifications** (`/admin/notifications`) — broadcast to all users / specific vendor / specific user, title + message composer
-6. **Products** (`/admin/products`) — full catalog view, search, edit images & video, set deal timer (compare_at_price + deal_ends_at), feature toggle, activate/deactivate, status pills
-7. **Categories** (`/admin/categories`) — tree view, create/edit/delete, parent-child, slug auto-gen, image upload
-8. **Bulk Import** (`/admin/bulk-import`) — CSV/Excel template, vendor selector, validation, dry-run, error report
-9. **Media Library** (`/admin/media`) — cross-vendor image management, upload, delete, copy short link
-10. **Withdrawals** (`/admin/withdrawals`) — pending payouts queue, approve/reject with notes, payout history
-11. **Subscriptions** (`/admin/subscriptions`) — pending payment verifications, all vendor subscriptions, plan tiers, manual confirm/reject
-12. **Analytics** (`/admin/analytics`) — site analytics cache, vendor analytics events, traffic, top products, refresh schedule
-13. **Marketing** (`/admin/marketing`) — hero banners (carousel), promo strip (brand & product), schedule windows, display order, image upload, link picker (category/product/vendor/URL)
-14. **Barakaz Academy** (`/admin/resources`) — categories, lessons (article/video), publish/feature, gallery, attachments, tags, difficulty, duration, view counts, feedback
-15. **Vendors** (`/admin/vendors`) — vendor list, approve/suspend, store profile review
-16. **Users** (`/admin/users`) — profile list, search, assign/remove roles (vendor, admin)
-17. **Team & Roles** (`/admin/team`) — create custom roles, permission matrix, assign admins to roles, Super Admin behavior
-18. **Settings** (`/admin/settings`) — M-Pesa configuration (till, paybill, account name, phone, instructions), platform-wide toggles
+```text
+Admin → /admin/social
+  ├─ Compose tab
+  │    caption + media + profiles + schedule date
+  │    "Post now" / "Schedule" / "Save draft"
+  │       → Edge function `ocoya-proxy` → POST /post
+  ├─ Scheduled & Drafts tab
+  │    list → Edge function → GET /post (with workspaceId)
+  │    edit → PATCH /post/:id   delete → DELETE /post/:id
+  └─ Connected Accounts tab
+       → Edge function → GET /social-profiles
+```
 
-### Part 3 — Cross-Cutting Workflows
-- Approving a new vendor end-to-end
-- Handling a buyer dispute (open → evidence → resolve → audit log)
-- Running a flash sale (deal timer + hero banner + featured products)
-- Onboarding a staff member (create user → assign admin role → assign team role)
-- Processing a withdrawal request
+---
 
-### Part 4 — Technical Appendix
-- **Architecture overview** (React + Vite + Tailwind + shadcn, Supabase backend, edge functions)
-- **Permissions reference table** — every key in `PERMISSIONS` with which sidebar item gates it and which RLS policies use it (`has_permission`, `can_manage_resources`, `has_role`)
-- **Data model** — full table inventory (categories, products, product_variants, product_images, orders, order_items, reviews, vendors, profiles, user_roles, team_roles, team_members, hero_banners, promotions, resources + related, disputes, audit_logs, notifications, chat_messages + attachments + edit_history, withdrawals, subscriptions, platform_settings, site_analytics_cache, vendor_analytics, user_risk_flags, addresses, short_links, cookie_consents, email_send_log/state, email_unsubscribe_tokens, suppressed_emails) — purpose + key columns + RLS summary
-- **Edge functions** — `create-order`, `auth-email-hook`, `process-email-queue`, `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`, `refresh-site-analytics` — what each does, who triggers it
-- **Realtime subscriptions** — which tables admins observe live (orders, messages, notifications)
-- **Security model** — RLS-first, `has_role` SECURITY DEFINER, separate `user_roles` table, audit logging
-- **Storage buckets** — product images, resource media, chat attachments
+### Permissions & access control
 
-## Generation Approach
+- New permission key: `SOCIAL_MEDIA_MANAGE` ("social_media.manage") added to `src/lib/permissions.ts` and to the **Content** group of `PERMISSION_GROUPS` so it shows up in the Team & Roles editor.
+- Route `/admin/social` gated with `<RequirePermission perm={PERMISSIONS.SOCIAL_MEDIA_MANAGE}>` exactly like Marketing/Resources.
+- Sidebar entry only renders if the user has the permission (existing `AdminSidebar` filter logic).
+- Edge function additionally re-checks: it calls `has_role(auth.uid(), 'admin')` AND `has_permission(auth.uid(), 'social_media.manage')` before forwarding any request to Ocoya.
 
-1. Author the master document as Markdown (`Barakaz-Admin-Manual.md`) — single source of truth.
-2. Render PDF via Python + ReportLab (Platypus) with: cover page, branded header/footer, TOC with page numbers, syntax-styled code blocks for SQL/permission keys, tables for the permissions matrix and data model.
-3. Generate DOCX via `docx-js` script with: heading styles (overrides for Heading1-3), TOC field, tables for permissions/data model, page numbering, US Letter page size.
-4. Visual QA: convert PDF and DOCX→PDF to images, inspect every page for clipping/overflow/blank pages, fix and re-render until clean.
-5. Emit `<lov-artifact>` tags for all three files so the user can open/download them inline.
+---
 
-## Style & Branding
+### Data model (one new table + one settings row)
 
-- Use Barakaz orange (deep orange accent) for headings & dividers, charcoal body text, white background
-- Inter / Helvetica family for body, bold sans for headings
-- Keep tables narrow enough for portrait US Letter
-- Number every section (1, 1.1, 1.1.1) for cross-referencing
-- Include a "Quick Reference" foldout: sidebar map + permission key cheatsheet on a single page
+`public.social_media_settings` — single-row table holding workspace selection and metadata cache:
 
-## Out of Scope
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| workspace_id | text | currently selected Ocoya workspace |
+| workspace_name | text | for display |
+| last_synced_at | timestamptz | |
+| updated_by | uuid | references auth user |
+| updated_at | timestamptz | trigger-managed |
 
-- No code changes to the running app
-- No new screenshots captured from the live preview (would require browser tooling and be brittle); the manual describes UI structure in words and ASCII layout sketches instead. If you want real screenshots embedded, say so and I'll add a screenshot-capture pass to the plan.
+RLS: only users with `admin` role (and `social_media.manage` permission) can read/update. No vendor or customer access.
+
+`public.social_media_post_log` — audit trail of admin actions (compose, schedule, delete) so we can investigate who scheduled what:
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| user_id | uuid | actor |
+| ocoya_post_id | text | id returned by Ocoya |
+| action | text | created / updated / deleted |
+| payload | jsonb | snapshot |
+| created_at | timestamptz | |
+
+RLS: insert via SECURITY DEFINER function, select restricted to admins.
+
+The Ocoya API itself is the source of truth for posts — we do not mirror the post list in our DB.
+
+---
+
+### Edge function: `ocoya-proxy`
+
+A single thin proxy function in `supabase/functions/ocoya-proxy/index.ts`:
+
+- Validates the caller's JWT, then checks admin role + permission via the existing `has_permission` RPC.
+- Reads `OCOYA_API_KEY` from Supabase secrets.
+- Accepts `{ method, path, query, body }` from the client and forwards to `https://app.ocoya.com/api/_public/v1{path}` with the `X-API-Key` header.
+- Whitelists allowed paths: `/me`, `/workspaces`, `/social-profiles`, `/post`, `/post/:id`, `/automation`, `/automation/:id`, `/automation/:id/start`, `/automation/:id/pause`. Anything else → 403.
+- Logs every mutating call (POST/PATCH/DELETE) into `social_media_post_log` via the service-role client.
+- Returns `{ status, data }` to the caller, including CORS headers.
+
+`supabase/config.toml` gets `verify_jwt = true` for this function (we explicitly want a logged-in admin).
+
+---
+
+### Frontend pieces
+
+New files:
+- `src/pages/admin/AdminSocialMedia.tsx` — page with Tabs (Compose / Scheduled / Accounts) and the workspace banner.
+- `src/components/admin/social/ComposeForm.tsx` — caption textarea (10k char counter), media picker (reuses `MediaLibrary`), profile multi-select chips, schedule date/time, "Pre-fill from product" combobox.
+- `src/components/admin/social/ScheduledList.tsx` — table/cards of posts with status badges, edit dialog, delete confirm.
+- `src/components/admin/social/AccountsList.tsx` — grid of connected profiles.
+- `src/hooks/useOcoya.ts` — typed wrapper around `supabase.functions.invoke('ocoya-proxy', …)` plus React Query queries: `useOcoyaProfiles`, `useOcoyaPosts`, `useCreatePost`, `useUpdatePost`, `useDeletePost`, `useWorkspaces`, `useMe`.
+
+Edits:
+- `src/lib/permissions.ts` — add `SOCIAL_MEDIA_MANAGE` and group entry.
+- `src/components/admin/AdminSidebar.tsx` — add **Social Media** under **Content** group with `Share2` icon.
+- `src/App.tsx` — register `/admin/social` route gated by the new permission.
+- `src/pages/admin/AdminDashboard.tsx` (optional) — small "Schedule a post" quick-action card.
+
+---
+
+### Setup steps (in order, after approval)
+
+1. Create the migration: new permission grant for default admin role (`*` already covers it), `social_media_settings`, `social_media_post_log`, RLS policies, and `updated_at` trigger.
+2. Add `SOCIAL_MEDIA_MANAGE` permission constant + group.
+3. Add the `/admin/social` route, sidebar link, and page shell.
+4. Request the **OCOYA_API_KEY** secret from you (you mentioned `4559e13f-0734-417c-b8cb-fb842ed1d93a` in the message — once approved I'll send the secret-add prompt so you can paste the real key from https://www.app.ocoya.com/general/settings/api).
+5. Implement the `ocoya-proxy` Edge Function with admin/permission check, whitelist, and logging.
+6. Build the Compose / Scheduled / Accounts UI wired through the React Query hooks.
+7. After deploy, you visit Social Media → it auto-calls `/me` and `/workspaces`, you pick the active workspace, and you can compose your first scheduled post.
+
+---
+
+### Notes / limits worth knowing
+
+- Ocoya rate-limits API calls; we surface 429s as a toast and back off.
+- Connecting new social accounts (OAuth to Instagram/Facebook/etc.) must happen inside the Ocoya app; we link out to it. The API only exposes already-linked profiles.
+- Media uploaded via our Media Library must be publicly reachable URLs (Ocoya fetches them) — the existing `product-images` and `marketing-assets` buckets are already public, so they work; the private `chat-attachments` bucket will not.
