@@ -14,17 +14,57 @@ const OCOYA_BASE = "https://app.ocoya.com/api/_public/v1";
 
 // Whitelist of allowed Ocoya endpoints. Use regex so we can match dynamic ids.
 const ALLOWED_PATHS: { method: string; pattern: RegExp }[] = [
+  // Identity / workspaces
   { method: "GET", pattern: /^\/me$/ },
   { method: "GET", pattern: /^\/workspaces$/ },
+
+  // Social profiles
   { method: "GET", pattern: /^\/social-profiles$/ },
+  { method: "GET", pattern: /^\/social-profiles\/[A-Za-z0-9_-]+$/ },
+
+  // Posts
   { method: "GET", pattern: /^\/post$/ },
   { method: "POST", pattern: /^\/post$/ },
+  { method: "GET", pattern: /^\/post\/[A-Za-z0-9_-]+$/ },
   { method: "PATCH", pattern: /^\/post\/[A-Za-z0-9_-]+$/ },
   { method: "DELETE", pattern: /^\/post\/[A-Za-z0-9_-]+$/ },
+  { method: "POST", pattern: /^\/post\/[A-Za-z0-9_-]+\/publish$/ },
+  { method: "POST", pattern: /^\/post\/[A-Za-z0-9_-]+\/duplicate$/ },
+
+  // Templates & designs
+  { method: "GET", pattern: /^\/templates$/ },
+  { method: "GET", pattern: /^\/templates\/[A-Za-z0-9_-]+$/ },
+  { method: "GET", pattern: /^\/designs$/ },
+  { method: "POST", pattern: /^\/designs$/ },
+  { method: "GET", pattern: /^\/designs\/[A-Za-z0-9_-]+$/ },
+  { method: "DELETE", pattern: /^\/designs\/[A-Za-z0-9_-]+$/ },
+
+  // Assets
+  { method: "GET", pattern: /^\/assets$/ },
+  { method: "POST", pattern: /^\/assets$/ },
+  { method: "DELETE", pattern: /^\/assets\/[A-Za-z0-9_-]+$/ },
+
+  // Automation
   { method: "GET", pattern: /^\/automation$/ },
   { method: "GET", pattern: /^\/automation\/[A-Za-z0-9_-]+$/ },
   { method: "POST", pattern: /^\/automation\/[A-Za-z0-9_-]+\/start$/ },
   { method: "POST", pattern: /^\/automation\/[A-Za-z0-9_-]+\/pause$/ },
+  { method: "GET", pattern: /^\/automation\/[A-Za-z0-9_-]+\/runs$/ },
+
+  // AI agents
+  { method: "GET", pattern: /^\/ai\/agents$/ },
+  { method: "POST", pattern: /^\/ai\/caption$/ },
+  { method: "POST", pattern: /^\/ai\/hashtags$/ },
+  { method: "POST", pattern: /^\/ai\/image$/ },
+
+  // Inbox
+  { method: "GET", pattern: /^\/inbox$/ },
+  { method: "POST", pattern: /^\/inbox\/[A-Za-z0-9_-]+\/reply$/ },
+  { method: "PATCH", pattern: /^\/inbox\/[A-Za-z0-9_-]+$/ },
+
+  // Analytics
+  { method: "GET", pattern: /^\/analytics\/overview$/ },
+  { method: "GET", pattern: /^\/analytics\/posts$/ },
 ];
 
 function isAllowed(method: string, path: string): boolean {

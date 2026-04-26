@@ -1,125 +1,127 @@
-## Social Media Marketing (Ocoya) — Admin Section
+## Goal
 
-Add a new **Social Media** module in the admin dashboard that lets admins compose, schedule, list, update and delete posts across their connected social accounts (Instagram, Facebook, X, LinkedIn, TikTok, etc.) using the **Ocoya API**. All API calls go through a Supabase Edge Function so the API key stays server-side (Ocoya explicitly forbids client-side use).
+Replace the simple 3‑tab Social Media page with a full Ocoya-style workspace embedded in the admin dashboard, exposing every capability of the Ocoya API: design templates, post planner + calendar, inbox, automation/workflows, AI agents, integrations, ecommerce sync, and assets.
 
----
+## New layout (inside `/admin/social`)
 
-### What the user gets
-
-A new sidebar entry **Social Media** under the **Content** group, with three tabs:
-
-1. **Compose & Schedule** — write caption, attach images from the existing Media Library (or paste URLs), pick which social profiles to post to, and either save as draft or schedule for a future date/time. Optionally pre-fill from a selected product (uses product title, description, and first image).
-2. **Scheduled & Drafts** — paginated list of upcoming/draft posts pulled from Ocoya, with edit / delete actions and status badges (draft, scheduled, published, failed).
-3. **Connected Accounts** — read-only list of social profiles connected in Ocoya (network, handle, avatar). Includes a "Connect more accounts" button that deep-links to the user's Ocoya workspace, since social accounts are linked inside Ocoya itself, not here.
-
-A status banner at the top shows the connected Ocoya workspace name; a settings icon lets the admin switch workspace if more than one exists.
-
----
-
-### Workflow
+A nested left sub‑sidebar (mirroring Ocoya's screenshot) on top of the existing admin sidebar. Routes become children of `/admin/social/*`:
 
 ```text
-Admin → /admin/social
-  ├─ Compose tab
-  │    caption + media + profiles + schedule date
-  │    "Post now" / "Schedule" / "Save draft"
-  │       → Edge function `ocoya-proxy` → POST /post
-  ├─ Scheduled & Drafts tab
-  │    list → Edge function → GET /post (with workspaceId)
-  │    edit → PATCH /post/:id   delete → DELETE /post/:id
-  └─ Connected Accounts tab
-       → Edge function → GET /social-profiles
+/admin/social
+├── design        Templates & Sizes (browse + open in Ocoya editor)
+├── planner
+│   ├── posts     Compose, drafts, scheduled, published list
+│   └── calendar  Month/Week calendar view of scheduled posts
+├── inbox         Comments / DMs aggregated from connected accounts
+├── automation
+│   ├── workflows  List, start, pause Ocoya automations
+│   └── agents     Ocoya AI agents (caption / hashtag / image)
+├── integrations  Connected social profiles + connect-more deep links
+├── ecommerce     Pull Barakaz products → 1‑click post / bulk schedule
+└── assets        Media library bridge (Barakaz Media + Ocoya assets)
 ```
 
----
+The top page header keeps the workspace selector, "Connected as …" indicator, and "Open Ocoya" button.
 
-### Permissions & access control
+## Backend (Ocoya proxy)
 
-- New permission key: `SOCIAL_MEDIA_MANAGE` ("social_media.manage") added to `src/lib/permissions.ts` and to the **Content** group of `PERMISSION_GROUPS` so it shows up in the Team & Roles editor.
-- Route `/admin/social` gated with `<RequirePermission perm={PERMISSIONS.SOCIAL_MEDIA_MANAGE}>` exactly like Marketing/Resources.
-- Sidebar entry only renders if the user has the permission (existing `AdminSidebar` filter logic).
-- Edge function additionally re-checks: it calls `has_role(auth.uid(), 'admin')` AND `has_permission(auth.uid(), 'social_media.manage')` before forwarding any request to Ocoya.
+Expand `supabase/functions/ocoya-proxy/index.ts` whitelist to cover the full public API surface used by the new UI:
 
----
+```text
+GET    /me
+GET    /workspaces
+GET    /social-profiles
+GET    /social-profiles/:id
+GET    /post              (with status, from, to, profileId filters)
+POST   /post
+PATCH  /post/:id
+DELETE /post/:id
+POST   /post/:id/publish
+POST   /post/:id/duplicate
 
-### Data model (one new table + one settings row)
+GET    /templates
+GET    /templates/:id
+GET    /designs
+POST   /designs
+GET    /designs/:id
+DELETE /designs/:id
 
-`public.social_media_settings` — single-row table holding workspace selection and metadata cache:
+GET    /assets
+POST   /assets
+DELETE /assets/:id
 
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| workspace_id | text | currently selected Ocoya workspace |
-| workspace_name | text | for display |
-| last_synced_at | timestamptz | |
-| updated_by | uuid | references auth user |
-| updated_at | timestamptz | trigger-managed |
+GET    /automation
+GET    /automation/:id
+POST   /automation/:id/start
+POST   /automation/:id/pause
+GET    /automation/:id/runs
 
-RLS: only users with `admin` role (and `social_media.manage` permission) can read/update. No vendor or customer access.
+GET    /ai/agents
+POST   /ai/caption
+POST   /ai/hashtags
+POST   /ai/image
 
-`public.social_media_post_log` — audit trail of admin actions (compose, schedule, delete) so we can investigate who scheduled what:
+GET    /inbox
+POST   /inbox/:id/reply
+PATCH  /inbox/:id            (mark read / archive)
 
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| user_id | uuid | actor |
-| ocoya_post_id | text | id returned by Ocoya |
-| action | text | created / updated / deleted |
-| payload | jsonb | snapshot |
-| created_at | timestamptz | |
+GET    /analytics/overview
+GET    /analytics/posts
+```
 
-RLS: insert via SECURITY DEFINER function, select restricted to admins.
+The proxy keeps:
+- Server‑side `admin` role + `social_media.manage` permission re‑check.
+- Path/method allow‑list (regex patterns) to prevent abuse.
+- Audit logging of all mutating calls into `social_media_post_log`.
+- `OCOYA_API_KEY` injected as `X-API-Key`.
 
-The Ocoya API itself is the source of truth for posts — we do not mirror the post list in our DB.
+If any endpoint above returns 404 from Ocoya (not yet exposed publicly for this account tier), the UI shows an inline "Not available on your Ocoya plan — open in Ocoya" fallback rather than crashing. Endpoints that error universally will be removed from the whitelist after a smoke test.
 
----
+## Frontend
 
-### Edge function: `ocoya-proxy`
+### Files to create
+- `src/pages/admin/social/SocialLayout.tsx` — sub‑sidebar + workspace header + `<Outlet />`
+- `src/pages/admin/social/SocialDesign.tsx` — templates grid + sizes + recent designs (opens editor in Ocoya)
+- `src/pages/admin/social/SocialPosts.tsx` — current Compose + Scheduled list, redesigned as a 2‑pane editor (left: composer, right: live preview per network)
+- `src/pages/admin/social/SocialCalendar.tsx` — month/week calendar with drag‑to‑reschedule (PATCH `/post/:id`)
+- `src/pages/admin/social/SocialInbox.tsx` — threaded comments/DMs with reply
+- `src/pages/admin/social/SocialWorkflows.tsx` — automation list with start/pause + run history
+- `src/pages/admin/social/SocialAgents.tsx` — AI caption / hashtags / image generator (with "Insert into composer")
+- `src/pages/admin/social/SocialIntegrations.tsx` — accounts list, replaces old AccountsList
+- `src/pages/admin/social/SocialEcommerce.tsx` — product picker → bulk caption/template apply → schedule
+- `src/pages/admin/social/SocialAssets.tsx` — Barakaz Media Library bridged with Ocoya `/assets`
 
-A single thin proxy function in `supabase/functions/ocoya-proxy/index.ts`:
+### Files to update
+- `src/hooks/useOcoya.ts` — add hooks: `useOcoyaTemplates`, `useOcoyaDesigns`, `useOcoyaAssets`, `useOcoyaAutomations`, `useStartAutomation`, `usePauseAutomation`, `useOcoyaInbox`, `useReplyInbox`, `useOcoyaAnalytics`, `useGenerateCaption`, `useGenerateHashtags`, `useGenerateImage`, `usePublishNow`, `useDuplicatePost`.
+- `src/pages/admin/AdminSocialMedia.tsx` — becomes a thin redirect to `/admin/social/planner/posts`.
+- `src/App.tsx` — register nested `/admin/social/*` routes wrapped by `SocialLayout`.
+- `src/components/admin/AdminSidebar.tsx` — keep single "Social Media" entry pointing to `/admin/social`.
+- `src/components/admin/social/ComposeForm.tsx` — extended with: rich preview per network, AI assist buttons (calls `/ai/caption`, `/ai/hashtags`), template picker, asset picker from Media Library, multi‑variant per profile.
 
-- Validates the caller's JWT, then checks admin role + permission via the existing `has_permission` RPC.
-- Reads `OCOYA_API_KEY` from Supabase secrets.
-- Accepts `{ method, path, query, body }` from the client and forwards to `https://app.ocoya.com/api/_public/v1{path}` with the `X-API-Key` header.
-- Whitelists allowed paths: `/me`, `/workspaces`, `/social-profiles`, `/post`, `/post/:id`, `/automation`, `/automation/:id`, `/automation/:id/start`, `/automation/:id/pause`. Anything else → 403.
-- Logs every mutating call (POST/PATCH/DELETE) into `social_media_post_log` via the service-role client.
-- Returns `{ status, data }` to the caller, including CORS headers.
+### Visual style
+- Match existing admin look (cards, shadcn) — **not** Ocoya's orange. The reference image is for *layout/feature parity*, not branding. Sub‑sidebar uses existing `admin-sidebar-*` tokens.
+- Composer 2‑pane layout, planner calendar uses `react-day-picker` (already installed).
 
-`supabase/config.toml` gets `verify_jwt = true` for this function (we explicitly want a logged-in admin).
+## Database
 
----
+No schema changes required. Existing tables (`social_media_settings`, `social_media_post_log`) remain. We add a lightweight optional table only if user later wants persisted drafts that aren't yet sent to Ocoya — out of scope for this change.
 
-### Frontend pieces
+## Permissions
 
-New files:
-- `src/pages/admin/AdminSocialMedia.tsx` — page with Tabs (Compose / Scheduled / Accounts) and the workspace banner.
-- `src/components/admin/social/ComposeForm.tsx` — caption textarea (10k char counter), media picker (reuses `MediaLibrary`), profile multi-select chips, schedule date/time, "Pre-fill from product" combobox.
-- `src/components/admin/social/ScheduledList.tsx` — table/cards of posts with status badges, edit dialog, delete confirm.
-- `src/components/admin/social/AccountsList.tsx` — grid of connected profiles.
-- `src/hooks/useOcoya.ts` — typed wrapper around `supabase.functions.invoke('ocoya-proxy', …)` plus React Query queries: `useOcoyaProfiles`, `useOcoyaPosts`, `useCreatePost`, `useUpdatePost`, `useDeletePost`, `useWorkspaces`, `useMe`.
+Continue using single permission `social_media.manage` to gate the entire `/admin/social/*` tree. Sub‑sections do not need their own permissions for now.
 
-Edits:
-- `src/lib/permissions.ts` — add `SOCIAL_MEDIA_MANAGE` and group entry.
-- `src/components/admin/AdminSidebar.tsx` — add **Social Media** under **Content** group with `Share2` icon.
-- `src/App.tsx` — register `/admin/social` route gated by the new permission.
-- `src/pages/admin/AdminDashboard.tsx` (optional) — small "Schedule a post" quick-action card.
+## Out of scope
 
----
+- Building a full design editor inside Barakaz (Ocoya's editor opens in a new tab via deep link).
+- Publishing media uploads directly to Instagram/TikTok bypassing Ocoya.
+- Billing / plan management (handled in Ocoya).
 
-### Setup steps (in order, after approval)
+## Validation steps after build
 
-1. Create the migration: new permission grant for default admin role (`*` already covers it), `social_media_settings`, `social_media_post_log`, RLS policies, and `updated_at` trigger.
-2. Add `SOCIAL_MEDIA_MANAGE` permission constant + group.
-3. Add the `/admin/social` route, sidebar link, and page shell.
-4. Request the **OCOYA_API_KEY** secret from you (you mentioned `4559e13f-0734-417c-b8cb-fb842ed1d93a` in the message — once approved I'll send the secret-add prompt so you can paste the real key from https://www.app.ocoya.com/general/settings/api).
-5. Implement the `ocoya-proxy` Edge Function with admin/permission check, whitelist, and logging.
-6. Build the Compose / Scheduled / Accounts UI wired through the React Query hooks.
-7. After deploy, you visit Social Media → it auto-calls `/me` and `/workspaces`, you pick the active workspace, and you can compose your first scheduled post.
-
----
-
-### Notes / limits worth knowing
-
-- Ocoya rate-limits API calls; we surface 429s as a toast and back off.
-- Connecting new social accounts (OAuth to Instagram/Facebook/etc.) must happen inside the Ocoya app; we link out to it. The API only exposes already-linked profiles.
-- Media uploaded via our Media Library must be publicly reachable URLs (Ocoya fetches them) — the existing `product-images` and `marketing-assets` buckets are already public, so they work; the private `chat-attachments` bucket will not.
+1. `/admin/social` redirects to `/admin/social/planner/posts`.
+2. Sub‑sidebar shows all 8 sections; clicking each loads without error.
+3. Workspace selector still persists to `social_media_settings`.
+4. Compose → Post now / Schedule still creates an Ocoya post and writes audit log.
+5. Calendar shows scheduled posts and drag updates `scheduledAt`.
+6. AI agents return content and "Insert into composer" populates the caption.
+7. Endpoints that 404 on this Ocoya plan show the inline fallback instead of a red error toast.

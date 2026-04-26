@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -48,7 +48,16 @@ import AdminTeam from "./pages/admin/AdminTeam";
 import AdminMarketing from "./pages/admin/AdminMarketing";
 import AdminResources from "./pages/admin/AdminResources";
 import AdminDocumentation from "./pages/admin/AdminDocumentation";
-import AdminSocialMedia from "./pages/admin/AdminSocialMedia";
+import SocialLayout from "./pages/admin/social/SocialLayout";
+import SocialDesign from "./pages/admin/social/SocialDesign";
+import SocialPosts from "./pages/admin/social/SocialPosts";
+import SocialCalendar from "./pages/admin/social/SocialCalendar";
+import SocialInbox from "./pages/admin/social/SocialInbox";
+import SocialWorkflows from "./pages/admin/social/SocialWorkflows";
+import SocialAgents from "./pages/admin/social/SocialAgents";
+import SocialIntegrations from "./pages/admin/social/SocialIntegrations";
+import SocialEcommerce from "./pages/admin/social/SocialEcommerce";
+import SocialAssets from "./pages/admin/social/SocialAssets";
 import RequirePermission from "./components/admin/RequirePermission";
 import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
@@ -135,7 +144,20 @@ const App = () => (
                   <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
                   <Route path="marketing" element={<RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}><AdminMarketing /></RequirePermission>} />
                   <Route path="resources" element={<RequirePermission perm={PERMISSIONS.RESOURCES_MANAGE}><AdminResources /></RequirePermission>} />
-                  <Route path="social" element={<RequirePermission perm={PERMISSIONS.SOCIAL_MEDIA_MANAGE}><AdminSocialMedia /></RequirePermission>} />
+                  <Route path="social" element={<RequirePermission perm={PERMISSIONS.SOCIAL_MEDIA_MANAGE}><SocialLayout /></RequirePermission>}>
+                    <Route index element={<Navigate to="/admin/social/planner/posts" replace />} />
+                    <Route path="design" element={<SocialDesign />} />
+                    <Route path="planner" element={<Navigate to="/admin/social/planner/posts" replace />} />
+                    <Route path="planner/posts" element={<SocialPosts />} />
+                    <Route path="planner/calendar" element={<SocialCalendar />} />
+                    <Route path="inbox" element={<SocialInbox />} />
+                    <Route path="automation" element={<Navigate to="/admin/social/automation/workflows" replace />} />
+                    <Route path="automation/workflows" element={<SocialWorkflows />} />
+                    <Route path="automation/agents" element={<SocialAgents />} />
+                    <Route path="integrations" element={<SocialIntegrations />} />
+                    <Route path="ecommerce" element={<SocialEcommerce />} />
+                    <Route path="assets" element={<SocialAssets />} />
+                  </Route>
                   <Route path="documentation" element={<RequirePermission perm={PERMISSIONS.DOCUMENTATION_VIEW}><AdminDocumentation /></RequirePermission>} />
                 </Route>
 
