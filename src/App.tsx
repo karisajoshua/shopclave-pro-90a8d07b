@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -58,7 +58,6 @@ import SocialAgents from "./pages/admin/social/SocialAgents";
 import SocialIntegrations from "./pages/admin/social/SocialIntegrations";
 import SocialEcommerce from "./pages/admin/social/SocialEcommerce";
 import SocialAssets from "./pages/admin/social/SocialAssets";
-import { Navigate } from "react-router-dom";
 import RequirePermission from "./components/admin/RequirePermission";
 import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
