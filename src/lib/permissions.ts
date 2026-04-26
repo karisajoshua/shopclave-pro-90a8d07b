@@ -41,6 +41,8 @@ export const PERMISSIONS = {
 
   RESOURCES_MANAGE: "resources.manage",
 
+  SOCIAL_MEDIA_MANAGE: "social_media.manage",
+
   DOCUMENTATION_VIEW: "documentation.view",
 } as const;
 
@@ -90,6 +92,7 @@ export const PERMISSION_GROUPS: { label: string; perms: { key: PermissionKey; la
     perms: [
       { key: PERMISSIONS.MARKETING_MANAGE, label: "Manage marketing (banners & promotions)" },
       { key: PERMISSIONS.RESOURCES_MANAGE, label: "Manage vendor resource center" },
+      { key: PERMISSIONS.SOCIAL_MEDIA_MANAGE, label: "Manage social media (Ocoya)" },
     ],
   },
   {
