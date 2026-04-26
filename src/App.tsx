@@ -48,6 +48,7 @@ import AdminTeam from "./pages/admin/AdminTeam";
 import AdminMarketing from "./pages/admin/AdminMarketing";
 import AdminResources from "./pages/admin/AdminResources";
 import AdminDocumentation from "./pages/admin/AdminDocumentation";
+import AdminSocialMedia from "./pages/admin/AdminSocialMedia";
 import RequirePermission from "./components/admin/RequirePermission";
 import { PERMISSIONS } from "./lib/permissions";
 import CookieConsent from "./components/shared/CookieConsent";
@@ -134,6 +135,7 @@ const App = () => (
                   <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
                   <Route path="marketing" element={<RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}><AdminMarketing /></RequirePermission>} />
                   <Route path="resources" element={<RequirePermission perm={PERMISSIONS.RESOURCES_MANAGE}><AdminResources /></RequirePermission>} />
+                  <Route path="social" element={<RequirePermission perm={PERMISSIONS.SOCIAL_MEDIA_MANAGE}><AdminSocialMedia /></RequirePermission>} />
                   <Route path="documentation" element={<RequirePermission perm={PERMISSIONS.DOCUMENTATION_VIEW}><AdminDocumentation /></RequirePermission>} />
                 </Route>
 

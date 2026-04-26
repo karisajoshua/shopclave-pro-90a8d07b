@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree,
   Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield, UserCog,
-  Megaphone, GraduationCap, BookOpen,
+  Megaphone, GraduationCap, BookOpen, Share2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -62,6 +62,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Content",
     items: [
       { title: "Marketing", url: "/admin/marketing", icon: Megaphone, permission: PERMISSIONS.MARKETING_MANAGE },
+      { title: "Social Media", url: "/admin/social", icon: Share2, permission: PERMISSIONS.SOCIAL_MEDIA_MANAGE },
       { title: "Barakaz Academy", url: "/admin/resources", icon: GraduationCap, permission: PERMISSIONS.RESOURCES_MANAGE },
     ],
   },
