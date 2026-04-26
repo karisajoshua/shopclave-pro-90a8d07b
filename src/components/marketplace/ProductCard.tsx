@@ -5,6 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import CountdownTimer from "@/components/shared/CountdownTimer";
+import { getDisplayProductRating } from "@/lib/product-rating-fallback";
 
 interface ProductCardProps {
   id: string;
@@ -25,6 +26,7 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
+  const displayRating = getDisplayProductRating(id, rating, reviewCount);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -68,10 +70,10 @@ const ProductCard = ({
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
               key={i}
-              className={`h-3 w-3 ${i < Math.round(rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
+              className={`h-3 w-3 ${i < Math.round(displayRating.rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
             />
           ))}
-          <span className="text-xs text-muted-foreground ml-1">({reviewCount})</span>
+          <span className="text-xs text-muted-foreground ml-1">({displayRating.reviewCount})</span>
         </div>
         <div className="flex items-end justify-between">
           <div>
