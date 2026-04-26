@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Phone, MessageCircle, Globe, Users, ShieldCheck, Calendar, Store as StoreIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 type SortOption = "newest" | "price_asc" | "price_desc";
 
