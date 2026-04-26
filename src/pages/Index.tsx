@@ -11,6 +11,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import { useProductRatings } from "@/hooks/useProductRatings";
 
 const DEFAULT_CATEGORIES = [
   { name: "Electronics", slug: "electronics", image: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80" },
