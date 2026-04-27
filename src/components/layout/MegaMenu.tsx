@@ -83,7 +83,7 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
         {/* Categories */}
         <div className="py-2">
           <p className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Shop by Category</p>
-          {MENU_CATEGORIES.map((cat) => (
+          {menuCategories.map((cat) => (
             <div key={cat.slug}>
               <button
                 onClick={() => toggleCat(cat.slug)}
