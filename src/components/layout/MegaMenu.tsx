@@ -47,6 +47,18 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
   const [expandedSub, setExpandedSub] = useState<string | null>(null);
   const { user, signOut, userRoles } = useAuth();
 
+  const { data: menuCategories = [] } = useQuery({
+    queryKey: ["sidebar-menu-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, slug, parent_id");
+      if (error) throw error;
+      return buildTree((data ?? []) as CategoryRow[]);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const toggleCat = (slug: string) => {
     setExpandedCat(expandedCat === slug ? null : slug);
     setExpandedSub(null);
