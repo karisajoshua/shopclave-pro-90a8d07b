@@ -1,127 +1,110 @@
+
 ## Goal
 
-Replace the simple 3‑tab Social Media page with a full Ocoya-style workspace embedded in the admin dashboard, exposing every capability of the Ocoya API: design templates, post planner + calendar, inbox, automation/workflows, AI agents, integrations, ecommerce sync, and assets.
+Replace the Home & Garden subcategory tree with the user's 8-section, 3-level structure. Make the new structure flow automatically into every place categories appear (admin, vendor, search, product detail, homepage). No code changes are required for most surfaces — they already read from the `categories` table — but two surfaces need small adjustments to fully expose the third tier.
 
-## New layout (inside `/admin/social`)
+## Category structure to insert
 
-A nested left sub‑sidebar (mirroring Ocoya's screenshot) on top of the existing admin sidebar. Routes become children of `/admin/social/*`:
-
-```text
-/admin/social
-├── design        Templates & Sizes (browse + open in Ocoya editor)
-├── planner
-│   ├── posts     Compose, drafts, scheduled, published list
-│   └── calendar  Month/Week calendar view of scheduled posts
-├── inbox         Comments / DMs aggregated from connected accounts
-├── automation
-│   ├── workflows  List, start, pause Ocoya automations
-│   └── agents     Ocoya AI agents (caption / hashtag / image)
-├── integrations  Connected social profiles + connect-more deep links
-├── ecommerce     Pull Barakaz products → 1‑click post / bulk schedule
-└── assets        Media library bridge (Barakaz Media + Ocoya assets)
-```
-
-The top page header keeps the workspace selector, "Connected as …" indicator, and "Open Ocoya" button.
-
-## Backend (Ocoya proxy)
-
-Expand `supabase/functions/ocoya-proxy/index.ts` whitelist to cover the full public API surface used by the new UI:
+Parent **Home & Garden** stays (id `a0000001-...0003`). Eight new (or renamed) Level‑2 children, each with Level‑3 leaves:
 
 ```text
-GET    /me
-GET    /workspaces
-GET    /social-profiles
-GET    /social-profiles/:id
-GET    /post              (with status, from, to, profileId filters)
-POST   /post
-PATCH  /post/:id
-DELETE /post/:id
-POST   /post/:id/publish
-POST   /post/:id/duplicate
-
-GET    /templates
-GET    /templates/:id
-GET    /designs
-POST   /designs
-GET    /designs/:id
-DELETE /designs/:id
-
-GET    /assets
-POST   /assets
-DELETE /assets/:id
-
-GET    /automation
-GET    /automation/:id
-POST   /automation/:id/start
-POST   /automation/:id/pause
-GET    /automation/:id/runs
-
-GET    /ai/agents
-POST   /ai/caption
-POST   /ai/hashtags
-POST   /ai/image
-
-GET    /inbox
-POST   /inbox/:id/reply
-PATCH  /inbox/:id            (mark read / archive)
-
-GET    /analytics/overview
-GET    /analytics/posts
+Home & Garden
+├── Kitchen & Dining (reuse existing slug kitchen-dining)
+│   ├── Cookers & Ovens (parent of the next two)
+│   │   ├── Gas Cookers
+│   │   └── Electric Cookers / Hot Plates
+│   ├── Microwaves
+│   ├── Blenders & Mixers
+│   ├── Kettles
+│   ├── Cookware (Pots & Pans)
+│   ├── Dinner Sets & Plates
+│   ├── Cutlery (Spoons & Knives)
+│   └── Storage Containers
+├── Large Appliances
+│   ├── Refrigerators & Freezers
+│   ├── Washing Machines
+│   ├── Dishwashers
+│   └── Water Dispensers
+├── Small Appliances
+│   ├── Irons
+│   ├── Toasters
+│   ├── Coffee Makers
+│   ├── Juicers
+│   ├── Air Fryers
+│   └── Rice Cookers
+├── Furniture (reuse existing)
+│   ├── Sofas & Couches
+│   ├── Beds & Mattresses
+│   ├── Wardrobes
+│   ├── Tables & Chairs
+│   ├── TV Stands
+│   └── Office Furniture
+├── Home Decor (reuse existing)
+│   ├── Curtains
+│   ├── Carpets & Rugs
+│   ├── Wall Art & Frames
+│   ├── Mirrors
+│   ├── Lighting (Bulbs & Lamps)
+│   └── Clocks
+├── Cleaning & Household (rename existing "Cleaning")
+│   ├── Cleaning Tools (Mops & Brooms)
+│   ├── Vacuum Cleaners
+│   ├── Laundry Accessories
+│   └── Storage & Organizers
+├── Outdoor & Garden (rename existing "Garden")
+│   ├── Garden Tools
+│   ├── Plants & Pots
+│   ├── Outdoor Furniture
+│   ├── BBQ & Grills
+│   └── Watering Equipment
+└── Bathroom Essentials
+    ├── Shower Curtains
+    ├── Towels
+    ├── Bathroom Storage
+    └── Soap Dispensers
 ```
 
-The proxy keeps:
-- Server‑side `admin` role + `social_media.manage` permission re‑check.
-- Path/method allow‑list (regex patterns) to prevent abuse.
-- Audit logging of all mutating calls into `social_media_post_log`.
-- `OCOYA_API_KEY` injected as `X-API-Key`.
+Total new rows: 2 new Level‑2 categories, 1 renamed (`Appliances` deleted in favour of Large/Small), 2 renamed in place (`Cleaning` → `Cleaning & Household`, `Garden` → `Outdoor & Garden`), plus 47 Level‑3 leaves (and 1 Level‑3 mid‑node "Cookers & Ovens" that itself has 2 Level‑4 children — so the tree goes to 4 levels under Kitchen & Dining only).
 
-If any endpoint above returns 404 from Ocoya (not yet exposed publicly for this account tier), the UI shows an inline "Not available on your Ocoya plan — open in Ocoya" fallback rather than crashing. Endpoints that error universally will be removed from the whitelist after a smoke test.
+## Handling depth
 
-## Frontend
+The product picker today has exactly 3 select tiers (Main → Sub → Final), so "Cookers & Ovens" being 4 levels deep would not be reachable from the vendor wizard. To keep the structure intuitive, **flatten Cookers & Ovens** into Kitchen & Dining as two leaves: `Gas Cookers` and `Electric Cookers / Hot Plates`. The grouping label "Cookers & Ovens" is preserved as a non‑selectable visual hint in the admin tree only (via name prefix) — see "Open question" below.
 
-### Files to create
-- `src/pages/admin/social/SocialLayout.tsx` — sub‑sidebar + workspace header + `<Outlet />`
-- `src/pages/admin/social/SocialDesign.tsx` — templates grid + sizes + recent designs (opens editor in Ocoya)
-- `src/pages/admin/social/SocialPosts.tsx` — current Compose + Scheduled list, redesigned as a 2‑pane editor (left: composer, right: live preview per network)
-- `src/pages/admin/social/SocialCalendar.tsx` — month/week calendar with drag‑to‑reschedule (PATCH `/post/:id`)
-- `src/pages/admin/social/SocialInbox.tsx` — threaded comments/DMs with reply
-- `src/pages/admin/social/SocialWorkflows.tsx` — automation list with start/pause + run history
-- `src/pages/admin/social/SocialAgents.tsx` — AI caption / hashtags / image generator (with "Insert into composer")
-- `src/pages/admin/social/SocialIntegrations.tsx` — accounts list, replaces old AccountsList
-- `src/pages/admin/social/SocialEcommerce.tsx` — product picker → bulk caption/template apply → schedule
-- `src/pages/admin/social/SocialAssets.tsx` — Barakaz Media Library bridged with Ocoya `/assets`
+## Database migration
 
-### Files to update
-- `src/hooks/useOcoya.ts` — add hooks: `useOcoyaTemplates`, `useOcoyaDesigns`, `useOcoyaAssets`, `useOcoyaAutomations`, `useStartAutomation`, `usePauseAutomation`, `useOcoyaInbox`, `useReplyInbox`, `useOcoyaAnalytics`, `useGenerateCaption`, `useGenerateHashtags`, `useGenerateImage`, `usePublishNow`, `useDuplicatePost`.
-- `src/pages/admin/AdminSocialMedia.tsx` — becomes a thin redirect to `/admin/social/planner/posts`.
-- `src/App.tsx` — register nested `/admin/social/*` routes wrapped by `SocialLayout`.
-- `src/components/admin/AdminSidebar.tsx` — keep single "Social Media" entry pointing to `/admin/social`.
-- `src/components/admin/social/ComposeForm.tsx` — extended with: rich preview per network, AI assist buttons (calls `/ai/caption`, `/ai/hashtags`), template picker, asset picker from Media Library, multi‑variant per profile.
+One SQL migration that:
 
-### Visual style
-- Match existing admin look (cards, shadcn) — **not** Ocoya's orange. The reference image is for *layout/feature parity*, not branding. Sub‑sidebar uses existing `admin-sidebar-*` tokens.
-- Composer 2‑pane layout, planner calendar uses `react-day-picker` (already installed).
+1. Deletes the existing flat `Appliances` row under Home & Garden (no products are mapped to it; if any are, they get reassigned to `Large Appliances` first via UPDATE).
+2. Renames `Cleaning` → `Cleaning & Household` (slug `cleaning-household`) and `Garden` → `Outdoor & Garden` (slug `outdoor-garden`).
+3. Inserts new Level‑2 rows: `Large Appliances`, `Small Appliances`, `Bathroom Essentials`.
+4. Inserts all Level‑3 leaves under their respective parents using stable slugs (kebab-case, namespaced where needed e.g. `kd-microwaves` only if a global slug collision exists; checked — none collide with existing slugs).
+5. Wraps in a transaction; idempotent via `ON CONFLICT (slug) DO NOTHING`.
 
-## Database
+No schema changes — `categories` already supports arbitrary depth via `parent_id`.
 
-No schema changes required. Existing tables (`social_media_settings`, `social_media_post_log`) remain. We add a lightweight optional table only if user later wants persisted drafts that aren't yet sent to Ocoya — out of scope for this change.
+## Code changes
 
-## Permissions
+Minimal — every consumer already reads recursively from `categories`:
 
-Continue using single permission `social_media.manage` to gate the entire `/admin/social/*` tree. Sub‑sections do not need their own permissions for now.
+- **AdminCategories.tsx** — already renders unlimited depth recursively. No change.
+- **AddProductPage.tsx / EditProductPage.tsx** — already expose 3 cascading selects (Main → Sub → Final). No change. New leaves appear automatically.
+- **SearchPage.tsx** — already resolves parent + children + grandchildren when a category slug is opened. No change.
+- **MegaMenu.tsx** — verify it renders subcategories from DB (quick read, expected no change).
+- **Index.tsx homepage grid** — shows top 6 parents only; unaffected.
 
-## Out of scope
+If MegaMenu or any other consumer is found to hardcode subcategory lists during implementation, I'll update it to read from `categories` so vendors and admins see the new tree everywhere.
 
-- Building a full design editor inside Barakaz (Ocoya's editor opens in a new tab via deep link).
-- Publishing media uploads directly to Instagram/TikTok bypassing Ocoya.
-- Billing / plan management (handled in Ocoya).
+## Open question (will ask before applying)
 
-## Validation steps after build
+The user's spec lists "Cookers & Ovens" as a grouping label with two cookers under it, but the product wizard supports 3 cascading levels. Two acceptable approaches:
 
-1. `/admin/social` redirects to `/admin/social/planner/posts`.
-2. Sub‑sidebar shows all 8 sections; clicking each loads without error.
-3. Workspace selector still persists to `social_media_settings`.
-4. Compose → Post now / Schedule still creates an Ocoya post and writes audit log.
-5. Calendar shows scheduled posts and drag updates `scheduledAt`.
-6. AI agents return content and "Insert into composer" populates the caption.
-7. Endpoints that 404 on this Ocoya plan show the inline fallback instead of a red error toast.
+1. **Flatten** — `Gas Cookers` and `Electric Cookers / Hot Plates` sit directly under Kitchen & Dining (recommended; keeps the wizard simple).
+2. **Add a 4th-level select** — keep "Cookers & Ovens" as a real Level‑3 node with two Level‑4 leaves; expand the wizard to 4 selects.
+
+I'll ask this with `ask_questions` at the start of implementation so the migration matches your preference.
+
+## Deliverables
+
+- One Supabase migration file inserting/renaming/cleaning the Home & Garden tree.
+- (Conditional) wizard expansion to 4 levels if you choose option 2 above.
+- No data loss: any product currently linked to `Appliances`, `Cleaning`, or `Garden` gets reassigned to the new equivalent before the row is renamed/deleted.
