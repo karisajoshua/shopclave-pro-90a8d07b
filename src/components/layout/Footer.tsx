@@ -89,8 +89,12 @@ const Footer = () => {
         <div className="container py-6 flex flex-col items-center gap-4">
           <p className="text-sm text-primary-foreground/70 font-medium">{t("footer.getApp")}</p>
           <div className="flex items-center gap-3">
-            <a href="#" target="_blank" rel="noopener noreferrer">
-              <img src={appBadges} alt="Download on App Store & Google Play" className="h-10 w-auto" />
+            <a
+              href="/downloads/barakaz.apk"
+              download="Barakaz.apk"
+              aria-label="Download Barakaz Android app (APK)"
+            >
+              <img src={appBadges} alt="Download Barakaz on App Store & Google Play" className="h-10 w-auto" />
             </a>
           </div>
           <div className="flex items-center gap-4 mt-2">
