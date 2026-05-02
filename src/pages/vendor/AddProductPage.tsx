@@ -122,7 +122,7 @@ const AddProductPage = () => {
 
   // Variant handlers
   const regenerateVariants = (opts: OptionType[]) => {
-    setVariantRows(generateCombinations(opts).map(options => ({ options, price: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [] })));
+    setVariantRows(generateCombinations(opts).map(options => ({ options, price: "", compareAtPrice: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [] })));
   };
   const addOptionType = () => setOptionTypes([...optionTypes, { name: "", values: [] }]);
   const removeOptionType = (idx: number) => { const next = optionTypes.filter((_, i) => i !== idx); setOptionTypes(next); regenerateVariants(next); };
