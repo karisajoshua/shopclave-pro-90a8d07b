@@ -318,16 +318,18 @@ const ProductDetailPage = () => {
   });
 
   const optionTypes = useMemo(() => {
-    if (!variants?.length) return {};
-    const types: Record<string, Set<string>> = {};
+    if (!variants?.length) return {} as Record<string, string[]>;
+    const types: Record<string, string[]> = {};
+    // Walk variants in insertion (created_at asc) order; preserve first-seen order for both
+    // option keys (e.g. Size before Color) and their values (e.g. S, M, L as the vendor entered).
     variants.forEach((v: any) => {
       const opts = v.variant_options as Record<string, string>;
       Object.entries(opts).forEach(([key, val]) => {
-        if (!types[key]) types[key] = new Set();
-        types[key].add(val);
+        if (!types[key]) types[key] = [];
+        if (!types[key].includes(val)) types[key].push(val);
       });
     });
-    return Object.fromEntries(Object.entries(types).map(([k, v]) => [k, Array.from(v)]));
+    return types;
   }, [variants]);
 
   const hasVariants = Object.keys(optionTypes).length > 0;
