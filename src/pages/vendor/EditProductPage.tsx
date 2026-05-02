@@ -27,7 +27,7 @@ const STEPS = [
 const MAX_DESC = 850;
 
 interface OptionType { name: string; values: string[]; }
-interface VariantRow { id?: string; options: Record<string, string>; price: string; stock: string; sku: string; imageFiles: File[]; imagePreviews: string[]; existingImageUrls: string[]; }
+interface VariantRow { id?: string; options: Record<string, string>; price: string; compareAtPrice: string; stock: string; sku: string; imageFiles: File[]; imagePreviews: string[]; existingImageUrls: string[]; }
 interface ImageFile { file?: File; url: string; preview: string; dbId?: string; }
 
 function generateCombinations(optionTypes: OptionType[]): Record<string, string>[] {
@@ -171,6 +171,7 @@ const EditProductPage = () => {
           id: v.id,
           options: v.variant_options as Record<string, string>,
           price: v.price ? String(v.price) : "",
+          compareAtPrice: v.compare_at_price ? String(v.compare_at_price) : "",
           stock: String(v.stock),
           sku: v.sku || "",
           imageFiles: [],
@@ -232,7 +233,7 @@ const EditProductPage = () => {
     setVariantRows(prev => combos.map(options => {
       const key = JSON.stringify(options);
       const existing = prev.find(r => JSON.stringify(r.options) === key);
-      return existing || { options, price: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [], existingImageUrls: [] };
+      return existing || { options, price: "", compareAtPrice: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [], existingImageUrls: [] };
     }));
   };
   const addOptionType = () => setOptionTypes([...optionTypes, { name: "", values: [] }]);
@@ -319,9 +320,11 @@ const EditProductPage = () => {
           const allUrls = [...v.existingImageUrls, ...newUrls];
           const { data: variant, error: vErr } = await supabase.from("product_variants").insert({
             product_id: productId, variant_options: v.options,
-            price: v.price ? parseFloat(v.price) : null, stock: parseInt(v.stock) || 0,
+            price: v.price ? parseFloat(v.price) : null,
+            compare_at_price: v.compareAtPrice ? parseFloat(v.compareAtPrice) : null,
+            stock: parseInt(v.stock) || 0,
             sku: v.sku.trim() || null, image_url: allUrls[0] || null,
-          }).select("id").single();
+          } as any).select("id").single();
           if (vErr) throw vErr;
           if (allUrls.length > 0 && variant) {
             await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: productId, variant_id: variant.id, url, position: idx })));
@@ -639,8 +642,9 @@ const EditProductPage = () => {
                       {variantRows.map((row, idx) => (
                         <div key={idx} className="bg-card border border-border rounded-lg p-3 space-y-3">
                           <p className="text-xs font-semibold text-foreground">{Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div><Label className="text-[10px] text-muted-foreground">Price Override</Label><Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 text-xs" /></div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div><Label className="text-[10px] text-muted-foreground">Original Price</Label><Input type="number" min="0" step="0.01" placeholder={form.compareAtPrice || "Optional"} value={row.compareAtPrice} onChange={(e) => updateVariantRow(idx, "compareAtPrice", e.target.value)} className="h-8 text-xs" /></div>
+                            <div><Label className="text-[10px] text-muted-foreground">Current Price</Label><Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 text-xs" /></div>
                             <div><Label className="text-[10px] text-muted-foreground">Stock</Label><Input type="number" min="0" value={row.stock} onChange={(e) => updateVariantRow(idx, "stock", e.target.value)} className="h-8 text-xs" /></div>
                             <div><Label className="text-[10px] text-muted-foreground">SKU</Label><Input placeholder="Optional" value={row.sku} onChange={(e) => updateVariantRow(idx, "sku", e.target.value)} className="h-8 text-xs" /></div>
                           </div>
