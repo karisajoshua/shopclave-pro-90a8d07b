@@ -27,7 +27,7 @@ const STEPS = [
 const MAX_DESC = 850;
 
 interface OptionType { name: string; values: string[]; }
-interface VariantRow { id?: string; options: Record<string, string>; price: string; stock: string; sku: string; imageFiles: File[]; imagePreviews: string[]; existingImageUrls: string[]; }
+interface VariantRow { id?: string; options: Record<string, string>; price: string; compareAtPrice: string; stock: string; sku: string; imageFiles: File[]; imagePreviews: string[]; existingImageUrls: string[]; }
 interface ImageFile { file?: File; url: string; preview: string; dbId?: string; }
 
 function generateCombinations(optionTypes: OptionType[]): Record<string, string>[] {
