@@ -232,7 +232,7 @@ const EditProductPage = () => {
     setVariantRows(prev => combos.map(options => {
       const key = JSON.stringify(options);
       const existing = prev.find(r => JSON.stringify(r.options) === key);
-      return existing || { options, price: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [], existingImageUrls: [] };
+      return existing || { options, price: "", compareAtPrice: "", stock: "0", sku: "", imageFiles: [], imagePreviews: [], existingImageUrls: [] };
     }));
   };
   const addOptionType = () => setOptionTypes([...optionTypes, { name: "", values: [] }]);
