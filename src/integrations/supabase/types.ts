@@ -743,6 +743,7 @@ export type Database = {
       }
       product_variants: {
         Row: {
+          compare_at_price: number | null
           created_at: string
           id: string
           image_url: string | null
@@ -753,6 +754,7 @@ export type Database = {
           variant_options: Json
         }
         Insert: {
+          compare_at_price?: number | null
           created_at?: string
           id?: string
           image_url?: string | null
@@ -763,6 +765,7 @@ export type Database = {
           variant_options?: Json
         }
         Update: {
+          compare_at_price?: number | null
           created_at?: string
           id?: string
           image_url?: string | null

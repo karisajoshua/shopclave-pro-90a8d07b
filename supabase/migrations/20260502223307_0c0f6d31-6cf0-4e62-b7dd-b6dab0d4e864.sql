@@ -1,0 +1,1 @@
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS compare_at_price numeric;
