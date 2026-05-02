@@ -539,8 +539,9 @@ const AddProductPage = () => {
                       {variantRows.map((row, idx) => (
                         <div key={idx} className="bg-card border border-border rounded-lg p-3 space-y-3">
                           <p className="text-xs font-semibold text-foreground">{Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div><Label className="text-[10px] text-muted-foreground">Price Override</Label><Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 text-xs" /></div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div><Label className="text-[10px] text-muted-foreground">Original Price</Label><Input type="number" min="0" step="0.01" placeholder={form.compareAtPrice || "Optional"} value={row.compareAtPrice} onChange={(e) => updateVariantRow(idx, "compareAtPrice", e.target.value)} className="h-8 text-xs" /></div>
+                            <div><Label className="text-[10px] text-muted-foreground">Current Price</Label><Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} className="h-8 text-xs" /></div>
                             <div><Label className="text-[10px] text-muted-foreground">Stock</Label><Input type="number" min="0" value={row.stock} onChange={(e) => updateVariantRow(idx, "stock", e.target.value)} className="h-8 text-xs" /></div>
                             <div><Label className="text-[10px] text-muted-foreground">SKU</Label><Input placeholder="Optional" value={row.sku} onChange={(e) => updateVariantRow(idx, "sku", e.target.value)} className="h-8 text-xs" /></div>
                           </div>
