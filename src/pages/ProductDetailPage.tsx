@@ -554,7 +554,7 @@ const ProductDetailPage = () => {
                     -{discountPct}%
                   </Badge>
                   <span className="text-sm text-muted-foreground line-through">
-                    {formatPrice(Number(product.compare_at_price))}
+                    {formatPrice(Number(displayCompare))}
                   </span>
                 </div>
               )}
