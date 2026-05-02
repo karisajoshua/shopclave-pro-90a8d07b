@@ -171,6 +171,7 @@ const EditProductPage = () => {
           id: v.id,
           options: v.variant_options as Record<string, string>,
           price: v.price ? String(v.price) : "",
+          compareAtPrice: v.compare_at_price ? String(v.compare_at_price) : "",
           stock: String(v.stock),
           sku: v.sku || "",
           imageFiles: [],
