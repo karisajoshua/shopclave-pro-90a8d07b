@@ -296,7 +296,8 @@ const ProductDetailPage = () => {
       const { data } = await supabase
         .from("product_variants")
         .select("*")
-        .eq("product_id", product!.id);
+        .eq("product_id", product!.id)
+        .order("created_at", { ascending: true });
       return data || [];
     },
     enabled: !!product?.id,
