@@ -228,9 +228,11 @@ const AddProductPage = () => {
           const allUrls = v.imageFiles.length > 0 ? await uploadVariantImages(v.imageFiles, product.id) : [];
           const { data: variant, error: vErr } = await supabase.from("product_variants").insert({
             product_id: product.id, variant_options: v.options,
-            price: v.price ? parseFloat(v.price) : null, stock: parseInt(v.stock) || 0,
+            price: v.price ? parseFloat(v.price) : null,
+            compare_at_price: v.compareAtPrice ? parseFloat(v.compareAtPrice) : null,
+            stock: parseInt(v.stock) || 0,
             sku: v.sku.trim() || null, image_url: allUrls[0] || null,
-          }).select("id").single();
+          } as any).select("id").single();
           if (vErr) throw vErr;
           if (allUrls.length > 0 && variant) {
             await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: product.id, variant_id: variant.id, url, position: idx })));
