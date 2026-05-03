@@ -334,15 +334,26 @@ const ProductDetailPage = () => {
 
   const hasVariants = Object.keys(optionTypes).length > 0;
 
-  useMemo(() => {
-    if (hasVariants && Object.keys(selectedOptions).length === 0) {
-      const defaults: Record<string, string> = {};
-      Object.entries(optionTypes).forEach(([key, values]) => {
-        defaults[key] = values[0];
-      });
-      setSelectedOptions(defaults);
+  // Reset/normalize selected options whenever the product (or its variants) changes,
+  // so stale selections from a previous product with similar option names (e.g. "Size")
+  // never leak across products and break per-variant pricing resolution.
+  useEffect(() => {
+    if (!hasVariants) {
+      setSelectedOptions({});
+      return;
     }
-  }, [optionTypes, hasVariants]);
+    const next: Record<string, string> = {};
+    Object.entries(optionTypes).forEach(([key, values]) => {
+      const current = selectedOptions[key];
+      next[key] = current && values.includes(current) ? current : values[0];
+    });
+    // Drop any option keys that don't belong to this product
+    const keysMatch =
+      Object.keys(next).length === Object.keys(selectedOptions).length &&
+      Object.entries(next).every(([k, v]) => selectedOptions[k] === v);
+    if (!keysMatch) setSelectedOptions(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, variants]);
 
   const selectedVariant = useMemo(() => {
     if (!hasVariants || !variants?.length) return null;

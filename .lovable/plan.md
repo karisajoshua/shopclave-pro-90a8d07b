@@ -1,40 +1,62 @@
-# Fix per-variant pricing UI + preserve size order
+## Plan
 
-Two issues to resolve:
+I found the main issue: the product page keeps old variant selections in local state when you move between products that share similar option names like `Size`. Because of that, the next product can fail to resolve the correct variant and falls back to the base product price, making it look like per-variant before/after pricing only works for one product.
 
-1. **Per-variant Original/Current price fields aren't visible/usable** when adding or editing a product. The fields exist in code but the 4-column grid (`grid-cols-2 sm:grid-cols-4`) cramps them on narrow widths and the labels (`text-[10px]`) are nearly invisible, so vendors think the option is missing.
-2. **Size (and other option) values display in a different order on the storefront** than the order the vendor entered them. The detail page builds option lists by scanning variants — order is influenced by combination iteration, not by the vendor's original value order.
+I also confirmed the backend already supports this correctly:
+- `product_variants.compare_at_price` exists in the database
+- the product detail page already reads variant `price` and `compare_at_price`
+- the problem is in the frontend variant-selection lifecycle, not the schema
 
-## Changes
+## What I’ll change
 
-### 1. Vendor variant grid — `AddProductPage.tsx` & `EditProductPage.tsx`
-Make the per-variant pricing UI obvious and easy to fill:
-- Replace the cramped 4-col row with a clearer 2-column layout per variant card:
-  - Row 1: **Original Price (KSh)** + **Current Price (KSh)** side by side, full-size inputs (not `h-8 text-xs`).
-  - Row 2: **Stock** + **SKU**.
-- Use full `Label` styling (not `text-[10px]`) and add helper text under the prices: *"Leave Original Price empty for no discount. Current Price falls back to the product price if blank."*
-- Keep placeholders showing the product-level fallback values.
-- No data-model change — `compare_at_price` already exists on `product_variants`.
+### 1. Reset variant selections per product on the detail page
+Update `src/pages/ProductDetailPage.tsx` so variant option state is rebuilt whenever the product or variant list changes.
 
-### 2. Preserve vendor-defined option value order — `ProductDetailPage.tsx`
-Currently `optionTypes` is built by iterating every variant and `Set`-adding values, which yields combination-iteration order rather than the vendor's input order.
+This will:
+- clear stale selections from the previous product
+- initialize defaults from the current product’s actual variant values
+- remove invalid carried-over values when two products both use labels like `Size`, `Color`, etc.
 
-Fix: derive each option's values from the **first variant containing that key** as the canonical seed, then walk variants in `created_at` order (already sorted) and append any new values in the order encountered. Since variant rows are inserted in the same sequence the vendor generated them, the first row's `Size` value is the vendor's first size, and so on. Specifically:
-```ts
-const types: Record<string, string[]> = {};
-variants.forEach((v) => {
-  Object.entries(v.variant_options as Record<string,string>).forEach(([k, val]) => {
-    if (!types[k]) types[k] = [];
-    if (!types[k].includes(val)) types[k].push(val);
-  });
-});
-```
-This guarantees the storefront shows Size/Color chips in the exact order the vendor added values in the wizard.
+### 2. Make selected variant resolution stricter and more reliable
+Refactor the matching logic so the selected variant is resolved against the current product’s full option set, not leftover partial state.
 
-### 3. Optional polish
-- On the variant chip row in the detail page, ensure the order of **option types** (Size vs Color) also matches the vendor: iterate keys from the first variant's `variant_options` object first, then append any extra keys.
+This will ensure:
+- each similar product gets its own correct variant
+- `displayPrice` uses that product’s selected variant price
+- `displayCompare` uses that product’s selected variant original price
+- discount badges/strike-through pricing appear consistently for every qualifying product
 
-## Out of scope
-- No DB migration.
-- No changes to cart, checkout, or `ProductCard` (variant pricing only matters on the detail page).
-- Bulk import templates remain unchanged.
+### 3. Keep variant option order intact
+Preserve the vendor-defined option/value order while making the reset logic safe, so the previous size-order fix is not lost.
+
+### 4. Bring the edit screen in line with the add screen
+The edit page is still using the older cramped variant pricing layout. I’ll update `src/pages/vendor/EditProductPage.tsx` so vendors can clearly see and edit:
+- Original Price
+- Current Price
+- Stock
+- SKU
+
+This keeps add/edit behavior consistent and avoids the impression that variant before/after prices are missing on edit.
+
+## Expected result
+
+After this fix:
+- any product with variant-level current/original prices will show them correctly on the storefront
+- switching between similar products will no longer reuse the previous product’s selected options
+- the correct strike-through price and discount will appear per selected variant
+- vendors will be able to clearly edit variant before/after prices on existing products
+
+## Technical details
+
+Files to update:
+- `src/pages/ProductDetailPage.tsx`
+- `src/pages/vendor/EditProductPage.tsx`
+
+Implementation notes:
+- replace the current `useMemo` side-effect used for initializing `selectedOptions` with a proper `useEffect`
+- key the reset to the current product/variant set so state does not leak across products
+- normalize selected options against `optionTypes` before resolving `selectedVariant`
+- preserve first-seen variant option/value ordering from the current product’s variants
+- no database migration required
+
+If you approve, I’ll apply the fix.
