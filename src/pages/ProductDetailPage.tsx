@@ -357,15 +357,22 @@ const ProductDetailPage = () => {
 
   const selectedVariant = useMemo(() => {
     if (!hasVariants || !variants?.length) return null;
-    return variants.find((v: any) => {
-      const opts = v.variant_options as Record<string, string>;
-      return Object.entries(selectedOptions).every(([key, val]) => opts[key] === val);
-    }) || null;
-  }, [variants, selectedOptions, hasVariants]);
+    const requiredKeys = Object.keys(optionTypes);
+    if (requiredKeys.length === 0) return null;
+    if (!requiredKeys.every((k) => selectedOptions[k] != null)) return null;
+    return (
+      variants.find((v: any) => {
+        const opts = (v.variant_options || {}) as Record<string, string>;
+        return requiredKeys.every((k) => opts[k] === selectedOptions[k]);
+      }) || null
+    );
+  }, [variants, selectedOptions, hasVariants, optionTypes]);
 
-  const displayPrice = selectedVariant?.price ?? product?.price;
+  const displayPrice = (selectedVariant?.price ?? null) != null ? selectedVariant!.price : product?.price;
   const displayStock = hasVariants ? (selectedVariant?.stock ?? product?.stock) : product?.stock;
-  const displayCompare = (selectedVariant as any)?.compare_at_price ?? product?.compare_at_price;
+  const displayCompare = ((selectedVariant as any)?.compare_at_price ?? null) != null
+    ? (selectedVariant as any).compare_at_price
+    : product?.compare_at_price;
 
   const discountPct = displayCompare && Number(displayCompare) > Number(displayPrice)
     ? Math.round(((Number(displayCompare) - Number(displayPrice)) / Number(displayCompare)) * 100)
