@@ -334,27 +334,45 @@ const ProductDetailPage = () => {
 
   const hasVariants = Object.keys(optionTypes).length > 0;
 
-  useMemo(() => {
-    if (hasVariants && Object.keys(selectedOptions).length === 0) {
-      const defaults: Record<string, string> = {};
-      Object.entries(optionTypes).forEach(([key, values]) => {
-        defaults[key] = values[0];
-      });
-      setSelectedOptions(defaults);
+  // Reset/normalize selected options whenever the product (or its variants) changes,
+  // so stale selections from a previous product with similar option names (e.g. "Size")
+  // never leak across products and break per-variant pricing resolution.
+  useEffect(() => {
+    if (!hasVariants) {
+      setSelectedOptions({});
+      return;
     }
-  }, [optionTypes, hasVariants]);
+    const next: Record<string, string> = {};
+    Object.entries(optionTypes).forEach(([key, values]) => {
+      const current = selectedOptions[key];
+      next[key] = current && values.includes(current) ? current : values[0];
+    });
+    // Drop any option keys that don't belong to this product
+    const keysMatch =
+      Object.keys(next).length === Object.keys(selectedOptions).length &&
+      Object.entries(next).every(([k, v]) => selectedOptions[k] === v);
+    if (!keysMatch) setSelectedOptions(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, variants]);
 
   const selectedVariant = useMemo(() => {
     if (!hasVariants || !variants?.length) return null;
-    return variants.find((v: any) => {
-      const opts = v.variant_options as Record<string, string>;
-      return Object.entries(selectedOptions).every(([key, val]) => opts[key] === val);
-    }) || null;
-  }, [variants, selectedOptions, hasVariants]);
+    const requiredKeys = Object.keys(optionTypes);
+    if (requiredKeys.length === 0) return null;
+    if (!requiredKeys.every((k) => selectedOptions[k] != null)) return null;
+    return (
+      variants.find((v: any) => {
+        const opts = (v.variant_options || {}) as Record<string, string>;
+        return requiredKeys.every((k) => opts[k] === selectedOptions[k]);
+      }) || null
+    );
+  }, [variants, selectedOptions, hasVariants, optionTypes]);
 
-  const displayPrice = selectedVariant?.price ?? product?.price;
+  const displayPrice = (selectedVariant?.price ?? null) != null ? selectedVariant!.price : product?.price;
   const displayStock = hasVariants ? (selectedVariant?.stock ?? product?.stock) : product?.stock;
-  const displayCompare = (selectedVariant as any)?.compare_at_price ?? product?.compare_at_price;
+  const displayCompare = ((selectedVariant as any)?.compare_at_price ?? null) != null
+    ? (selectedVariant as any).compare_at_price
+    : product?.compare_at_price;
 
   const discountPct = displayCompare && Number(displayCompare) > Number(displayPrice)
     ? Math.round(((Number(displayCompare) - Number(displayPrice)) / Number(displayCompare)) * 100)
