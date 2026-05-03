@@ -46,6 +46,7 @@ const Footer = () => {
               <ul className="space-y-2.5 text-sm text-primary-foreground/70">
                 <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">{t("footer.chatWithUs")}</Link></li>
                 <li><Link to="/help" className="hover:text-primary-foreground transition-colors">{t("footer.helpCenter")}</Link></li>
+                <li><Link to="/faq" className="hover:text-primary-foreground transition-colors">FAQ</Link></li>
                 <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">{t("footer.contactUs")}</Link></li>
                 <li>
                   <a href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-primary-foreground transition-colors">
