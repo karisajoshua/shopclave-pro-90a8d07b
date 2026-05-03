@@ -642,20 +642,23 @@ const EditProductPage = () => {
                       {variantRows.map((row, idx) => (
                         <div key={idx} className="bg-card border border-border rounded-lg p-3 space-y-3">
                           <p className="text-xs font-semibold text-foreground">{Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            <div className="space-y-1 col-span-2 sm:col-span-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
                               <Label className="text-xs font-medium">Original Price (KSh)</Label>
                               <Input type="number" min="0" step="0.01" placeholder={form.compareAtPrice || "Optional"} value={row.compareAtPrice} onChange={(e) => updateVariantRow(idx, "compareAtPrice", e.target.value)} />
                             </div>
-                            <div className="space-y-1 col-span-2 sm:col-span-2">
+                            <div className="space-y-1">
                               <Label className="text-xs font-medium">Current Price (KSh)</Label>
                               <Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} />
                             </div>
-                            <div className="space-y-1 col-span-2 sm:col-span-2">
+                          </div>
+                          <p className="text-[11px] text-muted-foreground -mt-1">Leave Original Price empty for no discount. Current Price falls back to the product price if blank.</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
                               <Label className="text-xs font-medium">Stock</Label>
                               <Input type="number" min="0" value={row.stock} onChange={(e) => updateVariantRow(idx, "stock", e.target.value)} />
                             </div>
-                            <div className="space-y-1 col-span-2 sm:col-span-2">
+                            <div className="space-y-1">
                               <Label className="text-xs font-medium">SKU</Label>
                               <Input placeholder="Optional" value={row.sku} onChange={(e) => updateVariantRow(idx, "sku", e.target.value)} />
                             </div>
