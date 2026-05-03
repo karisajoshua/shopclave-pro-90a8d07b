@@ -26,6 +26,7 @@ import CookiePolicyPage from "./pages/CookiePolicyPage";
 import TermsPage from "./pages/TermsPage";
 import AboutPage from "./pages/AboutPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
+import FAQPage from "./pages/FAQPage";
 import ContactPage from "./pages/ContactPage";
 import DeliveryPage from "./pages/DeliveryPage";
 import ReturnPolicyPage from "./pages/ReturnPolicyPage";
@@ -120,6 +121,7 @@ const App = () => (
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/help" element={<HelpCenterPage />} />
+                <Route path="/faq" element={<FAQPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/delivery" element={<DeliveryPage />} />
                 <Route path="/return-policy" element={<ReturnPolicyPage />} />
