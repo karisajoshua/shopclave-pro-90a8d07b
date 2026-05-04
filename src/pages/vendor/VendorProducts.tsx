@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Package, Plus, Trash2, Pencil } from "lucide-react";
+import { Package, Plus, Trash2, Pencil, Star, StarOff } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
@@ -46,6 +46,18 @@ const VendorProducts = () => {
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["vendor-products"] }); toast.success("Stock updated"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleFeatured = useMutation({
+    mutationFn: async ({ id, vendor_featured }: { id: string; vendor_featured: boolean }) => {
+      const { error } = await supabase.from("products").update({ vendor_featured }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ["vendor-products"] });
+      toast.success(v.vendor_featured ? "Featured on your store" : "Removed from featured");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
