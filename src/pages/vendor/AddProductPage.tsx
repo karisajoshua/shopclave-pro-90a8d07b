@@ -243,7 +243,9 @@ const AddProductPage = () => {
       toast.success("Product added!");
       navigate("/vendor/products");
     } catch (err: any) {
-      toast.error(err.message || "Failed to add product");
+      console.error("Add product failed:", err);
+      const msg = err?.message || err?.error_description || err?.error || JSON.stringify(err);
+      toast.error(msg || "Failed to add product");
     } finally { setLoading(false); }
   };
 
