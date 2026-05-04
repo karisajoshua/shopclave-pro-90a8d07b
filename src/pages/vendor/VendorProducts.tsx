@@ -104,7 +104,7 @@ const VendorProducts = () => {
                 </thead>
                 <tbody>
                   {products.map((p: any) => (
-                    <ProductRow key={p.id} product={p} statusColor={statusColor} onToggle={toggleStatus} onDelete={deleteProduct} onStock={updateStock} />
+                    <ProductRow key={p.id} product={p} statusColor={statusColor} onToggle={toggleStatus} onDelete={deleteProduct} onStock={updateStock} onFeature={toggleFeatured} />
                   ))}
                 </tbody>
               </table>
@@ -120,6 +120,11 @@ const VendorProducts = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm line-clamp-1">{p.name}</p>
                     <p className="text-xs text-muted-foreground">KSh {Number(p.price).toLocaleString()} • Stock: {p.stock}</p>
+                    {p.vendor_featured && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full mt-1">
+                        <Star className="h-2.5 w-2.5 fill-current" /> Featured on store
+                      </span>
+                    )}
                   </div>
                   <span className={`status-pill ${statusColor(p.status)}`}>{p.status}</span>
                 </div>
@@ -127,6 +132,10 @@ const VendorProducts = () => {
                   <Link to={`/vendor/products/edit/${p.id}`}>
                     <Button size="sm" variant="outline" className="h-7 text-xs"><Pencil className="h-3 w-3" /></Button>
                   </Link>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" title="Feature on your store"
+                    onClick={() => toggleFeatured.mutate({ id: p.id, vendor_featured: !p.vendor_featured })}>
+                    {p.vendor_featured ? <Star className="h-3 w-3 text-primary fill-primary" /> : <StarOff className="h-3 w-3" />}
+                  </Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={() => toggleStatus.mutate({ id: p.id, status: p.status === "active" ? "draft" : "active" })}>
                     {p.status === "active" ? "Set Draft" : "Activate"}
                   </Button>
@@ -143,7 +152,7 @@ const VendorProducts = () => {
   );
 };
 
-const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock }: any) => {
+const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock, onFeature }: any) => {
   const [editStock, setEditStock] = useState(false);
   const [stockVal, setStockVal] = useState(String(p.stock));
 
@@ -156,6 +165,11 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock }: an
             <span className="font-medium line-clamp-1">{p.name}</span>
             {p.product_variants?.length > 0 && (
               <span className="ml-1.5 inline-block text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{p.product_variants.length} variants</span>
+            )}
+            {p.vendor_featured && (
+              <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                <Star className="h-2.5 w-2.5 fill-current" /> Featured
+              </span>
             )}
           </div>
         </div>
@@ -179,6 +193,10 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock }: an
           <Link to={`/vendor/products/edit/${p.id}`}>
             <Button size="sm" variant="outline" className="h-7 text-xs"><Pencil className="h-3 w-3" /></Button>
           </Link>
+          <Button size="sm" variant="ghost" className="h-7" title={p.vendor_featured ? "Unfeature on store" : "Feature on your store"}
+            onClick={() => onFeature.mutate({ id: p.id, vendor_featured: !p.vendor_featured })}>
+            {p.vendor_featured ? <Star className="h-4 w-4 text-primary fill-primary" /> : <StarOff className="h-4 w-4" />}
+          </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onToggle.mutate({ id: p.id, status: p.status === "active" ? "draft" : "active" })}>
             {p.status === "active" ? "Draft" : "Activate"}
           </Button>
