@@ -1,48 +1,53 @@
-# Fix: New vendors cannot upload product images
+# Vendor Store: Category Nav + Vendor-Featured Products
 
-## Root cause
+Two related additions to the public vendor store page (`/store/:slug`), plus a vendor dashboard control to mark products as "featured on my store".
 
-The `product-images` storage bucket has RLS policies that only allow inserts under two folder shapes:
+## 1. Category navigation bar on the store page
 
-1. `uploads/{auth.uid()}/...` — for personal/account uploads
-2. `vendors/{vendor.id}/...` — for vendor product uploads
-3. Anything, but only if the user has the `admin` role
+On `VendorStorePage.tsx`, just above the products grid, render a horizontal scrollable bar of the categories that the vendor actually has active products in.
 
-The vendor product forms (`AddProductPage.tsx`, `EditProductPage.tsx`) currently upload to:
+Behavior:
+- Derived from the vendor's loaded products (no extra query needed — we already join `category_id` if we add it to the select).
+- First chip: "All" (default selected, shows all products).
+- Each other chip: a category the vendor sells in, with a count badge (e.g. "Phones · 12").
+- Clicking a chip filters the grid client-side (instant, no reload).
+- Sticky-ish styling on mobile, horizontally scrollable, matches Amazon-style sub-nav using the marketplace orange accent for the active chip.
+- Hidden when the vendor has products in fewer than 2 categories (no point showing nav).
 
-```
-{productId}/{timestamp}-{random}.{ext}
-{productId}/variant-{timestamp}-{random}.{ext}
-```
+Implementation:
+- Extend the `vendor-store-products` query to also select `category_id, categories(id, name, slug)`.
+- Build a unique `[{id, name, count}]` list with `useMemo`.
+- Add `selectedCategoryId` state; filter `sortedProducts` by it.
 
-This path doesn't start with `vendors/` or `uploads/`, so the storage RLS policy rejects the upload for everyone except admins. That's why admin-owned demo data works, but newly registered vendors get a "new row violates row-level security policy" error and no image is saved.
+## 2. Vendor-featured products (store page only)
 
-`MediaLibrary.tsx` and `VendorSettings.tsx` already use the correct `uploads/{userId}/...` shape, which is why those uploads succeed.
+Add a separate "Featured" capability that is independent of the existing admin-only homepage `featured` flag.
 
-## Fix
+### Database
+Add a new boolean column on `products`:
+- `vendor_featured boolean not null default false`
 
-Change the upload paths in the two vendor product pages to match the existing policy:
+The existing `featured` column stays exclusively for admins (homepage). The new `vendor_featured` is what vendors control — it only affects their own store page.
 
-```
-vendors/{vendor.id}/products/{productId}/{timestamp}-{random}.{ext}
-vendors/{vendor.id}/products/{productId}/variant-{timestamp}-{random}.{ext}
-```
+RLS already lets vendors update their own products via the existing "Vendors can manage own products" policy, so no policy changes needed.
 
-The vendor id is already available in both pages (from `useOutletContext` / fetched product), so no new data is needed.
+### Vendor dashboard (`VendorProducts.tsx`)
+- Add a Star toggle button per product row (desktop table + mobile card), mirroring the admin pattern but bound to `vendor_featured`.
+- Show a small "Featured on store" badge when `vendor_featured = true`.
+- Tooltip clarifies: "Featured on your store page".
 
-### Files to edit
+### Store page (`VendorStorePage.tsx`)
+- Update the products query to also select `vendor_featured`.
+- If at least one product has `vendor_featured = true`, render a **"Featured by {store_name}"** section above the category nav, showing those products in the same `ProductCard` grid (max ~8, sorted newest first).
+- The featured products still appear in the main grid below as well (no exclusion), so customers see them in normal browsing too.
+- The featured section respects the active category filter is **not** applied (always shows the vendor's chosen highlights regardless of filter), since it's a curated band.
 
-1. **`src/pages/vendor/AddProductPage.tsx`**
-   - `uploadImages(productId)` → prefix path with `vendors/${vendor.id}/products/`
-   - `uploadVariantImages(files, productId)` → same prefix
+## Files to change
 
-2. **`src/pages/vendor/EditProductPage.tsx`**
-   - `uploadImages(prodId)` → same prefix using the vendor id of the product being edited
-   - `uploadVariantImages(files, prodId)` → same prefix
-
-No database, RLS, or bucket changes are required — existing policies already permit this path. Old images stored under the previous `{productId}/...` path will continue to display because the bucket is public for `SELECT`; only new uploads change location.
+- **Migration**: add `vendor_featured` column to `products`.
+- `src/pages/VendorStorePage.tsx` — extend query, add Featured section, add CategoryNav, wire filter state.
+- `src/pages/vendor/VendorProducts.tsx` — add vendor-featured toggle + badge in both desktop and mobile views.
 
 ## Out of scope
-
-- No migration of existing image files (they remain accessible via the public read policy).
-- No changes to the storage bucket, policies, or admin/Media Library flows.
+- No change to admin homepage feature logic.
+- No limit/cap on how many products a vendor can feature (can add later if needed).

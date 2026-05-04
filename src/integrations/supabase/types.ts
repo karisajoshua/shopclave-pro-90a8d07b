@@ -803,6 +803,7 @@ export type Database = {
           status: string
           stock: number
           updated_at: string
+          vendor_featured: boolean
           vendor_id: string
           video_url: string | null
           whats_in_box: string[] | null
@@ -824,6 +825,7 @@ export type Database = {
           status?: string
           stock?: number
           updated_at?: string
+          vendor_featured?: boolean
           vendor_id: string
           video_url?: string | null
           whats_in_box?: string[] | null
@@ -845,6 +847,7 @@ export type Database = {
           status?: string
           stock?: number
           updated_at?: string
+          vendor_featured?: boolean
           vendor_id?: string
           video_url?: string | null
           whats_in_box?: string[] | null

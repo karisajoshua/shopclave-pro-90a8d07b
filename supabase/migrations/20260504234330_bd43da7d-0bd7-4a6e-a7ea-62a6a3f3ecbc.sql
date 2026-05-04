@@ -1,0 +1,2 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS vendor_featured boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_products_vendor_featured ON public.products (vendor_id) WHERE vendor_featured = true;
