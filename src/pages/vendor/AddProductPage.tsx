@@ -110,7 +110,7 @@ const AddProductPage = () => {
     const results = await Promise.all(images.map(async (img) => {
       if (img.file) {
         const ext = img.file.name.split(".").pop();
-        const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `vendors/${vendor.id}/products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error } = await supabase.storage.from("product-images").upload(path, img.file);
         if (error) throw error;
         return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
@@ -149,7 +149,7 @@ const AddProductPage = () => {
   const uploadVariantImages = async (files: File[], productId: string): Promise<string[]> => {
     return Promise.all(files.map(async (file) => {
       const ext = file.name.split(".").pop();
-      const path = `${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `vendors/${vendor.id}/products/${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("product-images").upload(path, file);
       if (error) throw error;
       return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
