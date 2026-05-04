@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, MessageCircle, Globe, Users, ShieldCheck, Calendar, Store as StoreIcon } from "lucide-react";
+import { Phone, MessageCircle, Globe, Users, ShieldCheck, Calendar, Store as StoreIcon, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useProductRatings } from "@/hooks/useProductRatings";
@@ -30,6 +30,7 @@ const VendorStorePage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [sort, setSort] = useState<SortOption>("newest");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | "all">("all");
 
   const requireAuth = (fn: () => void) => {
     if (!user) {
@@ -63,7 +64,7 @@ const VendorStorePage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, slug, price, compare_at_price, deal_ends_at, created_at, product_images(url, position)")
+        .select("id, name, slug, price, compare_at_price, deal_ends_at, created_at, vendor_featured, category_id, categories(id, name, slug), product_images(url, position)")
         .eq("vendor_id", vendorId!)
         .eq("status", "active")
         .order("created_at", { ascending: false })
@@ -114,14 +115,40 @@ const VendorStorePage = () => {
     },
   });
 
+  const featuredProducts = useMemo(
+    () => (products as any[]).filter((p) => p.vendor_featured).slice(0, 8),
+    [products]
+  );
+
+  const categoryNav = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; count: number }>();
+    (products as any[]).forEach((p) => {
+      if (p.category_id && p.categories?.name) {
+        const existing = map.get(p.category_id);
+        if (existing) existing.count += 1;
+        else map.set(p.category_id, { id: p.category_id, name: p.categories.name, count: 1 });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (selectedCategoryId === "all") return products as any[];
+    return (products as any[]).filter((p) => p.category_id === selectedCategoryId);
+  }, [products, selectedCategoryId]);
+
   const sortedProducts = useMemo(() => {
-    const arr = [...products];
+    const arr = [...filteredProducts];
     if (sort === "price_asc") arr.sort((a, b) => a.price - b.price);
     else if (sort === "price_desc") arr.sort((a, b) => b.price - a.price);
     return arr;
-  }, [products, sort]);
+  }, [filteredProducts, sort]);
 
-  const { data: ratingsMap = {} } = useProductRatings(sortedProducts.map((p: any) => p.id));
+  const allIdsForRatings = useMemo(
+    () => Array.from(new Set([...sortedProducts, ...featuredProducts].map((p: any) => p.id))),
+    [sortedProducts, featuredProducts]
+  );
+  const { data: ratingsMap = {} } = useProductRatings(allIdsForRatings);
 
   if (vendorLoading) {
     return (
