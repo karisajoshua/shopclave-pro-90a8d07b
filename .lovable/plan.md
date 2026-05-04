@@ -1,62 +1,48 @@
-## Plan
+# Fix: New vendors cannot upload product images
 
-I found the main issue: the product page keeps old variant selections in local state when you move between products that share similar option names like `Size`. Because of that, the next product can fail to resolve the correct variant and falls back to the base product price, making it look like per-variant before/after pricing only works for one product.
+## Root cause
 
-I also confirmed the backend already supports this correctly:
-- `product_variants.compare_at_price` exists in the database
-- the product detail page already reads variant `price` and `compare_at_price`
-- the problem is in the frontend variant-selection lifecycle, not the schema
+The `product-images` storage bucket has RLS policies that only allow inserts under two folder shapes:
 
-## What I’ll change
+1. `uploads/{auth.uid()}/...` — for personal/account uploads
+2. `vendors/{vendor.id}/...` — for vendor product uploads
+3. Anything, but only if the user has the `admin` role
 
-### 1. Reset variant selections per product on the detail page
-Update `src/pages/ProductDetailPage.tsx` so variant option state is rebuilt whenever the product or variant list changes.
+The vendor product forms (`AddProductPage.tsx`, `EditProductPage.tsx`) currently upload to:
 
-This will:
-- clear stale selections from the previous product
-- initialize defaults from the current product’s actual variant values
-- remove invalid carried-over values when two products both use labels like `Size`, `Color`, etc.
+```
+{productId}/{timestamp}-{random}.{ext}
+{productId}/variant-{timestamp}-{random}.{ext}
+```
 
-### 2. Make selected variant resolution stricter and more reliable
-Refactor the matching logic so the selected variant is resolved against the current product’s full option set, not leftover partial state.
+This path doesn't start with `vendors/` or `uploads/`, so the storage RLS policy rejects the upload for everyone except admins. That's why admin-owned demo data works, but newly registered vendors get a "new row violates row-level security policy" error and no image is saved.
 
-This will ensure:
-- each similar product gets its own correct variant
-- `displayPrice` uses that product’s selected variant price
-- `displayCompare` uses that product’s selected variant original price
-- discount badges/strike-through pricing appear consistently for every qualifying product
+`MediaLibrary.tsx` and `VendorSettings.tsx` already use the correct `uploads/{userId}/...` shape, which is why those uploads succeed.
 
-### 3. Keep variant option order intact
-Preserve the vendor-defined option/value order while making the reset logic safe, so the previous size-order fix is not lost.
+## Fix
 
-### 4. Bring the edit screen in line with the add screen
-The edit page is still using the older cramped variant pricing layout. I’ll update `src/pages/vendor/EditProductPage.tsx` so vendors can clearly see and edit:
-- Original Price
-- Current Price
-- Stock
-- SKU
+Change the upload paths in the two vendor product pages to match the existing policy:
 
-This keeps add/edit behavior consistent and avoids the impression that variant before/after prices are missing on edit.
+```
+vendors/{vendor.id}/products/{productId}/{timestamp}-{random}.{ext}
+vendors/{vendor.id}/products/{productId}/variant-{timestamp}-{random}.{ext}
+```
 
-## Expected result
+The vendor id is already available in both pages (from `useOutletContext` / fetched product), so no new data is needed.
 
-After this fix:
-- any product with variant-level current/original prices will show them correctly on the storefront
-- switching between similar products will no longer reuse the previous product’s selected options
-- the correct strike-through price and discount will appear per selected variant
-- vendors will be able to clearly edit variant before/after prices on existing products
+### Files to edit
 
-## Technical details
+1. **`src/pages/vendor/AddProductPage.tsx`**
+   - `uploadImages(productId)` → prefix path with `vendors/${vendor.id}/products/`
+   - `uploadVariantImages(files, productId)` → same prefix
 
-Files to update:
-- `src/pages/ProductDetailPage.tsx`
-- `src/pages/vendor/EditProductPage.tsx`
+2. **`src/pages/vendor/EditProductPage.tsx`**
+   - `uploadImages(prodId)` → same prefix using the vendor id of the product being edited
+   - `uploadVariantImages(files, prodId)` → same prefix
 
-Implementation notes:
-- replace the current `useMemo` side-effect used for initializing `selectedOptions` with a proper `useEffect`
-- key the reset to the current product/variant set so state does not leak across products
-- normalize selected options against `optionTypes` before resolving `selectedVariant`
-- preserve first-seen variant option/value ordering from the current product’s variants
-- no database migration required
+No database, RLS, or bucket changes are required — existing policies already permit this path. Old images stored under the previous `{productId}/...` path will continue to display because the bucket is public for `SELECT`; only new uploads change location.
 
-If you approve, I’ll apply the fix.
+## Out of scope
+
+- No migration of existing image files (they remain accessible via the public read policy).
+- No changes to the storage bucket, policies, or admin/Media Library flows.
