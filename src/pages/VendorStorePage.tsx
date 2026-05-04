@@ -274,11 +274,75 @@ const VendorStorePage = () => {
             </div>
           </div>
 
+          {/* Featured by vendor */}
+          {featuredProducts.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="h-5 w-5 text-primary fill-primary" />
+                <h2 className="text-lg md:text-xl font-bold text-foreground">
+                  Featured by {vendor.store_name}
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                {featuredProducts.map((p: any) => {
+                  const imgs = (p.product_images || []).sort((a: any, b: any) => a.position - b.position);
+                  return (
+                    <ProductCard
+                      key={`feat-${p.id}`}
+                      id={p.id}
+                      name={p.name}
+                      slug={p.slug}
+                      price={p.price}
+                      compareAtPrice={p.compare_at_price}
+                      image={imgs[0]?.url || ""}
+                      vendorId={vendor.id}
+                      vendorName={vendor.store_name}
+                      dealEndsAt={p.deal_ends_at}
+                      rating={ratingsMap[p.id]?.avg ?? 0}
+                      reviewCount={ratingsMap[p.id]?.count ?? 0}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Category nav */}
+          {categoryNav.length >= 2 && (
+            <div className="mt-8 -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button
+                  onClick={() => setSelectedCategoryId("all")}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    selectedCategoryId === "all"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card text-foreground border-border hover:border-primary"
+                  }`}
+                >
+                  All ({products.length})
+                </button>
+                {categoryNav.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCategoryId(c.id)}
+                    className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                      selectedCategoryId === c.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:border-primary"
+                    }`}
+                  >
+                    {c.name} ({c.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Products */}
-          <div className="mt-8 mb-12">
+          <div className="mt-6 mb-12">
             <div className="flex items-center justify-between mb-4 gap-4">
               <h2 className="text-lg md:text-xl font-bold text-foreground">
-                Products ({products.length})
+                Products ({sortedProducts.length})
               </h2>
               <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
                 <SelectTrigger className="w-[180px]">
