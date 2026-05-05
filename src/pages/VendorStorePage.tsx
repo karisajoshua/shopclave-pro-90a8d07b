@@ -251,7 +251,16 @@ const VendorStorePage = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap gap-2 md:flex-col md:items-end">
+              <div className="flex flex-col gap-2 md:items-end">
+                {!user && (vendor.phone || vendor.whatsapp || vendor.website) && (
+                  <button
+                    onClick={() => navigate("/auth")}
+                    className="text-xs text-muted-foreground hover:text-primary underline-offset-2 hover:underline self-start md:self-end"
+                  >
+                    Sign in to view contact details
+                  </button>
+                )}
+                <div className="flex flex-wrap gap-2 md:flex-col md:items-end">
                 <Button
                   size="sm"
                   variant={isFollowing ? "outline" : "default"}
