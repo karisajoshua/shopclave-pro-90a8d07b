@@ -40,4 +40,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://shopclave-pro.lovable.app/sitemap.xml
+Sitemap: https://fyfeyolecqnpriwjgzyo.supabase.co/functions/v1/generate-sitemap
