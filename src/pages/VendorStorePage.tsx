@@ -261,6 +261,11 @@ const VendorStorePage = () => {
                 >
                   {isFollowing ? "Following" : "Follow"}
                 </Button>
+                <StoreQRDialog
+                  storeUrl={storeUrl}
+                  storeName={vendor.store_name}
+                  logoUrl={vendor.logo_url}
+                />
                 {vendor.whatsapp && (
                   <Button
                     size="sm"
