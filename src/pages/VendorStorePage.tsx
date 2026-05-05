@@ -196,7 +196,17 @@ const VendorStorePage = () => {
       ? { "@type": "PostalAddress", streetAddress: vendor.address }
       : undefined,
   };
+
+  return (
     <MarketplaceLayout>
+      <SEO
+        title={`${vendor.store_name} — Shop on Barakaz`}
+        description={seoDescription}
+        canonicalPath={storePath}
+        image={vendor.logo_url || vendor.banner_url || undefined}
+        type="profile"
+        jsonLd={storeJsonLd}
+      />
       <div className="bg-background">
         {/* Banner */}
         <div className="relative w-full aspect-[16/6] md:aspect-[16/5] bg-gradient-to-br from-primary/30 via-primary/10 to-secondary overflow-hidden">
