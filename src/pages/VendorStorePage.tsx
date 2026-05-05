@@ -50,7 +50,9 @@ const VendorStorePage = () => {
       const isUuid = UUID_RE.test(param);
       const { data, error } = await supabase
         .from("vendors")
-        .select("*")
+        .select(
+          "id, user_id, store_name, store_description, logo_url, banner_url, status, slug, phone, phone2, whatsapp, website, created_at, updated_at"
+        )
         .eq(isUuid ? "id" : "slug", param)
         .maybeSingle();
       if (error) throw error;
