@@ -1,53 +1,92 @@
-# Vendor Store: Category Nav + Vendor-Featured Products
+# Auto-rank vendor stores on Google + shareable QR codes
 
-Two related additions to the public vendor store page (`/store/:slug`), plus a vendor dashboard control to mark products as "featured on my store".
+Two parts: (1) make every vendor store discoverable & indexable by Google automatically, (2) give every store a shareable QR code placed strategically on the store page.
 
-## 1. Category navigation bar on the store page
+---
 
-On `VendorStorePage.tsx`, just above the products grid, render a horizontal scrollable bar of the categories that the vendor actually has active products in.
+## Part 1 — Auto Google ranking for every vendor store
 
-Behavior:
-- Derived from the vendor's loaded products (no extra query needed — we already join `category_id` if we add it to the select).
-- First chip: "All" (default selected, shows all products).
-- Each other chip: a category the vendor sells in, with a count badge (e.g. "Phones · 12").
-- Clicking a chip filters the grid client-side (instant, no reload).
-- Sticky-ish styling on mobile, horizontally scrollable, matches Amazon-style sub-nav using the marketplace orange accent for the active chip.
-- Hidden when the vendor has products in fewer than 2 categories (no point showing nav).
+"Auto-ranked" in practice means: every approved store must be **crawlable, indexable, and listed in our sitemap with rich metadata** so Google discovers and ranks it without manual work. Ranking position itself is decided by Google, but we control everything that lets it happen.
 
-Implementation:
-- Extend the `vendor-store-products` query to also select `category_id, categories(id, name, slug)`.
-- Build a unique `[{id, name, count}]` list with `useMemo`.
-- Add `selectedCategoryId` state; filter `sortedProducts` by it.
+### 1a. Dynamic sitemap (edge function)
 
-## 2. Vendor-featured products (store page only)
+Today `public/sitemap.xml` is static and doesn't list vendors or products. Replace it with a live one.
 
-Add a separate "Featured" capability that is independent of the existing admin-only homepage `featured` flag.
+- Create edge function `generate-sitemap` (public, no JWT) that queries:
+  - all `vendors` where `status = 'approved'` → URL `/store/{slug}`, lastmod = `updated_at`
+  - all `products` where `status = 'active'` → URL `/product/{slug}`, lastmod = `updated_at`
+  - plus the existing static routes already in `public/sitemap.xml`
+- Returns `Content-Type: application/xml` with proper `<urlset>` + `<lastmod>`, `<changefreq>`, `<priority>`.
+- Update `public/robots.txt` `Sitemap:` line to point to the function URL (works for both `barakaz.com` and the lovable.app preview via the project's Supabase URL).
+- Optionally add a `vercel`-style `_redirects` / lightweight `index.html` rewrite is not needed — Google reads whatever URL `robots.txt` advertises.
 
-### Database
-Add a new boolean column on `products`:
-- `vendor_featured boolean not null default false`
+### 1b. Per-store SEO meta tags
 
-The existing `featured` column stays exclusively for admins (homepage). The new `vendor_featured` is what vendors control — it only affects their own store page.
+Vendor store pages currently render without a per-page `<title>` / description, so Google sees the generic homepage title.
 
-RLS already lets vendors update their own products via the existing "Vendors can manage own products" policy, so no policy changes needed.
+- Add `react-helmet-async` (already a tiny lib) and wrap the app in `<HelmetProvider>` in `src/main.tsx`.
+- In `VendorStorePage.tsx`, render a `<Helmet>` block with:
+  - `<title>{store_name} — Shop on Barakaz</title>`
+  - `<meta name="description">` from `store_description` (truncated to ~155 chars, fallback generated)
+  - Canonical URL `https://barakaz.com/store/{slug}`
+  - Open Graph + Twitter card tags using `logo_url` / `banner_url`
+  - JSON-LD `Store` structured data (name, image, url, address if available, aggregateRating from existing review data) — this is what makes Google show rich results.
+- Do the same minimal `<Helmet>` on `ProductDetailPage.tsx` (Product schema) so product URLs in the sitemap also rank — this directly funnels traffic to the stores.
 
-### Vendor dashboard (`VendorProducts.tsx`)
-- Add a Star toggle button per product row (desktop table + mobile card), mirroring the admin pattern but bound to `vendor_featured`.
-- Show a small "Featured on store" badge when `vendor_featured = true`.
-- Tooltip clarifies: "Featured on your store page".
+### 1c. Indexability hygiene
 
-### Store page (`VendorStorePage.tsx`)
-- Update the products query to also select `vendor_featured`.
-- If at least one product has `vendor_featured = true`, render a **"Featured by {store_name}"** section above the category nav, showing those products in the same `ProductCard` grid (max ~8, sorted newest first).
-- The featured products still appear in the main grid below as well (no exclusion), so customers see them in normal browsing too.
-- The featured section respects the active category filter is **not** applied (always shows the vendor's chosen highlights regardless of filter), since it's a curated band.
+- Confirm `robots.txt` already allows everything (it does).
+- Add `<link rel="canonical">` per page (above) to prevent duplicate-content penalties from query params.
+- No "noindex" on vendor pages (verified none today).
 
-## Files to change
+---
 
-- **Migration**: add `vendor_featured` column to `products`.
-- `src/pages/VendorStorePage.tsx` — extend query, add Featured section, add CategoryNav, wire filter state.
-- `src/pages/vendor/VendorProducts.tsx` — add vendor-featured toggle + badge in both desktop and mobile views.
+## Part 2 — Shareable QR code per store
 
-## Out of scope
-- No change to admin homepage feature logic.
-- No limit/cap on how many products a vendor can feature (can add later if needed).
+### 2a. Generation
+
+- Add `qrcode.react` (lightweight, renders as SVG, no canvas).
+- The QR encodes the public store URL: `https://barakaz.com/store/{slug}` (uses canonical domain, not the preview).
+
+### 2b. Strategic placement on `VendorStorePage.tsx`
+
+Place it in **two** spots so it's useful both on desktop and mobile without crowding the layout:
+
+1. **Header card, right column** (next to Follow / WhatsApp / Phone buttons): a small "Share store" button with a QR icon. Clicking opens a dialog showing:
+   - The QR code (240×240 SVG with the store logo centered)
+   - The store URL with a "Copy link" button
+   - "Download QR" button (exports the SVG as PNG, filename `barakaz-{slug}-qr.png`)
+   - "Share" button using the Web Share API where available (mobile)
+2. **Inside the dialog only** — keep the page itself uncluttered. This is the "strategic" choice: visible affordance in the header, full QR experience in the modal. Vendors can screenshot/print it for packaging, business cards, shop windows, etc.
+
+Also expose the same QR in the **vendor dashboard** (`VendorDashboard.tsx`) as a small "Your store QR" card so vendors can grab it without visiting their public page.
+
+---
+
+## Technical details
+
+**New files**
+- `supabase/functions/generate-sitemap/index.ts` — public edge function returning XML.
+- `src/components/vendor/StoreQRDialog.tsx` — reusable QR dialog (props: `storeUrl`, `storeName`, `logoUrl`).
+- `src/components/seo/SEO.tsx` — small helper wrapping `<Helmet>` for title/description/canonical/OG/JSON-LD.
+
+**Edited files**
+- `public/robots.txt` — point `Sitemap:` to the edge function URL.
+- `public/sitemap.xml` — keep as fallback (or delete; robots.txt is the source of truth).
+- `src/main.tsx` — wrap app in `HelmetProvider`.
+- `src/pages/VendorStorePage.tsx` — add `<SEO>` block, JSON-LD `Store` schema, and the "Share store" button + QR dialog in the header actions column.
+- `src/pages/ProductDetailPage.tsx` — add `<SEO>` block + JSON-LD `Product` schema (boosts product URLs in sitemap).
+- `src/pages/vendor/VendorDashboard.tsx` — add a small "Your store QR" card.
+
+**Dependencies**
+- `react-helmet-async`
+- `qrcode.react`
+
+**No DB migration needed** — uses existing `vendors`/`products` columns.
+
+**Manual step the user should do once after deploy** (I'll mention it in the implementation message, not block on it):
+- In Google Search Console, submit `https://barakaz.com/sitemap.xml` (which now serves dynamic content via the edge function) — this triggers Google to start crawling all vendor stores.
+
+---
+
+Approve and I'll implement.

@@ -12,6 +12,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { PLANS, type Plan, isAdminUnlimited } from "@/lib/subscriptionPlans";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import StoreQRDialog from "@/components/vendor/StoreQRDialog";
+import { SITE_URL } from "@/components/seo/SEO";
+import { QrCode, ExternalLink } from "lucide-react";
 
 const VendorDashboard = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
@@ -202,6 +205,33 @@ const VendorDashboard = () => {
           )}
         </p>
       </div>
+
+      {/* Store QR card */}
+      {vendor?.slug && (
+        <div className="admin-card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <QrCode className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Your store QR code</p>
+            <p className="text-xs text-muted-foreground">
+              Share or print this to send customers straight to your shop.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <StoreQRDialog
+              storeUrl={`${SITE_URL}/store/${vendor.slug}`}
+              storeName={vendor.store_name}
+              logoUrl={vendor.logo_url}
+            />
+            <Button asChild size="sm" variant="ghost" className="gap-1">
+              <Link to={`/store/${vendor.slug}`} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4" /> View
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((stat) => (

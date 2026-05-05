@@ -12,6 +12,8 @@ import { Phone, MessageCircle, Globe, Users, ShieldCheck, Calendar, Store as Sto
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useProductRatings } from "@/hooks/useProductRatings";
+import SEO, { SITE_URL } from "@/components/seo/SEO";
+import StoreQRDialog from "@/components/vendor/StoreQRDialog";
 
 type SortOption = "newest" | "price_asc" | "price_desc";
 
@@ -176,9 +178,35 @@ const VendorStorePage = () => {
 
   const initial = vendor.store_name?.charAt(0).toUpperCase() || "?";
   const memberSince = new Date(vendor.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const storePath = `/store/${vendor.slug ?? vendor.id}`;
+  const storeUrl = `${SITE_URL}${storePath}`;
+  const seoDescription =
+    vendor.store_description ||
+    `Shop ${vendor.store_name} on Barakaz — verified vendor with ${products.length} products. Fast delivery across Kenya.`;
+
+  const storeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    name: vendor.store_name,
+    url: storeUrl,
+    image: vendor.logo_url || vendor.banner_url || undefined,
+    description: vendor.store_description || undefined,
+    telephone: vendor.phone || undefined,
+    address: (vendor as any).address
+      ? { "@type": "PostalAddress", streetAddress: (vendor as any).address }
+      : undefined,
+  };
 
   return (
     <MarketplaceLayout>
+      <SEO
+        title={`${vendor.store_name} — Shop on Barakaz`}
+        description={seoDescription}
+        canonicalPath={storePath}
+        image={vendor.logo_url || vendor.banner_url || undefined}
+        type="profile"
+        jsonLd={storeJsonLd}
+      />
       <div className="bg-background">
         {/* Banner */}
         <div className="relative w-full aspect-[16/6] md:aspect-[16/5] bg-gradient-to-br from-primary/30 via-primary/10 to-secondary overflow-hidden">
@@ -233,6 +261,11 @@ const VendorStorePage = () => {
                 >
                   {isFollowing ? "Following" : "Follow"}
                 </Button>
+                <StoreQRDialog
+                  storeUrl={storeUrl}
+                  storeName={vendor.store_name}
+                  logoUrl={vendor.logo_url}
+                />
                 {vendor.whatsapp && (
                   <Button
                     size="sm"

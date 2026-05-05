@@ -23,6 +23,7 @@ import ProductReviews from "@/components/product/ProductReviews";
 import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs";
 import ChatDialog from "@/components/shared/ChatDialog";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import SEO, { SITE_URL } from "@/components/seo/SEO";
 import { getDisplayProductRating, seededRandom } from "@/lib/product-rating-fallback";
 import {
   Breadcrumb,
@@ -482,6 +483,41 @@ const ProductDetailPage = () => {
 
   return (
     <MarketplaceLayout>
+      <SEO
+        title={`${product.name} — ${vendor?.store_name ?? "Barakaz"}`}
+        description={(product.description as string) || `Buy ${product.name} on Barakaz.`}
+        canonicalPath={`/product/${product.slug}`}
+        image={galleryImages[0]}
+        type="product"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          image: galleryImages.filter((u: string) => u && !u.includes("barakaz-icon")),
+          description: product.description || undefined,
+          sku: product.id,
+          brand: vendor?.store_name ? { "@type": "Brand", name: vendor.store_name } : undefined,
+          offers: {
+            "@type": "Offer",
+            url: `${SITE_URL}/product/${product.slug}`,
+            priceCurrency: "KES",
+            price: Number(displayPrice ?? product.price),
+            availability:
+              (displayStock ?? 0) > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+            seller: vendor?.store_name ? { "@type": "Organization", name: vendor.store_name } : undefined,
+          },
+          aggregateRating:
+            reviewStats && reviewStats.count > 0
+              ? {
+                  "@type": "AggregateRating",
+                  ratingValue: reviewStats.avg.toFixed(2),
+                  reviewCount: reviewStats.count,
+                }
+              : undefined,
+        }}
+      />
       <div className="container py-4 md:py-6">
         {/* Breadcrumb */}
         <Breadcrumb className="mb-4">
