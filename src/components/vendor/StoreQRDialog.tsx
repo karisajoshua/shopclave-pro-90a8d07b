@@ -29,10 +29,39 @@ const StoreQRDialog = ({ storeUrl, storeName, logoUrl, trigger }: StoreQRDialogP
   const downloadPng = async () => {
     const svg = wrapperRef.current?.querySelector("svg");
     if (!svg) return;
-    const xml = new XMLSerializer().serializeToString(svg);
+
+    // Strip any embedded <image> from the SVG so cross-origin logos don't taint
+    // the canvas during rasterization. We'll redraw the logo manually below.
+    const svgClone = svg.cloneNode(true) as SVGElement;
+    svgClone.querySelectorAll("image").forEach((n) => n.remove());
+
+    const xml = new XMLSerializer().serializeToString(svgClone);
     const svg64 = btoa(unescape(encodeURIComponent(xml)));
-    const img = new Image();
-    img.onload = () => {
+
+    const loadImage = (src: string, crossOrigin?: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        if (crossOrigin) img.crossOrigin = crossOrigin;
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+
+    // Try to fetch logo as a blob (avoids canvas tainting from cross-origin)
+    const fetchLogoObjectUrl = async (): Promise<string | null> => {
+      if (!logoUrl) return null;
+      try {
+        const res = await fetch(logoUrl, { mode: "cors" });
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
+      } catch {
+        return null;
+      }
+    };
+
+    try {
+      const qrImg = await loadImage(`data:image/svg+xml;base64,${svg64}`);
       const size = 1024;
       const canvas = document.createElement("canvas");
       canvas.width = size;
@@ -40,9 +69,57 @@ const StoreQRDialog = ({ storeUrl, storeName, logoUrl, trigger }: StoreQRDialogP
       const ctx = canvas.getContext("2d")!;
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, size, size);
-      ctx.drawImage(img, 0, 0, size, size);
+      ctx.drawImage(qrImg, 0, 0, size, size);
+
+      // Draw logo centered if available
+      const logoObjUrl = await fetchLogoObjectUrl();
+      if (logoObjUrl) {
+        try {
+          const logoImg = await loadImage(logoObjUrl);
+          const logoSize = Math.round(size * 0.18);
+          const x = (size - logoSize) / 2;
+          const y = (size - logoSize) / 2;
+          const pad = Math.round(logoSize * 0.12);
+
+          // White rounded background plate behind the logo
+          const r = Math.round(logoSize * 0.18);
+          const bx = x - pad;
+          const by = y - pad;
+          const bw = logoSize + pad * 2;
+          const bh = logoSize + pad * 2;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.moveTo(bx + r, by);
+          ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+          ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+          ctx.arcTo(bx, by + bh, bx, by, r);
+          ctx.arcTo(bx, by, bx + bw, by, r);
+          ctx.closePath();
+          ctx.fill();
+
+          // Clip logo into a rounded square
+          ctx.save();
+          const lr = Math.round(logoSize * 0.15);
+          ctx.beginPath();
+          ctx.moveTo(x + lr, y);
+          ctx.arcTo(x + logoSize, y, x + logoSize, y + logoSize, lr);
+          ctx.arcTo(x + logoSize, y + logoSize, x, y + logoSize, lr);
+          ctx.arcTo(x, y + logoSize, x, y, lr);
+          ctx.arcTo(x, y, x + logoSize, y, lr);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(logoImg, x, y, logoSize, logoSize);
+          ctx.restore();
+        } finally {
+          URL.revokeObjectURL(logoObjUrl);
+        }
+      }
+
       canvas.toBlob((blob) => {
-        if (!blob) return;
+        if (!blob) {
+          toast.error("Couldn't generate QR image");
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -50,8 +127,9 @@ const StoreQRDialog = ({ storeUrl, storeName, logoUrl, trigger }: StoreQRDialogP
         a.click();
         URL.revokeObjectURL(url);
       }, "image/png");
-    };
-    img.src = `data:image/svg+xml;base64,${svg64}`;
+    } catch {
+      toast.error("Couldn't generate QR image");
+    }
   };
 
   const nativeShare = async () => {
