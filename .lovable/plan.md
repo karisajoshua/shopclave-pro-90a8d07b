@@ -1,92 +1,44 @@
-# Auto-rank vendor stores on Google + shareable QR codes
+## Problem
 
-Two parts: (1) make every vendor store discoverable & indexable by Google automatically, (2) give every store a shareable QR code placed strategically on the store page.
+Two bugs in the store QR code feature:
 
----
+1. **"Store not found" when scanned** — QR encodes `https://barakaz.com/store/<slug>`. The apex `barakaz.com` currently returns an HTTP 302 redirect loop (verified via curl), so the page never loads and shows the fallback "Store not found" UI. Only `https://www.barakaz.com` (200 OK) and the lovable preview/published URLs actually serve the app.
 
-## Part 1 — Auto Google ranking for every vendor store
+2. **Logo missing from downloaded PNG** — The visible on-screen QR uses `qrcode.react`'s `imageSettings.src` with the vendor's remote `logo_url`. When we rasterize the SVG to PNG via `<img>` + `<canvas>`, cross-origin images either taint the canvas (blocking export) or fail to load in the SVG `<image>` tag during rasterization, so the logo is dropped from the downloaded file.
 
-"Auto-ranked" in practice means: every approved store must be **crawlable, indexable, and listed in our sitemap with rich metadata** so Google discovers and ranks it without manual work. Ranking position itself is decided by Google, but we control everything that lets it happen.
+## Fix
 
-### 1a. Dynamic sitemap (edge function)
+### 1. Use a reliably-serving base URL for share/QR links
 
-Today `public/sitemap.xml` is static and doesn't list vendors or products. Replace it with a live one.
+In `src/components/seo/SEO.tsx`:
+- Change `SITE_URL` from `https://barakaz.com` to `https://www.barakaz.com` so all SEO canonical URLs and the QR/share link land on the working host.
+- (Canonical URLs are unaffected SEO-wise; Google treats `www` as the canonical host once consistent.)
 
-- Create edge function `generate-sitemap` (public, no JWT) that queries:
-  - all `vendors` where `status = 'approved'` → URL `/store/{slug}`, lastmod = `updated_at`
-  - all `products` where `status = 'active'` → URL `/product/{slug}`, lastmod = `updated_at`
-  - plus the existing static routes already in `public/sitemap.xml`
-- Returns `Content-Type: application/xml` with proper `<urlset>` + `<lastmod>`, `<changefreq>`, `<priority>`.
-- Update `public/robots.txt` `Sitemap:` line to point to the function URL (works for both `barakaz.com` and the lovable.app preview via the project's Supabase URL).
-- Optionally add a `vercel`-style `_redirects` / lightweight `index.html` rewrite is not needed — Google reads whatever URL `robots.txt` advertises.
+### 2. Embed the logo into the downloaded PNG correctly
 
-### 1b. Per-store SEO meta tags
+Rewrite `downloadPng` in `src/components/vendor/StoreQRDialog.tsx` so the logo is drawn directly onto the canvas instead of relying on the SVG `<image>` tag:
 
-Vendor store pages currently render without a per-page `<title>` / description, so Google sees the generic homepage title.
+```text
+1. Render QR to canvas at 1024×1024 with white bg (as today, minus the SVG <image>)
+2. If logoUrl exists:
+     a. fetch(logoUrl) → blob → object URL  (avoids canvas tainting)
+     b. Load into Image, draw centered onto a white rounded square (~18% of QR size)
+3. canvas.toBlob('image/png') → download
+```
 
-- Add `react-helmet-async` (already a tiny lib) and wrap the app in `<HelmetProvider>` in `src/main.tsx`.
-- In `VendorStorePage.tsx`, render a `<Helmet>` block with:
-  - `<title>{store_name} — Shop on Barakaz</title>`
-  - `<meta name="description">` from `store_description` (truncated to ~155 chars, fallback generated)
-  - Canonical URL `https://barakaz.com/store/{slug}`
-  - Open Graph + Twitter card tags using `logo_url` / `banner_url`
-  - JSON-LD `Store` structured data (name, image, url, address if available, aggregateRating from existing review data) — this is what makes Google show rich results.
-- Do the same minimal `<Helmet>` on `ProductDetailPage.tsx` (Product schema) so product URLs in the sitemap also rank — this directly funnels traffic to the stores.
+Also in the visible QR (`<QRCodeSVG>`):
+- Keep `level="H"` (already set) so the QR remains scannable with the centre logo.
+- Add `crossOrigin="anonymous"` consideration is moot because we're not exporting the SVG anymore — we render to canvas directly.
 
-### 1c. Indexability hygiene
+### 3. Filename
 
-- Confirm `robots.txt` already allows everything (it does).
-- Add `<link rel="canonical">` per page (above) to prevent duplicate-content penalties from query params.
-- No "noindex" on vendor pages (verified none today).
+Keep current filename pattern (`barakaz-<store>-qr.png`).
 
----
+## Files Changed
 
-## Part 2 — Shareable QR code per store
+- `src/components/seo/SEO.tsx` — update `SITE_URL` to `https://www.barakaz.com`.
+- `src/components/vendor/StoreQRDialog.tsx` — rewrite `downloadPng` to draw QR + logo to canvas (with fetch-as-blob for the logo to avoid CORS taint); keep visible SVG QR with logo for preview.
 
-### 2a. Generation
+## Out of Scope
 
-- Add `qrcode.react` (lightweight, renders as SVG, no canvas).
-- The QR encodes the public store URL: `https://barakaz.com/store/{slug}` (uses canonical domain, not the preview).
-
-### 2b. Strategic placement on `VendorStorePage.tsx`
-
-Place it in **two** spots so it's useful both on desktop and mobile without crowding the layout:
-
-1. **Header card, right column** (next to Follow / WhatsApp / Phone buttons): a small "Share store" button with a QR icon. Clicking opens a dialog showing:
-   - The QR code (240×240 SVG with the store logo centered)
-   - The store URL with a "Copy link" button
-   - "Download QR" button (exports the SVG as PNG, filename `barakaz-{slug}-qr.png`)
-   - "Share" button using the Web Share API where available (mobile)
-2. **Inside the dialog only** — keep the page itself uncluttered. This is the "strategic" choice: visible affordance in the header, full QR experience in the modal. Vendors can screenshot/print it for packaging, business cards, shop windows, etc.
-
-Also expose the same QR in the **vendor dashboard** (`VendorDashboard.tsx`) as a small "Your store QR" card so vendors can grab it without visiting their public page.
-
----
-
-## Technical details
-
-**New files**
-- `supabase/functions/generate-sitemap/index.ts` — public edge function returning XML.
-- `src/components/vendor/StoreQRDialog.tsx` — reusable QR dialog (props: `storeUrl`, `storeName`, `logoUrl`).
-- `src/components/seo/SEO.tsx` — small helper wrapping `<Helmet>` for title/description/canonical/OG/JSON-LD.
-
-**Edited files**
-- `public/robots.txt` — point `Sitemap:` to the edge function URL.
-- `public/sitemap.xml` — keep as fallback (or delete; robots.txt is the source of truth).
-- `src/main.tsx` — wrap app in `HelmetProvider`.
-- `src/pages/VendorStorePage.tsx` — add `<SEO>` block, JSON-LD `Store` schema, and the "Share store" button + QR dialog in the header actions column.
-- `src/pages/ProductDetailPage.tsx` — add `<SEO>` block + JSON-LD `Product` schema (boosts product URLs in sitemap).
-- `src/pages/vendor/VendorDashboard.tsx` — add a small "Your store QR" card.
-
-**Dependencies**
-- `react-helmet-async`
-- `qrcode.react`
-
-**No DB migration needed** — uses existing `vendors`/`products` columns.
-
-**Manual step the user should do once after deploy** (I'll mention it in the implementation message, not block on it):
-- In Google Search Console, submit `https://barakaz.com/sitemap.xml` (which now serves dynamic content via the edge function) — this triggers Google to start crawling all vendor stores.
-
----
-
-Approve and I'll implement.
+- Fixing the apex `barakaz.com → barakaz.com` 302 redirect loop is a DNS/hosting config issue (Cloudflare/Lovable custom domain). I'll note it in the response so you can fix it in domain settings, but the code fix above sidesteps the issue immediately by using `www`.
