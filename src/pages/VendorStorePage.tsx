@@ -312,6 +312,7 @@ const VendorStorePage = () => {
                     <Globe className="h-4 w-4" /> Website
                   </Button>
                 )}
+                </div>
               </div>
             </div>
           </div>
