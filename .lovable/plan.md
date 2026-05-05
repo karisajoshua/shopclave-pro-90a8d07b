@@ -1,44 +1,61 @@
 ## Problem
 
-Two bugs in the store QR code feature:
+When a signed-out user scans the store QR code (or visits `/store/<slug>` directly), the page shows **"Store not found"**.
 
-1. **"Store not found" when scanned** — QR encodes `https://barakaz.com/store/<slug>`. The apex `barakaz.com` currently returns an HTTP 302 redirect loop (verified via curl), so the page never loads and shows the fallback "Store not found" UI. Only `https://www.barakaz.com` (200 OK) and the lovable preview/published URLs actually serve the app.
+Root cause confirmed by hitting the API directly as `anon`:
 
-2. **Logo missing from downloaded PNG** — The visible on-screen QR uses `qrcode.react`'s `imageSettings.src` with the vendor's remote `logo_url`. When we rasterize the SVG to PNG via `<img>` + `<canvas>`, cross-origin images either taint the canvas (blocking export) or fail to load in the SVG `<image>` tag during rasterization, so the logo is dropped from the downloaded file.
+```
+GET /rest/v1/vendors?select=*&slug=eq.barakaz
+→ 42501 "permission denied for table vendors"
+```
+
+A previous security migration revoked anon's blanket SELECT on `vendors` and re-granted only the safe columns (everything except `payment_details`). But `VendorStorePage.tsx` (and `ProductDetailPage.tsx` joins) still request `select=*`, which includes `payment_details`. PostgREST returns 403 → React Query gets `null` → page shows the empty state.
+
+So the QR code itself is fine; the storefront just refuses to load for guests.
 
 ## Fix
 
-### 1. Use a reliably-serving base URL for share/QR links
+Replace `select("*")` with an explicit list of the columns anon is already granted, in the two public-facing queries:
 
-In `src/components/seo/SEO.tsx`:
-- Change `SITE_URL` from `https://barakaz.com` to `https://www.barakaz.com` so all SEO canonical URLs and the QR/share link land on the working host.
-- (Canonical URLs are unaffected SEO-wise; Google treats `www` as the canonical host once consistent.)
+### 1. `src/pages/VendorStorePage.tsx` (line ~51)
 
-### 2. Embed the logo into the downloaded PNG correctly
-
-Rewrite `downloadPng` in `src/components/vendor/StoreQRDialog.tsx` so the logo is drawn directly onto the canvas instead of relying on the SVG `<image>` tag:
-
-```text
-1. Render QR to canvas at 1024×1024 with white bg (as today, minus the SVG <image>)
-2. If logoUrl exists:
-     a. fetch(logoUrl) → blob → object URL  (avoids canvas tainting)
-     b. Load into Image, draw centered onto a white rounded square (~18% of QR size)
-3. canvas.toBlob('image/png') → download
+Change:
+```ts
+.from("vendors").select("*")
+```
+to:
+```ts
+.from("vendors").select(
+  "id, user_id, store_name, store_description, logo_url, banner_url, status, slug, phone, phone2, whatsapp, website, created_at, updated_at"
+)
 ```
 
-Also in the visible QR (`<QRCodeSVG>`):
-- Keep `level="H"` (already set) so the QR remains scannable with the centre logo.
-- Add `crossOrigin="anonymous"` consideration is moot because we're not exporting the SVG anymore — we render to canvas directly.
+`payment_details` is not needed on the storefront — it's only used in checkout (where the user is authenticated).
 
-### 3. Filename
+### 2. `src/pages/ProductDetailPage.tsx` (line ~270)
 
-Keep current filename pattern (`barakaz-<store>-qr.png`).
+Already uses an explicit nested select (`vendors(id, slug, store_name, phone, phone2, website, whatsapp)`), but verify nothing else fans out to `payment_details` for guests. No change expected here unless audit reveals one.
+
+### 3. UX guard — gate contact info, not the store itself
+
+`VendorStorePage` already masks phone numbers and forces sign-in for the call/WhatsApp/website actions, so once the page loads, guest privacy rules are still enforced. No change needed.
+
+### 4. Apex domain redirect
+
+`https://barakaz.com` (apex) actually serves the React app correctly — the previous "302 loop" theory was wrong. The QR code's `https://www.barakaz.com/store/<slug>` will work as soon as the column-grant fix lands. No domain/DNS change needed.
 
 ## Files Changed
 
-- `src/components/seo/SEO.tsx` — update `SITE_URL` to `https://www.barakaz.com`.
-- `src/components/vendor/StoreQRDialog.tsx` — rewrite `downloadPng` to draw QR + logo to canvas (with fetch-as-blob for the logo to avoid CORS taint); keep visible SVG QR with logo for preview.
+- `src/pages/VendorStorePage.tsx` — narrow vendor SELECT to columns granted to `anon`.
+
+## Verification
+
+After applying:
+1. Open `https://www.barakaz.com/store/barakaz` in an incognito window → store loads.
+2. Scan the printed QR → store loads.
+3. Confirm phone numbers still appear masked and contact buttons still redirect to `/auth` for guests.
 
 ## Out of Scope
 
-- Fixing the apex `barakaz.com → barakaz.com` 302 redirect loop is a DNS/hosting config issue (Cloudflare/Lovable custom domain). I'll note it in the response so you can fix it in domain settings, but the code fix above sidesteps the issue immediately by using `www`.
+- No DB migration needed; current grants are correct.
+- No QR code regeneration — existing QR codes will start working immediately.
