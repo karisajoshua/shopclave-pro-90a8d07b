@@ -12,6 +12,8 @@ import { Phone, MessageCircle, Globe, Users, ShieldCheck, Calendar, Store as Sto
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useProductRatings } from "@/hooks/useProductRatings";
+import SEO, { SITE_URL } from "@/components/seo/SEO";
+import StoreQRDialog from "@/components/vendor/StoreQRDialog";
 
 type SortOption = "newest" | "price_asc" | "price_desc";
 
