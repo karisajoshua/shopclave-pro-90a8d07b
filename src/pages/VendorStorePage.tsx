@@ -178,8 +178,24 @@ const VendorStorePage = () => {
 
   const initial = vendor.store_name?.charAt(0).toUpperCase() || "?";
   const memberSince = new Date(vendor.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const storePath = `/store/${vendor.slug ?? vendor.id}`;
+  const storeUrl = `${SITE_URL}${storePath}`;
+  const seoDescription =
+    vendor.store_description ||
+    `Shop ${vendor.store_name} on Barakaz — verified vendor with ${products.length} products. Fast delivery across Kenya.`;
 
-  return (
+  const storeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    name: vendor.store_name,
+    url: storeUrl,
+    image: vendor.logo_url || vendor.banner_url || undefined,
+    description: vendor.store_description || undefined,
+    telephone: vendor.phone || undefined,
+    address: vendor.address
+      ? { "@type": "PostalAddress", streetAddress: vendor.address }
+      : undefined,
+  };
     <MarketplaceLayout>
       <div className="bg-background">
         {/* Banner */}
