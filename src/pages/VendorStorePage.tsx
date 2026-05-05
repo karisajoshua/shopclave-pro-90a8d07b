@@ -192,8 +192,8 @@ const VendorStorePage = () => {
     image: vendor.logo_url || vendor.banner_url || undefined,
     description: vendor.store_description || undefined,
     telephone: vendor.phone || undefined,
-    address: vendor.address
-      ? { "@type": "PostalAddress", streetAddress: vendor.address }
+    address: (vendor as any).address
+      ? { "@type": "PostalAddress", streetAddress: (vendor as any).address }
       : undefined,
   };
 
