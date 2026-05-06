@@ -1,73 +1,61 @@
-## Goal
+## Problem
 
-When a user visits Barakaz on an iPhone (iOS Safari/Chrome on iOS), they get an Apple-style experience: SF-style typography, generous spacing, soft rounded surfaces, translucent "frosted" navigation bars, large iOS-style titles, smooth iOS spring transitions, and tap targets that feel native to iPhone. Android, iPad, and desktop keep the current Amazon/Jumia-inspired layout unchanged.
+When a signed-out user scans the store QR code (or visits `/store/<slug>` directly), the page shows **"Store not found"**.
 
-This is an **iPhone-only visual layer** — not a rebuild. The data, routes, and features stay exactly the same.
+Root cause confirmed by hitting the API directly as `anon`:
 
-## What "Apple experience" means here
-
-- **Typography**: System font stack (`-apple-system, "SF Pro Text", "SF Pro Display"`), tighter letter-spacing on headings, iOS large-title style on top of pages.
-- **Color & surfaces**: Lighter, softer backgrounds, increased corner radii (14–20px), subtle hairline borders (0.5px) instead of heavy 1px borders, soft shadows.
-- **Top bar**: Translucent blurred header (backdrop-filter blur, semi-transparent white) instead of the dark Amazon bar — only on iPhone.
-- **Bottom nav**: Frosted-glass tab bar with SF Symbol-style icons, rounded selected pill, larger safe-area padding.
-- **Buttons**: Filled primary buttons with iOS spring press animation, rounded-full secondary buttons, haptic-feel tap feedback (scale 0.97 on press).
-- **Lists & cards**: iOS-style grouped cards with inset rounded corners.
-- **Sheets/dialogs**: Bottom-sheet style on iPhone (rounded top corners, drag handle look) instead of centered dialogs where it makes sense.
-- **Motion**: Use iOS-like easing (`cubic-bezier(0.32, 0.72, 0, 1)`) for transitions.
-- **Safe areas**: Respect `env(safe-area-inset-*)` everywhere (notch, home indicator).
-
-## How it will be implemented
-
-### 1. iOS detection
-Add a small `useIsIOS()` hook (`src/hooks/use-ios.ts`) that returns `true` for iPhone/iPod (and iPad masquerading as Mac with touch). Add an `ios` class to `<html>` when true so CSS can target `html.ios .selector`.
-
-### 2. iOS theme layer in `src/index.css`
-Add a scoped block:
-
-```text
-html.ios { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", ... }
-html.ios { --radius: 0.875rem; }      /* 14px */
-html.ios body { background: #f2f2f7; } /* iOS systemGroupedBackground */
-html.ios .ios-blur { backdrop-filter: saturate(180%) blur(20px); background: rgba(255,255,255,0.72); }
-html.ios .ios-hairline { border-color: rgba(60,60,67,0.18); }
+```
+GET /rest/v1/vendors?select=*&slug=eq.barakaz
+→ 42501 "permission denied for table vendors"
 ```
 
-Plus iOS-specific overrides for buttons, cards, inputs, dialogs.
+A previous security migration revoked anon's blanket SELECT on `vendors` and re-granted only the safe columns (everything except `payment_details`). But `VendorStorePage.tsx` (and `ProductDetailPage.tsx` joins) still request `select=*`, which includes `payment_details`. PostgREST returns 403 → React Query gets `null` → page shows the empty state.
 
-### 3. Components updated
-- `src/components/layout/Navbar.tsx` — on iPhone, render a translucent white blurred bar with centered title and large logo, hide the dark Amazon bar. Tablet/desktop unchanged.
-- `src/components/layout/MobileBottomNav.tsx` — frosted glass background, SF-symbol-style icons (lucide already close), selected state uses iOS blue tint pill. Already respects safe-area; we'll increase padding.
-- `src/components/ui/button.tsx` — add `ios:` variants via the existing `html.ios` CSS overrides (no API change).
-- `src/components/ui/dialog.tsx` / `sheet.tsx` — on iOS, dialogs slide up from the bottom with rounded top corners and a drag handle bar.
-- `src/pages/Index.tsx` (homepage) — add an iOS "Large Title" header ("Barakaz") that collapses on scroll, matching iOS navigation pattern.
-- `ProductCard`, category grid — softer radii and shadows on iOS.
+So the QR code itself is fine; the storefront just refuses to load for guests.
 
-### 4. Install / "Add to Home Screen"
-Already have `apple-mobile-web-app-capable` and `apple-touch-icon` set. Add a one-time, dismissible iOS install hint card on the homepage shown only on iPhone Safari (not when already running standalone), with instructions: "Tap Share → Add to Home Screen". This makes Barakaz feel like a real iPhone app once installed.
+## Fix
 
-### 5. What stays the same
-- All routes, queries, auth, vendor logic, RLS — untouched.
-- Android, tablet, and desktop UI — untouched.
-- Brand color (#ff420e) is preserved as the iOS accent.
+Replace `select("*")` with an explicit list of the columns anon is already granted, in the two public-facing queries:
 
-## Files to change
+### 1. `src/pages/VendorStorePage.tsx` (line ~51)
 
-- `src/hooks/use-ios.ts` (new)
-- `src/main.tsx` (apply `ios` class to `<html>`)
-- `src/index.css` (iOS theme layer)
-- `src/components/layout/Navbar.tsx`
-- `src/components/layout/MobileBottomNav.tsx`
-- `src/components/ui/dialog.tsx`, `src/components/ui/sheet.tsx` (iOS bottom-sheet variant)
-- `src/components/marketplace/ProductCard.tsx` (radius/shadow polish)
-- `src/pages/Index.tsx` (iOS large title + optional install hint)
-- `src/components/shared/IOSInstallHint.tsx` (new, optional)
+Change:
+```ts
+.from("vendors").select("*")
+```
+to:
+```ts
+.from("vendors").select(
+  "id, user_id, store_name, store_description, logo_url, banner_url, status, slug, phone, phone2, whatsapp, website, created_at, updated_at"
+)
+```
 
-## Out of scope (ask if you want these too)
+`payment_details` is not needed on the storefront — it's only used in checkout (where the user is authenticated).
 
-- Wrapping as a true native iOS app via Capacitor (separate, larger task).
-- Rebuilding admin or vendor dashboards in iOS style (those are desktop-first).
-- Replacing all dialogs project-wide with bottom sheets (we'll do the most-used ones; rest stay standard).
+### 2. `src/pages/ProductDetailPage.tsx` (line ~270)
 
-## Memory updates
+Already uses an explicit nested select (`vendors(id, slug, store_name, phone, phone2, website, whatsapp)`), but verify nothing else fans out to `payment_details` for guests. No change expected here unless audit reveals one.
 
-Add a memory: "iOS users get an Apple-style UI layer (translucent nav, SF typography, larger radii, bottom-sheet dialogs). Trigger via `html.ios` class. Android/tablet/desktop unchanged."
+### 3. UX guard — gate contact info, not the store itself
+
+`VendorStorePage` already masks phone numbers and forces sign-in for the call/WhatsApp/website actions, so once the page loads, guest privacy rules are still enforced. No change needed.
+
+### 4. Apex domain redirect
+
+`https://barakaz.com` (apex) actually serves the React app correctly — the previous "302 loop" theory was wrong. The QR code's `https://www.barakaz.com/store/<slug>` will work as soon as the column-grant fix lands. No domain/DNS change needed.
+
+## Files Changed
+
+- `src/pages/VendorStorePage.tsx` — narrow vendor SELECT to columns granted to `anon`.
+
+## Verification
+
+After applying:
+1. Open `https://www.barakaz.com/store/barakaz` in an incognito window → store loads.
+2. Scan the printed QR → store loads.
+3. Confirm phone numbers still appear masked and contact buttons still redirect to `/auth` for guests.
+
+## Out of Scope
+
+- No DB migration needed; current grants are correct.
+- No QR code regeneration — existing QR codes will start working immediately.

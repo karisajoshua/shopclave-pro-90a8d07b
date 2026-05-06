@@ -3,7 +3,6 @@ import HeroBanner from "@/components/marketplace/HeroBanner";
 import PromoStrip from "@/components/marketplace/PromoStrip";
 import CategoryCard from "@/components/marketplace/CategoryCard";
 import ProductCard from "@/components/marketplace/ProductCard";
-import IOSInstallHint from "@/components/shared/IOSInstallHint";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,7 +117,6 @@ const Index = () => {
 
   return (
     <MarketplaceLayout>
-      <IOSInstallHint />
       <HeroBanner />
       <PromoStrip />
 
