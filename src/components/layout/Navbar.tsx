@@ -36,8 +36,8 @@ const Navbar = () => {
   return (
     <>
       <header className="sticky top-0 z-50">
-        {/* Main dark navbar */}
-        <nav className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
+        {/* Main dark navbar (Android/desktop) — hidden on iOS phones */}
+        <nav className="bg-[hsl(var(--nav-dark))] text-primary-foreground ios:hidden">
           {/* === MOBILE TOP ROW === */}
           <div className="md:hidden flex items-center justify-between px-3 h-12">
             <div className="flex items-center gap-3">
