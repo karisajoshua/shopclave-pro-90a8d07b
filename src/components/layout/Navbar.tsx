@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "@/contexts/TranslationContext";
+import { useIsIOS } from "@/hooks/use-ios";
 import SidebarMenu from "./MegaMenu";
 import SearchSuggestions from "./SearchSuggestions";
 import barakazLogo from "@/assets/barakaz-logo.png";
@@ -25,6 +26,7 @@ const Navbar = () => {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const { country, languages } = useLocale();
   const { language, setLanguage, t } = useTranslation();
+  const isIOS = useIsIOS();
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
