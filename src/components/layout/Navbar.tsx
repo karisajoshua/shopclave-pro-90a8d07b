@@ -255,8 +255,8 @@ const Navbar = () => {
           </div>
         </nav>
 
-        {/* === MOBILE QUICK LINKS === */}
-        <div className="md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground">
+        {/* === MOBILE QUICK LINKS === (hidden on iOS — chips already shown above) */}
+        <div className={`bg-[hsl(var(--nav-secondary))] text-primary-foreground ${isIOS ? "hidden" : "md:hidden"}`}>
           <div className="flex items-center gap-0 h-9 text-xs overflow-x-auto scrollbar-hide px-1">
             <Link to="/search?deals=1" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
             <Link to="/vendor/register" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
@@ -268,8 +268,8 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* === MOBILE LOCATION BAR === */}
-        <div className="md:hidden bg-background border-b border-border">
+        {/* === MOBILE LOCATION BAR === (hidden on iOS for cleaner Apple look) */}
+        <div className={`bg-background border-b border-border ${isIOS ? "hidden" : "md:hidden"}`}>
           <div className="flex items-center gap-1.5 px-3 h-9 text-xs text-foreground">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">{t("nav.deliverTo")}</span>
