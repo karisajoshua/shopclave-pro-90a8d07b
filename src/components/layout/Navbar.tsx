@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "@/contexts/TranslationContext";
+import { useIsIOS } from "@/hooks/use-ios";
 import SidebarMenu from "./MegaMenu";
 import SearchSuggestions from "./SearchSuggestions";
 import barakazLogo from "@/assets/barakaz-logo.png";
@@ -25,6 +26,7 @@ const Navbar = () => {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const { country, languages } = useLocale();
   const { language, setLanguage, t } = useTranslation();
+  const isIOS = useIsIOS();
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -36,8 +38,74 @@ const Navbar = () => {
   return (
     <>
       <header className="sticky top-0 z-50">
-        {/* Main dark navbar */}
-        <nav className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
+        {/* iOS-only translucent header (iPhone) */}
+        {isIOS && (
+          <div className="md:hidden ios-blur ios-safe-top">
+            <div className="flex items-center justify-between px-4 h-12 relative">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-1 -ml-1 text-foreground"
+                aria-label="Menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <Link to="/" className="absolute left-1/2 -translate-x-1/2">
+                <img src={barakazLogo} alt="Barakaz" className="h-7 w-auto" />
+              </Link>
+              <div className="flex items-center gap-3">
+                <Link to={user ? "/account" : "/auth"} className="text-foreground">
+                  <User className="h-6 w-6" />
+                </Link>
+                <Link to="/cart" className="relative text-foreground">
+                  <ShoppingCart className="h-6 w-6" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1.5 -right-2 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                </Link>
+              </div>
+            </div>
+            {/* iOS pill search */}
+            <div className="px-4 pb-3">
+              <div className="relative flex items-center">
+                <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder={t("nav.search")}
+                  className="h-10 pl-9 pr-3 rounded-full bg-muted border-transparent focus-visible:ring-1 focus-visible:ring-primary text-base"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setSuggestionsOpen(true); }}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                <SearchSuggestions query={searchQuery} visible={suggestionsOpen} onClose={() => setSuggestionsOpen(false)} />
+              </div>
+            </div>
+            {/* iOS quick chips */}
+            <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
+              {[
+                { to: "/search?deals=1", label: t("nav.todaysDeals") },
+                { to: "/search?category=electronics", label: t("nav.electronics") },
+                { to: "/search?category=fashion", label: t("nav.fashion") },
+                { to: "/search?category=home-garden", label: t("nav.homeGarden") },
+                { to: "/search?category=health-beauty", label: t("nav.healthBeauty") },
+                { to: "/search?category=sports", label: t("nav.sports") },
+              ].map((c) => (
+                <Link
+                  key={c.to}
+                  to={c.to}
+                  className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground"
+                >
+                  {c.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main dark navbar (Android mobile + desktop). Hidden on iPhone. */}
+        <nav className={`bg-[hsl(var(--nav-dark))] text-primary-foreground ${isIOS ? "hidden md:block" : ""}`}>
+
           {/* === MOBILE TOP ROW === */}
           <div className="md:hidden flex items-center justify-between px-3 h-12">
             <div className="flex items-center gap-3">
@@ -187,8 +255,8 @@ const Navbar = () => {
           </div>
         </nav>
 
-        {/* === MOBILE QUICK LINKS === */}
-        <div className="md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground">
+        {/* === MOBILE QUICK LINKS === (hidden on iOS — chips already shown above) */}
+        <div className={`bg-[hsl(var(--nav-secondary))] text-primary-foreground ${isIOS ? "hidden" : "md:hidden"}`}>
           <div className="flex items-center gap-0 h-9 text-xs overflow-x-auto scrollbar-hide px-1">
             <Link to="/search?deals=1" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
             <Link to="/vendor/register" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
@@ -200,8 +268,8 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* === MOBILE LOCATION BAR === */}
-        <div className="md:hidden bg-background border-b border-border">
+        {/* === MOBILE LOCATION BAR === (hidden on iOS for cleaner Apple look) */}
+        <div className={`bg-background border-b border-border ${isIOS ? "hidden" : "md:hidden"}`}>
           <div className="flex items-center gap-1.5 px-3 h-9 text-xs text-foreground">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">{t("nav.deliverTo")}</span>
