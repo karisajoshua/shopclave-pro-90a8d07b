@@ -115,7 +115,7 @@ export function VendorSidebar() {
           <img
             src={barakazLogo}
             alt="Barakaz"
-            className="h-9 w-auto group-data-[collapsible=icon]:h-7 transition-all brightness-0 invert"
+            className="h-14 w-auto group-data-[collapsible=icon]:h-8 transition-all brightness-0 invert"
           />
         </Link>
       </SidebarHeader>
