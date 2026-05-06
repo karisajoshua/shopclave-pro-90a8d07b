@@ -97,7 +97,7 @@ export function AdminSidebar() {
           <img
             src={collapsed ? barakazIcon : barakazLogo}
             alt="Barakaz"
-            className="h-9 w-auto group-data-[collapsible=icon]:h-7 transition-all brightness-0 invert opacity-95"
+            className="h-14 w-auto group-data-[collapsible=icon]:h-8 transition-all brightness-0 invert opacity-95"
           />
         </Link>
       </SidebarHeader>

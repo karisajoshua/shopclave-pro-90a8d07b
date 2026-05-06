@@ -116,7 +116,7 @@ const Footer = () => {
             <img
               src={barakazLogo}
               alt="Barakaz"
-              className="h-8 w-auto brightness-0 invert"
+              className="h-12 w-auto brightness-0 invert"
             />
             <p className="text-xs text-primary-foreground/50">
               © {new Date().getFullYear()} Barakaz. All rights reserved.
