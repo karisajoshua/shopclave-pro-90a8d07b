@@ -42,7 +42,7 @@ const ProductCard = ({
   return (
     <Link
       to={`/product/${slug}`}
-      className="group bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
+      className="group bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col [html.ios_&]:rounded-2xl [html.ios_&]:border-transparent [html.ios_&]:shadow-sm"
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
         <img
