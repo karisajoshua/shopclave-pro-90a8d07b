@@ -60,7 +60,7 @@ const Index = () => {
         .eq("status", "active")
         .eq("featured", true)
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(10);
 
       // Determine if any active products exist at all (for first-run demo logic)
       const anyActiveQ = await supabase
