@@ -59,6 +59,7 @@ const EditProductPage = () => {
   const [form, setForm] = useState({
     name: "", description: "", price: "", compareAtPrice: "", bulkPrice: "",
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
+    dealEndsAt: "",
   });
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
@@ -113,6 +114,7 @@ const EditProductPage = () => {
       status: p.status,
       condition: p.condition || "new",
       delivery: "",
+      dealEndsAt: p.deal_ends_at ? new Date(p.deal_ends_at).toISOString().slice(0, 16) : "",
     });
     setKeyFeatures(p.key_features?.length ? [...p.key_features] : [""]);
     setWhatsInBoxItems(Array.isArray(p.whats_in_box) && p.whats_in_box.length ? [...p.whats_in_box] : [""]);
@@ -302,6 +304,7 @@ const EditProductPage = () => {
         key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
+        deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
       } as any).eq("id", productId);
       if (error) throw error;
 
@@ -561,6 +564,20 @@ const EditProductPage = () => {
                   <SelectItem value="both">Delivery & Pickup</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+              <Label className="flex items-center gap-1.5 text-primary">⚡ Flash Sale Timer (optional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Set an end time to feature this product in the homepage Flash Sale section.</p>
+              <div className="flex gap-2">
+                <Input
+                  type="datetime-local"
+                  value={form.dealEndsAt}
+                  onChange={(e) => setForm({ ...form, dealEndsAt: e.target.value })}
+                />
+                {form.dealEndsAt && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, dealEndsAt: "" })}>Clear</Button>
+                )}
+              </div>
             </div>
           </div>
         )}
