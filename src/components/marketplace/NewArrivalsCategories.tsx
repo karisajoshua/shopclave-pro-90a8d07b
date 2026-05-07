@@ -2,10 +2,17 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import barakazIcon from "@/assets/barakaz-icon.png";
-import { useTranslation } from "@/contexts/TranslationContext";
+
+const FALLBACK_IMAGES: Record<string, string> = {
+  electronics: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80",
+  fashion: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&q=80",
+  "home-garden": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
+  "health-beauty": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80",
+  sports: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=200&q=80",
+  "phones-tablets": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&q=80",
+};
 
 const NewArrivalsCategories = () => {
-  const { t } = useTranslation();
   const { data: categories } = useQuery({
     queryKey: ["new-arrivals-categories"],
     queryFn: async () => {
@@ -24,7 +31,7 @@ const NewArrivalsCategories = () => {
   return (
     <section className="container py-6">
       <h2 className="font-display text-lg md:text-xl font-bold text-foreground mb-4">
-        {t("home.newArrivals") || "New Arrivals"}
+        New Arrivals
       </h2>
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
         {categories.map((c: any) => (
@@ -35,7 +42,7 @@ const NewArrivalsCategories = () => {
           >
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden bg-secondary border-2 border-border group-hover:border-primary transition-colors">
               <img
-                src={c.image_url || barakazIcon}
+                src={c.image_url || FALLBACK_IMAGES[c.slug] || barakazIcon}
                 alt={c.name}
                 className="w-full h-full object-cover"
                 loading="lazy"
