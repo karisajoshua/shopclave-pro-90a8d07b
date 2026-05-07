@@ -121,6 +121,8 @@ const Index = () => {
     <MarketplaceLayout>
       <HeroBanner />
       <PromoStrip />
+      <FlashSaleSection />
+      <BestDealsSection />
 
       {/* Featured Products */}
       {showFeaturedSection && (
