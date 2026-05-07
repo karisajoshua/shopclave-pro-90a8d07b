@@ -51,8 +51,8 @@ const PromoStrip = () => {
       {products.length > 0 && (
         <section>
           <h2 className="font-display text-lg md:text-xl font-bold text-foreground mb-4">Sponsored Products</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {products.map((p) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {products.slice(0, 10).map((p) => (
               <Link key={p.id} to={p.link_url} className="group bg-card rounded-lg overflow-hidden border hover:shadow-md transition-shadow">
                 <div className="aspect-square overflow-hidden bg-muted">
                   <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
