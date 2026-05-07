@@ -478,6 +478,10 @@ const AddProductPage = () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Step 3: Media */}
         {step === 3 && (
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Images & Media</h3>
