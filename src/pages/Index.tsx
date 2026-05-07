@@ -1,6 +1,7 @@
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import HeroBanner from "@/components/marketplace/HeroBanner";
 import PromoStrip from "@/components/marketplace/PromoStrip";
+import NewArrivalsCategories from "@/components/marketplace/NewArrivalsCategories";
 import FlashSaleSection from "@/components/marketplace/FlashSaleSection";
 import BestDealsSection from "@/components/marketplace/BestDealsSection";
 import CategoryCard from "@/components/marketplace/CategoryCard";
@@ -120,6 +121,7 @@ const Index = () => {
   return (
     <MarketplaceLayout>
       <HeroBanner />
+      <NewArrivalsCategories />
       <PromoStrip />
       <FlashSaleSection />
       <BestDealsSection />
