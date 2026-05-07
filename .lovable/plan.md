@@ -1,61 +1,86 @@
-## Problem
+# Flash Sale & Best Deals Feature
 
-When a signed-out user scans the store QR code (or visits `/store/<slug>` directly), the page shows **"Store not found"**.
+## Concept
 
-Root cause confirmed by hitting the API directly as `anon`:
+A product becomes a **Flash Sale** item automatically the moment a vendor (or admin) sets a `deal_ends_at` timestamp in the future. No new tables — we reuse the existing `products.deal_ends_at` column already used by countdown badges.
 
+Two new homepage sections appear directly under "Sponsored Products":
+
+1. **Flash Sale** — active products where `deal_ends_at > now()`, ordered by soonest-ending first. Includes a live countdown badge on each tile.
+2. **Best Deals** — active products with the highest discount percentage (`(compare_at_price - price) / compare_at_price`), regardless of timer.
+
+Both sections render as a **2-row × 5-tile grid (10 products max)** on desktop, gracefully collapsing to 2 cols on mobile.
+
+## Vendor side: setting the timer
+
+Today, only Admin can set `deal_ends_at` (in `AdminProducts.tsx`). We will:
+
+- Add a "Flash Sale Timer" field to the vendor **Add Product** and **Edit Product** wizards on the Pricing step (date-time picker + "Clear" button).
+- When set, save `deal_ends_at` on the product. The product is then automatically considered a Flash Sale item — no extra flag needed.
+- Show a small "⚡ Flash Sale" pill in the vendor product list when a future timer is set.
+
+## Homepage sections
+
+In `src/pages/Index.tsx`, between `<PromoStrip />` and the existing Featured section, add:
+
+```text
+┌─ Flash Sale ──────────── ends in 02:14:33 ⚡ ──┐
+│  [tile][tile][tile][tile][tile]                │
+│  [tile][tile][tile][tile][tile]                │
+└────────────────────────────────────────────────┘
+┌─ Best Deals ─────────────────── view all → ────┐
+│  [tile][tile][tile][tile][tile]                │
+│  [tile][tile][tile][tile][tile]                │
+└────────────────────────────────────────────────┘
 ```
-GET /rest/v1/vendors?select=*&slug=eq.barakaz
-→ 42501 "permission denied for table vendors"
-```
 
-A previous security migration revoked anon's blanket SELECT on `vendors` and re-granted only the safe columns (everything except `payment_details`). But `VendorStorePage.tsx` (and `ProductDetailPage.tsx` joins) still request `select=*`, which includes `payment_details`. PostgREST returns 403 → React Query gets `null` → page shows the empty state.
+Each section:
+- Hidden if zero results.
+- Grid: `grid-cols-2 sm:grid-cols-3 md:grid-cols-5` with `gap-4`, capped at 10 items.
+- Reuses existing `ProductCard` (already supports `dealEndsAt` countdown + discount badge).
 
-So the QR code itself is fine; the storefront just refuses to load for guests.
+### Sponsored products integration
 
-## Fix
+You also said "some of these products will show on the homepage under Sponsored Products". The existing PromoStrip's "Sponsored Products" placement is admin-curated (`promotions` table). No DB change is needed — admins can already point a sponsored slot to any flash-sale product. We will document this in the admin manual snippet but no code change is required there beyond what already works.
 
-Replace `select("*")` with an explicit list of the columns anon is already granted, in the two public-facing queries:
+## Technical details
 
-### 1. `src/pages/VendorStorePage.tsx` (line ~51)
+**Files to create**
+- `src/components/marketplace/FlashSaleSection.tsx` — queries products with `deal_ends_at > now()`, ordered ascending by `deal_ends_at`, limit 10. Shows a single header-level countdown to the soonest-ending item.
+- `src/components/marketplace/BestDealsSection.tsx` — queries active products having `compare_at_price > price`, computes discount client-side, sorts desc, limit 10.
 
-Change:
+**Files to edit**
+- `src/pages/Index.tsx` — render the two new sections after `<PromoStrip />`.
+- `src/pages/vendor/AddProductPage.tsx` — add `dealEndsAt` state + datetime input on Pricing step, include in insert payload.
+- `src/pages/vendor/EditProductPage.tsx` — same field, populated from existing value.
+- `src/pages/vendor/VendorProducts.tsx` — show "⚡ Flash Sale" pill when `deal_ends_at` is in the future.
+
+**Query shape (Best Deals)**
+
 ```ts
-.from("vendors").select("*")
+supabase.from("products")
+  .select("*, vendors(store_name), product_images(url)")
+  .eq("status","active")
+  .not("compare_at_price","is",null)
+  .order("created_at",{ascending:false})
+  .limit(40); // then sort by discount % client-side, slice 10
 ```
-to:
+
+**Query shape (Flash Sale)**
+
 ```ts
-.from("vendors").select(
-  "id, user_id, store_name, store_description, logo_url, banner_url, status, slug, phone, phone2, whatsapp, website, created_at, updated_at"
-)
+supabase.from("products")
+  .select("*, vendors(store_name), product_images(url)")
+  .eq("status","active")
+  .gt("deal_ends_at", new Date().toISOString())
+  .order("deal_ends_at",{ascending:true})
+  .limit(10);
 ```
 
-`payment_details` is not needed on the storefront — it's only used in checkout (where the user is authenticated).
+**RLS / DB**: no changes — `products` already publicly readable when `status='active'`, and vendors can already update their own products (so they can write `deal_ends_at`).
 
-### 2. `src/pages/ProductDetailPage.tsx` (line ~270)
+**i18n**: add `home.flashSale`, `home.bestDeals`, `product.flashSaleTimer` translation keys.
 
-Already uses an explicit nested select (`vendors(id, slug, store_name, phone, phone2, website, whatsapp)`), but verify nothing else fans out to `payment_details` for guests. No change expected here unless audit reveals one.
-
-### 3. UX guard — gate contact info, not the store itself
-
-`VendorStorePage` already masks phone numbers and forces sign-in for the call/WhatsApp/website actions, so once the page loads, guest privacy rules are still enforced. No change needed.
-
-### 4. Apex domain redirect
-
-`https://barakaz.com` (apex) actually serves the React app correctly — the previous "302 loop" theory was wrong. The QR code's `https://www.barakaz.com/store/<slug>` will work as soon as the column-grant fix lands. No domain/DNS change needed.
-
-## Files Changed
-
-- `src/pages/VendorStorePage.tsx` — narrow vendor SELECT to columns granted to `anon`.
-
-## Verification
-
-After applying:
-1. Open `https://www.barakaz.com/store/barakaz` in an incognito window → store loads.
-2. Scan the printed QR → store loads.
-3. Confirm phone numbers still appear masked and contact buttons still redirect to `/auth` for guests.
-
-## Out of Scope
-
-- No DB migration needed; current grants are correct.
-- No QR code regeneration — existing QR codes will start working immediately.
+## Out of scope
+- No automatic price reduction logic — vendors set the discounted `price` and `compare_at_price` themselves; the timer just gates the "Flash Sale" badge.
+- No new admin-curated flash-sale list (auto-derived from timer).

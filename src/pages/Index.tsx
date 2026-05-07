@@ -1,6 +1,8 @@
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import HeroBanner from "@/components/marketplace/HeroBanner";
 import PromoStrip from "@/components/marketplace/PromoStrip";
+import FlashSaleSection from "@/components/marketplace/FlashSaleSection";
+import BestDealsSection from "@/components/marketplace/BestDealsSection";
 import CategoryCard from "@/components/marketplace/CategoryCard";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { useQuery } from "@tanstack/react-query";
@@ -119,6 +121,8 @@ const Index = () => {
     <MarketplaceLayout>
       <HeroBanner />
       <PromoStrip />
+      <FlashSaleSection />
+      <BestDealsSection />
 
       {/* Featured Products */}
       {showFeaturedSection && (

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOutletContext, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Package, Plus, Trash2, Pencil, Star, StarOff } from "lucide-react";
+import { Package, Plus, Trash2, Pencil, Star, StarOff, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
@@ -125,6 +125,11 @@ const VendorProducts = () => {
                         <Star className="h-2.5 w-2.5 fill-current" /> Featured on store
                       </span>
                     )}
+                    {p.deal_ends_at && new Date(p.deal_ends_at).getTime() > Date.now() && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full mt-1 ml-1">
+                        <Zap className="h-2.5 w-2.5 fill-current" /> Flash Sale
+                      </span>
+                    )}
                   </div>
                   <span className={`status-pill ${statusColor(p.status)}`}>{p.status}</span>
                 </div>
@@ -169,6 +174,11 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock, onFe
             {p.vendor_featured && (
               <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                 <Star className="h-2.5 w-2.5 fill-current" /> Featured
+              </span>
+            )}
+            {p.deal_ends_at && new Date(p.deal_ends_at).getTime() > Date.now() && (
+              <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                <Zap className="h-2.5 w-2.5 fill-current" /> Flash Sale
               </span>
             )}
           </div>
