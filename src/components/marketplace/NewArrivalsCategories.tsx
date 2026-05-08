@@ -2,14 +2,36 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import barakazIcon from "@/assets/barakaz-icon.png";
+import electronicsImg from "@/assets/categories/electronics.jpeg";
+import fashionImg from "@/assets/categories/fashion.jpeg";
+import homeGardenImg from "@/assets/categories/home-garden.jpeg";
+import healthBeautyImg from "@/assets/categories/health-beauty.jpeg";
+import sportsImg from "@/assets/categories/sports.jpeg";
+import phonesTabletsImg from "@/assets/categories/phones-tablets.jpeg";
+import automotiveImg from "@/assets/categories/automotive.jpeg";
+import booksImg from "@/assets/categories/books.jpeg";
 
 const FALLBACK_IMAGES: Record<string, string> = {
-  electronics: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80",
-  fashion: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&q=80",
-  "home-garden": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
-  "health-beauty": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80",
-  sports: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=200&q=80",
-  "phones-tablets": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&q=80",
+  electronics: electronicsImg,
+  fashion: fashionImg,
+  "home-garden": homeGardenImg,
+  "home-and-garden": homeGardenImg,
+  home: homeGardenImg,
+  "health-beauty": healthBeautyImg,
+  "health-and-beauty": healthBeautyImg,
+  beauty: healthBeautyImg,
+  sports: sportsImg,
+  "sports-fitness": sportsImg,
+  "sports-and-fitness": sportsImg,
+  fitness: sportsImg,
+  "phones-tablets": phonesTabletsImg,
+  "phones-and-tablets": phonesTabletsImg,
+  phones: phonesTabletsImg,
+  tablets: phonesTabletsImg,
+  automotive: automotiveImg,
+  cars: automotiveImg,
+  vehicles: automotiveImg,
+  books: booksImg,
 };
 
 const NewArrivalsCategories = () => {
