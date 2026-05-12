@@ -23,7 +23,7 @@ const Navbar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const { country, languages } = useLocale();
+  const { country, languages, supportedCountries, setCountryByCode } = useLocale();
   const { language, setLanguage, t } = useTranslation();
 
   const handleSearch = () => {
