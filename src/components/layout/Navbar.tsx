@@ -217,11 +217,26 @@ const Navbar = () => {
 
         {/* === MOBILE LOCATION BAR === */}
         <div className="md:hidden bg-background border-b border-border">
-          <div className="flex items-center gap-1.5 px-3 h-9 text-xs text-foreground">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">{t("nav.deliverTo")}</span>
-            <span className="font-bold text-sm">{country.name}</span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 px-3 h-9 text-xs text-foreground w-full">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">{t("nav.deliverTo")}</span>
+                <span className="font-bold text-sm">{country.name}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[220px] max-h-[60vh] overflow-y-auto">
+              {supportedCountries.map((c) => (
+                <DropdownMenuItem
+                  key={c.code}
+                  onClick={() => setCountryByCode(c.code)}
+                  className={country.code === c.code ? "font-bold" : ""}
+                >
+                  {c.name} ({c.currency})
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Secondary nav bar — desktop only */}
