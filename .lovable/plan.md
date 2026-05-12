@@ -1,35 +1,28 @@
-# New Arrivals — Categories Row
+## Problem
 
-Add a horizontal categories section titled **New Arrivals** placed directly above the Sponsored Products section on the homepage. Clicking any category navigates to the search page filtered by that category and sorted newest-first.
+Search engines and browser tabs still show the old favicon because:
 
-## What to build
+1. `public/favicon.ico` still exists and is the **old icon**. Browsers and search engines (Google, Bing) request `/favicon.ico` by default, which overrides the newer `favicon.png`.
+2. `index.html` does not declare a `<link rel="icon">` tag — only `apple-touch-icon`. Without an explicit icon link, browsers fall back to `/favicon.ico`.
+3. Search engines aggressively cache favicons (Google can take days/weeks to refresh even after the file is replaced).
 
-**New component:** `src/components/marketplace/NewArrivalsCategories.tsx`
-- Fetches top-level categories (same query already used in `Index.tsx`: `categories` where `parent_id is null`, limit 12).
-- Reuses the existing image source pattern: `category.image_url || barakazIcon` (same fallback used in Index/CategoryCard).
-- Renders a heading "New Arrivals" with a horizontally scrollable / responsive grid of circular category tiles (visual style matches existing `CategoryCard` — 64–80px circular images, name underneath).
-- Each tile is a `<Link>` to `/search?category={slug}&sort=newest` so SearchPage shows products for that category ordered by newest first (SearchPage already supports both `category` and a `newest` sort key).
-- Hidden gracefully if no categories exist.
+## Fix
 
-**Edit:** `src/pages/Index.tsx`
-- Import and render `<NewArrivalsCategories />` immediately above `<PromoStrip />` (which contains the Sponsored Products section).
+1. **Delete** the stale `public/favicon.ico`.
+2. **Generate a fresh `.ico`** from the current `public/favicon.png` (multi-size: 16, 32, 48) so legacy clients get the new icon at `/favicon.ico`.
+3. **Update `index.html` `<head>`** to explicitly declare the icon, with a cache-busting query string so browsers refetch:
+   ```html
+   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=2" />
+   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+   <link rel="apple-touch-icon" href="/favicon.png?v=2" />
+   ```
+4. **Note for the user**: Google's search results favicon is cached server-side. Even after this fix, the old icon may persist in Google search for several days until Googlebot recrawls. Browser tab favicons will refresh after a hard reload (Cmd+Shift+R).
 
-**Edit:** `src/pages/SearchPage.tsx` (small)
-- Read the `sort` URL search param on mount so `?sort=newest` from the New Arrivals links auto-applies the "Newest" sort. (Currently the page reads `category` and search query but not `sort` — a one-line useEffect/initial state addition.)
+## Files Touched
 
-## Layout
+- `public/favicon.ico` — regenerated from `favicon.png`
+- `index.html` — add explicit `<link rel="icon">` tags with cache-bust
 
-```text
-┌─ New Arrivals ─────────────────────────────────┐
-│  ◯ Electronics  ◯ Fashion  ◯ Home  ◯ Beauty …  │
-└────────────────────────────────────────────────┘
-┌─ Sponsored Products ──────────────────────────┐
-│  [tile][tile][tile][tile]                      │
-└────────────────────────────────────────────────┘
-```
+## Question
 
-Grid: `grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3` so it stays compact on the 881px viewport. Falls back to the Barakaz icon placeholder for any category without an `image_url`, exactly like the existing categories grid.
-
-## Out of scope
-- No DB changes. Uses existing `categories.image_url` field and existing search route.
-- No new "newest products" listing component — SearchPage already handles that.
+Is the current `public/favicon.png` the **correct new logo** you want to use? If yes, I'll regenerate `favicon.ico` from it. If you want a different image, please upload it.
