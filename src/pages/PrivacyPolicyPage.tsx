@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const PrivacyPolicyPage = () => (
-  <StaticPage title="Privacy Policy">
+  <StaticPage
+    title="Privacy Policy"
+    description="How Barakaz collects, uses, and protects your personal information when you shop or sell on our marketplace."
+    canonicalPath="/privacy-policy"
+  >
     <p className="text-sm text-muted-foreground"><strong>Last Updated:</strong> March 2026</p>
     <p>At Barakaz, we are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our platform.</p>
 
