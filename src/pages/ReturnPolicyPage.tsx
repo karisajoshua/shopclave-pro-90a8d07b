@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const ReturnPolicyPage = () => (
-  <StaticPage title="Return Policy">
+  <StaticPage
+    title="Return Policy"
+    description="Eligibility, process, and timelines for returning products purchased through Barakaz vendors."
+    canonicalPath="/return-policy"
+  >
     <p className="text-sm text-muted-foreground"><strong>Last Updated:</strong> March 2026</p>
     <p>We want you to be completely satisfied with your purchase. If you are not happy with an item, you may return it under the following conditions.</p>
 

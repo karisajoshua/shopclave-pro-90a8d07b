@@ -1,4 +1,5 @@
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
+import SEO from "@/components/seo/SEO";
 import HeroBanner from "@/components/marketplace/HeroBanner";
 import PromoStrip from "@/components/marketplace/PromoStrip";
 import NewArrivalsCategories from "@/components/marketplace/NewArrivalsCategories";
@@ -120,6 +121,11 @@ const Index = () => {
 
   return (
     <MarketplaceLayout>
+      <SEO
+        title="Barakaz | Kenya's best Online Marketplace"
+        description="Shop electronics, fashion, home & beauty from thousands of verified Kenyan vendors. Fast delivery, M-Pesa, Visa & more."
+        canonicalPath="/"
+      />
       <HeroBanner />
       <NewArrivalsCategories />
       <PromoStrip />

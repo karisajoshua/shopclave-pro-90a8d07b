@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const HelpCenterPage = () => (
-  <StaticPage title="Help Center">
+  <StaticPage
+    title="Help Center"
+    description="Get answers about ordering, payments, delivery, returns, and selling on Barakaz, or reach our support team."
+    canonicalPath="/help"
+  >
     <p>Welcome to the Barakaz Help Center. Find answers to common questions below or contact our support team for further assistance.</p>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">Frequently Asked Questions</h2>

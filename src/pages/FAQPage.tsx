@@ -1,5 +1,6 @@
 import { useState } from "react";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
+import SEO from "@/components/seo/SEO";
 import {
   Accordion,
   AccordionContent,
@@ -156,8 +157,26 @@ const FAQPage = () => {
     }))
     .filter((cat) => cat.faqs.length > 0);
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqCategories.flatMap((cat) =>
+      cat.faqs.map((f) => ({
+        "@type": "Question",
+        name: f.question,
+        acceptedAnswer: { "@type": "Answer", text: f.answer },
+      })),
+    ),
+  };
+
   return (
     <MarketplaceLayout>
+      <SEO
+        title="FAQ | Barakaz Help & Common Questions"
+        description="Answers to common questions about ordering, payments, delivery, returns, and selling on Barakaz."
+        canonicalPath="/faq"
+        jsonLd={faqJsonLd}
+      />
       <div className="container py-10 max-w-4xl">
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-3">

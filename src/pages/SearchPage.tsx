@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
+import SEO from "@/components/seo/SEO";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -313,8 +314,35 @@ const SearchPage = () => {
     onReset: handleReset,
   };
 
+  const seoTitle = query
+    ? `${query} – Search results | Barakaz`
+    : dealsMode
+      ? "Today's Deals | Barakaz"
+      : categoryInfo?.name
+        ? `${categoryInfo.name} | Barakaz`
+        : "All Products | Barakaz";
+  const seoDescription = query
+    ? `Shop products matching "${query}" from verified vendors on Barakaz with fast delivery across Kenya.`
+    : dealsMode
+      ? "Today's best deals and discounts from verified Barakaz vendors. Limited-time prices on top products."
+      : categoryInfo?.name
+        ? `Browse ${categoryInfo.name} products from verified vendors on Barakaz. Compare prices and order with M-Pesa.`
+        : "Browse all products on Barakaz from thousands of verified vendors across Kenya.";
+  const seoCanonical = categorySlug
+    ? `/category/${categorySlug}`
+    : dealsMode
+      ? "/search?deals=1"
+      : query
+        ? `/search?q=${encodeURIComponent(query)}`
+        : "/search";
+
   return (
     <MarketplaceLayout>
+      <SEO
+        title={seoTitle}
+        description={seoDescription}
+        canonicalPath={seoCanonical}
+      />
       <div className="container py-8">
         <div className="flex items-center gap-4 mb-6">
           <div className="relative flex-1 max-w-xl">

@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const TermsPage = () => (
-  <StaticPage title="Terms & Conditions">
+  <StaticPage
+    title="Terms & Conditions"
+    description="The terms and conditions that govern use of the Barakaz marketplace by buyers, sellers, and visitors."
+    canonicalPath="/terms"
+  >
     <p className="text-sm text-muted-foreground"><strong>Last Updated:</strong> March 2026</p>
     <p>Welcome to Barakaz. By accessing and using our platform, you agree to be bound by these Terms and Conditions.</p>
 

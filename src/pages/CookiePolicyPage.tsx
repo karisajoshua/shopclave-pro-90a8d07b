@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const CookiePolicyPage = () => (
-  <StaticPage title="Cookie Policy">
+  <StaticPage
+    title="Cookie Policy"
+    description="How Barakaz uses cookies and similar technologies, and how you can manage your cookie preferences."
+    canonicalPath="/cookie-policy"
+  >
     <p className="text-sm text-muted-foreground"><strong>Last Updated:</strong> March 2026</p>
     <p>This Cookie Policy explains how Barakaz uses cookies and similar technologies to recognize you when you visit our platform.</p>
 
