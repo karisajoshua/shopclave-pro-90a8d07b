@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const AboutPage = () => (
-  <StaticPage title="About Barakaz">
+  <StaticPage
+    title="About Barakaz"
+    description="Learn about Barakaz, Africa's multi-vendor marketplace connecting buyers with thousands of trusted sellers across Kenya and beyond."
+    canonicalPath="/about"
+  >
     <p>Barakaz is a multi-vendor e-commerce marketplace connecting buyers with trusted sellers across Africa and beyond. Our mission is to empower entrepreneurs and provide customers with access to quality products at competitive prices.</p>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">Our Story</h2>

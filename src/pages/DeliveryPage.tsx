@@ -1,7 +1,11 @@
 import StaticPage from "./StaticPage";
 
 const DeliveryPage = () => (
-  <StaticPage title="Delivery Services">
+  <StaticPage
+    title="Delivery Services"
+    description="Delivery options, areas, tracking, and shipping issue resolution for orders placed on Barakaz."
+    canonicalPath="/delivery"
+  >
     <p>Barakaz partners with trusted logistics providers to ensure your orders arrive safely and on time.</p>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">Delivery Options</h2>
