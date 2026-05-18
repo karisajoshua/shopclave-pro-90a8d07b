@@ -1392,6 +1392,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_locations: {
+        Row: {
+          accuracy: number | null
+          latitude: number
+          longitude: number
+          raw: Json | null
+          recorded_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          latitude: number
+          longitude: number
+          raw?: Json | null
+          recorded_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          latitude?: number
+          longitude?: number
+          raw?: Json | null
+          recorded_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_risk_flags: {
         Row: {
           created_at: string
