@@ -3,6 +3,8 @@ project_id = "fyfeyolecqnpriwjgzyo"
 [functions]
   [functions.auth-email-hook]
     verify_jwt = false
+  [functions.natively-geolocation]
+    verify_jwt = false
   [functions.process-email-queue]
     verify_jwt = true
   [functions.send-transactional-email]
