@@ -200,21 +200,21 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <AdminStatCard
           label="Revenue"
-          value={`KSh ${totalRevenue.toLocaleString()}`}
+          value={`$${totalRevenue.toLocaleString()}`}
           icon={DollarSign}
           tone="revenue"
           delta={{ value: pct(todayRevenue, yesterdayRevenue), label: "vs yesterday" }}
         />
         <AdminStatCard
           label="Platform earnings"
-          value={`KSh ${totalCommission.toLocaleString()}`}
+          value={`$${totalCommission.toLocaleString()}`}
           icon={TrendingUp}
           tone="info"
           hint={`${(((totalCommission / Math.max(totalRevenue, 1)) * 100) || 0).toFixed(1)}% of revenue`}
         />
         <AdminStatCard
           label="Vendor payouts"
-          value={`KSh ${totalPayouts.toLocaleString()}`}
+          value={`$${totalPayouts.toLocaleString()}`}
           icon={DollarSign}
           tone="warning"
         />
@@ -253,7 +253,7 @@ const AdminDashboard = () => {
                 <XAxis dataKey="name" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: number) => [`KSh ${value.toLocaleString()}`, "Revenue"]}
+                  formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
                   contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--admin-card))" }}
                 />
                 <Bar dataKey="revenue" fill="hsl(var(--admin-accent-revenue))" radius={[6, 6, 0, 0]} />
@@ -288,8 +288,8 @@ const AdminDashboard = () => {
                 <tr key={idx} className="border-t border-border/60 hover:bg-muted/40 transition-colors">
                   <td className="p-3 text-muted-foreground">{idx + 1}</td>
                   <td className="p-3 font-medium">{v.name}</td>
-                  <td className="p-3">KSh {v.sales.toLocaleString()}</td>
-                  <td className="p-3 text-muted-foreground">KSh {v.commission.toLocaleString()}</td>
+                  <td className="p-3">${v.sales.toLocaleString()}</td>
+                  <td className="p-3 text-muted-foreground">${v.commission.toLocaleString()}</td>
                   <td className="p-3">{v.orders}</td>
                 </tr>
               ))}
@@ -322,7 +322,7 @@ const AdminDashboard = () => {
                   <td className="p-3 font-medium">{p.name}</td>
                   <td className="p-3">{p.vendor}</td>
                   <td className="p-3">{p.units}</td>
-                  <td className="p-3">KSh {p.revenue.toLocaleString()}</td>
+                  <td className="p-3">${p.revenue.toLocaleString()}</td>
                 </tr>
               ))}
               {topProducts.length === 0 && (
@@ -350,7 +350,7 @@ const AdminDashboard = () => {
               {filteredOrders.slice(0, 10).map((o: any) => (
                 <tr key={o.id} className="border-t border-border/60 hover:bg-muted/40 transition-colors">
                   <td className="p-3 font-mono text-xs">{o.id.slice(0, 8)}</td>
-                  <td className="p-3 font-medium">KSh {Number(o.total).toLocaleString()}</td>
+                  <td className="p-3 font-medium">${Number(o.total).toLocaleString()}</td>
                   <td className="p-3">
                     <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
                       o.status === "delivered" ? "bg-success/10 text-success" :

@@ -49,7 +49,7 @@ const stepIndex = (status: string) => {
 };
 
 const fmtKsh = (n: number) =>
-  "KSh " + Number(n || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 });
+  "$" + Number(n || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 });
 
 const AccountPage = () => {
   const { user, userRoles, signOut } = useAuth();

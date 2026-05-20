@@ -175,7 +175,7 @@ const AdminSubscriptions = () => {
                 <tr key={p.id} className="border-t border-border">
                   <td className="p-3 font-medium">{p.store_name}</td>
                   <td className="p-3 capitalize">{p.plan_name}</td>
-                  <td className="p-3">KSh {Number(p.price).toLocaleString()}</td>
+                  <td className="p-3">${Number(p.price).toLocaleString()}</td>
                   <td className="p-3 font-mono text-xs">{p.transaction_code}</td>
                   <td className="p-3 text-xs">{p.payer_phone}</td>
                   <td className="p-3 text-xs text-muted-foreground">{new Date(p.created_at).toLocaleString()}</td>
@@ -286,7 +286,7 @@ const AdminSubscriptions = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="p-3">KSh {Number(s.price).toLocaleString()}</td>
+                    <td className="p-3">${Number(s.price).toLocaleString()}</td>
                     <td className="p-3 text-muted-foreground">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "Never"}</td>
                     <td className="p-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(s.status)}`}>{s.status}</span>
@@ -321,7 +321,7 @@ const AdminSubscriptions = () => {
               <div className="bg-secondary rounded-lg p-3 space-y-1.5">
                 <p><span className="text-muted-foreground">Vendor:</span> <span className="font-medium">{reviewPayment.store_name}</span></p>
                 <p><span className="text-muted-foreground">Plan:</span> <span className="font-medium capitalize">{reviewPayment.plan_name}</span> ({reviewPayment.max_listings} listings)</p>
-                <p><span className="text-muted-foreground">Amount:</span> <span className="font-medium">KSh {Number(reviewPayment.price).toLocaleString()}</span></p>
+                <p><span className="text-muted-foreground">Amount:</span> <span className="font-medium">${Number(reviewPayment.price).toLocaleString()}</span></p>
                 <p><span className="text-muted-foreground">M-Pesa Code:</span> <span className="font-mono font-medium">{reviewPayment.transaction_code}</span></p>
                 <p><span className="text-muted-foreground">Phone:</span> <span className="font-medium">{reviewPayment.payer_phone}</span></p>
                 {reviewPayment.notes && <p><span className="text-muted-foreground">Notes:</span> {reviewPayment.notes}</p>}
@@ -374,7 +374,7 @@ const AdminSubscriptions = () => {
                   </p>
                   <p>
                     <span className="text-muted-foreground">Price paid:</span>{" "}
-                    <span className="font-medium">KSh {Number(entitlementSub.price).toLocaleString()}</span>
+                    <span className="font-medium">${Number(entitlementSub.price).toLocaleString()}</span>
                   </p>
                   <p>
                     <span className="text-muted-foreground">Listing usage:</span>{" "}

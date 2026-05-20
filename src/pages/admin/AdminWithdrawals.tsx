@@ -78,8 +78,8 @@ const AdminWithdrawals = () => {
       <AdminPageHeader title="Withdrawal Requests" subtitle="Review and process vendor payout requests." count={withdrawals?.length || 0} countLabel="requests" />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-5">
-        <StatTile icon={Clock} label="Pending" value={`KSh ${totals.pending.toLocaleString()}`} accent="bg-warning/10 text-warning" />
-        <StatTile icon={DollarSign} label="Paid Out" value={`KSh ${totals.completed.toLocaleString()}`} accent="bg-success/10 text-success" />
+        <StatTile icon={Clock} label="Pending" value={`$${totals.pending.toLocaleString()}`} accent="bg-warning/10 text-warning" />
+        <StatTile icon={DollarSign} label="Paid Out" value={`$${totals.completed.toLocaleString()}`} accent="bg-success/10 text-success" />
         <StatTile icon={Wallet} label="Total Requests" value={withdrawals?.length || 0} accent="bg-primary/10 text-primary" />
       </div>
 
@@ -108,7 +108,7 @@ const AdminWithdrawals = () => {
                 {withdrawals.map((w: any) => (
                   <tr key={w.id}>
                     <td className="font-medium">{(w.vendors as any)?.store_name || "—"}</td>
-                    <td className="font-bold text-foreground">KSh {Number(w.amount).toLocaleString()}</td>
+                    <td className="font-bold text-foreground">${Number(w.amount).toLocaleString()}</td>
                     <td className="capitalize text-sm">{w.payment_method?.replace("_", " ")}</td>
                     <td className="text-xs font-mono max-w-[180px] truncate text-muted-foreground">
                       {w.payment_details ? JSON.stringify(w.payment_details) : "—"}

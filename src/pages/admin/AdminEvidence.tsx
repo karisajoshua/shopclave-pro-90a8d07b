@@ -321,7 +321,7 @@ export default function AdminEvidence() {
                     <TableCell className="text-sm">
                       {o.vendor_names && o.vendor_names.length > 0 ? o.vendor_names.join(", ") : "—"}
                     </TableCell>
-                    <TableCell className="text-sm">KSh {Number(o.total).toLocaleString()}</TableCell>
+                    <TableCell className="text-sm">${Number(o.total).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs capitalize">
                         {o.status}
@@ -527,7 +527,7 @@ function EvidenceDetail({ orderId, onBack }: { orderId: string; onBack: () => vo
             <div className="text-xs uppercase text-muted-foreground font-semibold">Payment</div>
             <div className="font-medium capitalize">{order.payment_method ?? "—"}</div>
             <div className="text-muted-foreground capitalize">Status: {order.payment_status}</div>
-            <div className="font-semibold mt-1">KSh {Number(order.total).toLocaleString()}</div>
+            <div className="font-semibold mt-1">${Number(order.total).toLocaleString()}</div>
           </div>
           <div className="md:col-span-3">
             <div className="text-xs uppercase text-muted-foreground font-semibold mb-2">Items</div>
@@ -537,7 +537,7 @@ function EvidenceDetail({ orderId, onBack }: { orderId: string; onBack: () => vo
                   <span>
                     {it.products?.name ?? "Product"} × {it.quantity}
                   </span>
-                  <span className="text-muted-foreground">KSh {Number(it.price).toLocaleString()}</span>
+                  <span className="text-muted-foreground">${Number(it.price).toLocaleString()}</span>
                 </div>
               ))}
             </div>

@@ -206,7 +206,7 @@ const OrderChatPage = () => {
             </div>
             <div className="text-right">
               <Badge variant="secondary" className="capitalize">{order?.status || "—"}</Badge>
-              <p className="text-sm font-semibold mt-1">KSh {Number(order?.total || 0).toLocaleString()}</p>
+              <p className="text-sm font-semibold mt-1">${Number(order?.total || 0).toLocaleString()}</p>
             </div>
           </div>
           {!isLocked && (

@@ -724,8 +724,8 @@ const EditProductPage = () => {
               {keyFeatures.filter(f => f.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Key Features</span><span className="font-medium">{keyFeatures.filter(f => f.trim()).length} listed</span></div>}
               {whatsInBoxItems.filter(s => s.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{whatsInBoxItems.filter(s => s.trim()).length} items</span></div>}
               <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">KSh {form.price || "—"}</span></div>
-              {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">KSh {form.compareAtPrice}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">${form.price || "—"}</span></div>
+              {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">${form.compareAtPrice}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Stock</span><span className="font-medium">{hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : form.stock}</span></div>
               {form.sku && <div className="flex justify-between"><span className="text-muted-foreground">SKU</span><span className="font-medium">{form.sku}</span></div>}
               {images.length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Images</span><span className="font-medium">{images.length} uploaded</span></div>}

@@ -308,7 +308,7 @@ const VendorDashboard = () => {
                     <tr key={p.id}>
                       <td className="text-muted-foreground">{idx + 1}</td>
                       <td className="font-medium">{p.name}</td>
-                      <td className="font-semibold">KSh {Number(p.price).toLocaleString()}</td>
+                      <td className="font-semibold">${Number(p.price).toLocaleString()}</td>
                       <td>
                         <span className={`status-pill ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                           {p.status}
@@ -336,7 +336,7 @@ const VendorDashboard = () => {
                 <div key={plan.key} className={`admin-card admin-card-hover p-4 flex flex-col ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""}`}>
                   <div className="text-center">
                     <p className="font-semibold text-sm">{plan.name}</p>
-                    <p className="text-lg font-bold mt-1">KSh {plan.price.toLocaleString()}</p>
+                    <p className="text-lg font-bold mt-1">${plan.price.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">/month</p>
                   </div>
                   <ul className="mt-3 space-y-1.5 flex-1">
@@ -374,7 +374,7 @@ const VendorDashboard = () => {
           <DialogHeader>
             <DialogTitle>Upgrade to {selectedPlan?.name}</DialogTitle>
             <DialogDescription>
-              Pay <span className="font-semibold text-foreground">KSh {selectedPlan?.price.toLocaleString()}</span> via M-Pesa, then submit your transaction code.
+              Pay <span className="font-semibold text-foreground">${selectedPlan?.price.toLocaleString()}</span> via M-Pesa, then submit your transaction code.
             </DialogDescription>
           </DialogHeader>
 

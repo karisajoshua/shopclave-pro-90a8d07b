@@ -145,7 +145,7 @@ const VendorOrders = () => {
                           </div>
                         </td>
                         <td>{item.quantity}</td>
-                        <td className="font-semibold">KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
+                        <td className="font-semibold">${(Number(item.price) * item.quantity).toLocaleString()}</td>
                         <td>
                           <span className={`status-pill ${payColor(order?.payment_status)}`}>
                             {order?.payment_status || "—"}
@@ -236,7 +236,7 @@ const VendorOrders = () => {
                       Qty: {item.quantity}
                       {order?.created_at && ` · ${new Date(order.created_at).toLocaleDateString()}`}
                     </span>
-                    <span className="font-semibold">KSh {(Number(item.price) * item.quantity).toLocaleString()}</span>
+                    <span className="font-semibold">${(Number(item.price) * item.quantity).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center gap-2">
                     <span className={`status-pill ${payColor(order?.payment_status)}`}>{order?.payment_status || "—"}</span>

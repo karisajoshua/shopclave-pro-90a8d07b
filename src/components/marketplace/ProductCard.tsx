@@ -77,9 +77,9 @@ const ProductCard = ({
         </div>
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-lg font-bold text-foreground">KSh {price.toLocaleString()}</p>
+            <p className="text-lg font-bold text-foreground">${price.toLocaleString()}</p>
             {compareAtPrice && (
-              <p className="text-xs text-muted-foreground line-through">KSh {compareAtPrice.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground line-through">${compareAtPrice.toLocaleString()}</p>
             )}
           </div>
           <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={handleAddToCart}>

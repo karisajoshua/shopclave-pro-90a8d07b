@@ -45,7 +45,7 @@ const CartPage = () => {
                       <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md bg-secondary" />
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium line-clamp-2">{item.name}</h3>
-                        <p className="text-lg font-bold mt-1">KSh {item.price.toLocaleString()}</p>
+                        <p className="text-lg font-bold mt-1">${item.price.toLocaleString()}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
                             <Minus className="h-3 w-3" />
@@ -71,7 +71,7 @@ const CartPage = () => {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("cart.subtotal")} ({totalItems} {t("cart.items")})</span>
-                <span className="font-medium">KSh {totalPrice.toLocaleString()}</span>
+                <span className="font-medium">${totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("cart.delivery")}</span>
@@ -79,7 +79,7 @@ const CartPage = () => {
               </div>
               <div className="border-t border-border pt-2 flex justify-between text-base">
                 <span className="font-semibold">{t("cart.total")}</span>
-                <span className="font-bold text-lg">KSh {totalPrice.toLocaleString()}</span>
+                <span className="font-bold text-lg">${totalPrice.toLocaleString()}</span>
               </div>
             </div>
             <Link to="/checkout">
