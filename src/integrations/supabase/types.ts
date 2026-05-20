@@ -569,40 +569,58 @@ export type Database = {
       }
       order_items: {
         Row: {
+          carrier: string | null
           commission_amount: number
           created_at: string
           id: string
+          label_url: string | null
           order_id: string
           price: number
           product_id: string | null
           quantity: number
+          shipping_amount: number
+          shipping_rate_id: string | null
+          shippo_transaction_id: string | null
           status: string
+          tracking_number: string | null
           variant_id: string | null
           variant_options: Json | null
           vendor_id: string | null
         }
         Insert: {
+          carrier?: string | null
           commission_amount?: number
           created_at?: string
           id?: string
+          label_url?: string | null
           order_id: string
           price: number
           product_id?: string | null
           quantity?: number
+          shipping_amount?: number
+          shipping_rate_id?: string | null
+          shippo_transaction_id?: string | null
           status?: string
+          tracking_number?: string | null
           variant_id?: string | null
           variant_options?: Json | null
           vendor_id?: string | null
         }
         Update: {
+          carrier?: string | null
           commission_amount?: number
           created_at?: string
           id?: string
+          label_url?: string | null
           order_id?: string
           price?: number
           product_id?: string | null
           quantity?: number
+          shipping_amount?: number
+          shipping_rate_id?: string | null
+          shippo_transaction_id?: string | null
           status?: string
+          tracking_number?: string | null
           variant_id?: string | null
           variant_options?: Json | null
           vendor_id?: string | null
@@ -648,33 +666,48 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
+          currency: string
           id: string
           payment_method: string | null
           payment_status: string
           shipping_address: Json | null
+          shipping_total: number
           status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          tax_total: number
           total: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          currency?: string
           id?: string
           payment_method?: string | null
           payment_status?: string
           shipping_address?: Json | null
+          shipping_total?: number
           status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tax_total?: number
           total?: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          currency?: string
           id?: string
           payment_method?: string | null
           payment_status?: string
           shipping_address?: Json | null
+          shipping_total?: number
           status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tax_total?: number
           total?: number
           updated_at?: string
           user_id?: string | null
@@ -794,10 +827,13 @@ export type Database = {
           deal_ends_at: string | null
           description: string | null
           featured: boolean
+          height_cm: number | null
           id: string
           key_features: string[] | null
+          length_cm: number | null
           name: string
           price: number
+          ships_from_country: string | null
           sku: string | null
           slug: string
           status: string
@@ -806,7 +842,9 @@ export type Database = {
           vendor_featured: boolean
           vendor_id: string
           video_url: string | null
+          weight_g: number | null
           whats_in_box: string[] | null
+          width_cm: number | null
         }
         Insert: {
           category_id?: string | null
@@ -816,10 +854,13 @@ export type Database = {
           deal_ends_at?: string | null
           description?: string | null
           featured?: boolean
+          height_cm?: number | null
           id?: string
           key_features?: string[] | null
+          length_cm?: number | null
           name: string
           price: number
+          ships_from_country?: string | null
           sku?: string | null
           slug: string
           status?: string
@@ -828,7 +869,9 @@ export type Database = {
           vendor_featured?: boolean
           vendor_id: string
           video_url?: string | null
+          weight_g?: number | null
           whats_in_box?: string[] | null
+          width_cm?: number | null
         }
         Update: {
           category_id?: string | null
@@ -838,10 +881,13 @@ export type Database = {
           deal_ends_at?: string | null
           description?: string | null
           featured?: boolean
+          height_cm?: number | null
           id?: string
           key_features?: string[] | null
+          length_cm?: number | null
           name?: string
           price?: number
+          ships_from_country?: string | null
           sku?: string | null
           slug?: string
           status?: string
@@ -850,7 +896,9 @@ export type Database = {
           vendor_featured?: boolean
           vendor_id?: string
           video_url?: string | null
+          weight_g?: number | null
           whats_in_box?: string[] | null
+          width_cm?: number | null
         }
         Relationships: [
           {
@@ -1516,6 +1564,33 @@ export type Database = {
           },
         ]
       }
+      vendor_balances: {
+        Row: {
+          available_amount: number
+          currency: string
+          lifetime_sales: number
+          pending_amount: number
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          available_amount?: number
+          currency?: string
+          lifetime_sales?: number
+          pending_amount?: number
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          available_amount?: number
+          currency?: string
+          lifetime_sales?: number
+          pending_amount?: number
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       vendor_follows: {
         Row: {
           created_at: string
@@ -1533,6 +1608,87 @@ export type Database = {
           created_at?: string
           id?: string
           user_id?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
+      vendor_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          entry_type: string
+          id: string
+          notes: string | null
+          order_item_id: string | null
+          status: string
+          stripe_reference: string | null
+          vendor_id: string
+          withdrawal_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          entry_type: string
+          id?: string
+          notes?: string | null
+          order_item_id?: string | null
+          status?: string
+          stripe_reference?: string | null
+          vendor_id: string
+          withdrawal_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          entry_type?: string
+          id?: string
+          notes?: string | null
+          order_item_id?: string | null
+          status?: string
+          stripe_reference?: string | null
+          vendor_id?: string
+          withdrawal_id?: string | null
+        }
+        Relationships: []
+      }
+      vendor_stripe_accounts: {
+        Row: {
+          charges_enabled: boolean
+          country: string | null
+          created_at: string
+          default_currency: string | null
+          details_submitted: boolean
+          payouts_enabled: boolean
+          requirements_due: Json | null
+          stripe_account_id: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          default_currency?: string | null
+          details_submitted?: boolean
+          payouts_enabled?: boolean
+          requirements_due?: Json | null
+          stripe_account_id: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          default_currency?: string | null
+          details_submitted?: boolean
+          payouts_enabled?: boolean
+          requirements_due?: Json | null
+          stripe_account_id?: string
+          updated_at?: string
           vendor_id?: string
         }
         Relationships: []
@@ -1705,6 +1861,7 @@ export type Database = {
           banner_url: string | null
           commission_rate: number
           created_at: string
+          default_currency: string | null
           id: string
           logo_url: string | null
           payment_details: Json | null
@@ -1716,6 +1873,7 @@ export type Database = {
           store_name: string
           updated_at: string
           user_id: string
+          warehouse_address: Json | null
           website: string | null
           whatsapp: string | null
         }
@@ -1723,6 +1881,7 @@ export type Database = {
           banner_url?: string | null
           commission_rate?: number
           created_at?: string
+          default_currency?: string | null
           id?: string
           logo_url?: string | null
           payment_details?: Json | null
@@ -1734,6 +1893,7 @@ export type Database = {
           store_name: string
           updated_at?: string
           user_id: string
+          warehouse_address?: Json | null
           website?: string | null
           whatsapp?: string | null
         }
@@ -1741,6 +1901,7 @@ export type Database = {
           banner_url?: string | null
           commission_rate?: number
           created_at?: string
+          default_currency?: string | null
           id?: string
           logo_url?: string | null
           payment_details?: Json | null
@@ -1752,6 +1913,7 @@ export type Database = {
           store_name?: string
           updated_at?: string
           user_id?: string
+          warehouse_address?: Json | null
           website?: string | null
           whatsapp?: string | null
         }
@@ -1807,6 +1969,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      withdrawals: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          currency: string
+          failure_reason: string | null
+          id: string
+          requested_at: string
+          status: string
+          stripe_payout_id: string | null
+          stripe_transfer_id: string | null
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          stripe_payout_id?: string | null
+          stripe_transfer_id?: string | null
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          stripe_payout_id?: string | null
+          stripe_transfer_id?: string | null
+          vendor_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -1936,6 +2137,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      recompute_vendor_balance: {
+        Args: { _vendor_id: string }
+        Returns: undefined
       }
       slugify: { Args: { _input: string }; Returns: string }
     }
