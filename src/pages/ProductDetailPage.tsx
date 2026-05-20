@@ -193,41 +193,19 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
 
         <Separator />
 
-        {/* Contact buttons */}
+        {/* Contact buttons (in-app chat only — no phone/WhatsApp) */}
         <div className="space-y-2">
-          {vendor.phone && (
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => requireAuth(handleCall)}>
-              <Phone className="h-4 w-4 text-primary" />
-              <span className="truncate">{user ? vendor.phone : maskPhone(vendor.phone)}</span>
-            </Button>
-          )}
-          {vendor.phone2 && (
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => requireAuth(() => { trackEvent(vendor.id, productId, "call_click"); window.open(`tel:${vendor.phone2}`, "_self"); })}>
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{user ? vendor.phone2 : maskPhone(vendor.phone2)}</span>
-            </Button>
-          )}
-          {vendor.whatsapp && (
-            <Button className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => requireAuth(handleWhatsApp)}>
-              <MessageCircle className="h-4 w-4" />
-              Chat on WhatsApp
-            </Button>
-          )}
+          <Button className="w-full justify-start gap-2" onClick={() => requireAuth(onChatOpen)}>
+            <MessageCircle className="h-4 w-4" />
+            Message seller
+          </Button>
           {vendor.website && (
             <Button variant="outline" className="w-full justify-start gap-2" onClick={() => requireAuth(handleWebsite)}>
               <Globe className="h-4 w-4 text-primary" />
               <span className="truncate">{vendor.website}</span>
             </Button>
           )}
-          <Button variant="outline" className="w-full justify-start gap-2 border-primary/30 text-primary" onClick={() => requireAuth(onChatOpen)}>
-            <MessageCircle className="h-4 w-4" />
-            Chat Now
-          </Button>
         </div>
-
-        {!vendor.phone && !vendor.whatsapp && (
-          <p className="text-xs text-muted-foreground text-center py-2">No contact info available</p>
-        )}
       </div>
 
       {/* Seller Performance */}
@@ -901,16 +879,9 @@ const ProductDetailPage = () => {
         >
           Buy Now
         </Button>
-        {vendor?.phone && (
-          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => requireAuthMain(handleCallMobile)}>
-            <Phone className="h-4 w-4" />
-          </Button>
-        )}
-        {vendor?.whatsapp && (
-          <Button size="icon" className="h-11 w-11 shrink-0 bg-green-600 hover:bg-green-700 text-white" onClick={() => requireAuthMain(handleWhatsAppMobile)}>
-            <MessageCircle className="h-4 w-4" />
-          </Button>
-        )}
+        <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => requireAuthMain(() => setChatOpen(true))}>
+          <MessageCircle className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Chat Dialog */}

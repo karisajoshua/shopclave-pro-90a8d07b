@@ -254,66 +254,35 @@ const VendorStorePage = () => {
 
               {/* Actions */}
               <div className="flex flex-col gap-2 md:items-end">
-                {!user && (vendor.phone || vendor.whatsapp || vendor.website) && (
-                  <button
-                    onClick={() => navigate("/auth")}
-                    className="text-xs text-muted-foreground hover:text-primary underline-offset-2 hover:underline self-start md:self-end"
-                  >
-                    Sign in to view contact details
-                  </button>
-                )}
                 <div className="flex flex-wrap gap-2 md:flex-col md:items-end">
-                <Button
-                  size="sm"
-                  variant={isFollowing ? "outline" : "default"}
-                  className="rounded-full px-5"
-                  onClick={() => requireAuth(() => followMutation.mutate())}
-                  disabled={followMutation.isPending}
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </Button>
-                <StoreQRDialog
-                  storeUrl={storeUrl}
-                  storeName={vendor.store_name}
-                  logoUrl={vendor.logo_url}
-                />
-                {vendor.whatsapp && (
                   <Button
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                    onClick={() => requireAuth(() => {
-                      const msg = encodeURIComponent(`Hi ${vendor.store_name}, I saw your store on Barakaz.`);
-                      window.open(`https://wa.me/${vendor.whatsapp?.replace(/[^0-9+]/g, "")}?text=${msg}`, "_blank");
-                    })}
+                    variant={isFollowing ? "outline" : "default"}
+                    className="rounded-full px-5"
+                    onClick={() => requireAuth(() => followMutation.mutate())}
+                    disabled={followMutation.isPending}
                   >
-                    <MessageCircle className="h-4 w-4" /> WhatsApp
+                    {isFollowing ? "Following" : "Follow"}
                   </Button>
-                )}
-                {vendor.phone && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => requireAuth(() => window.open(`tel:${vendor.phone}`, "_self"))}
-                  >
-                    <Phone className="h-4 w-4" />
-                    {user ? vendor.phone : maskPhone(vendor.phone)}
-                  </Button>
-                )}
-                {vendor.website && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => requireAuth(() => {
-                      let url = vendor.website!;
-                      if (!url.startsWith("http")) url = "https://" + url;
-                      window.open(url, "_blank");
-                    })}
-                  >
-                    <Globe className="h-4 w-4" /> Website
-                  </Button>
-                )}
+                  <StoreQRDialog
+                    storeUrl={storeUrl}
+                    storeName={vendor.store_name}
+                    logoUrl={vendor.logo_url}
+                  />
+                  {vendor.website && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => requireAuth(() => {
+                        let url = vendor.website!;
+                        if (!url.startsWith("http")) url = "https://" + url;
+                        window.open(url, "_blank");
+                      })}
+                    >
+                      <Globe className="h-4 w-4" /> Website
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
