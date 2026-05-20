@@ -181,7 +181,7 @@ const AdminProducts = () => {
                   </div>
                 </td>
                 <td className="p-3 text-muted-foreground">{p.vendors?.store_name || "—"}</td>
-                <td className="p-3">KSh {Number(p.price).toLocaleString()}</td>
+                <td className="p-3">${Number(p.price).toLocaleString()}</td>
                 <td className="p-3">{p.stock}</td>
                 <td className="p-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{p.status}</span>

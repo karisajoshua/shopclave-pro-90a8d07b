@@ -91,7 +91,7 @@ const AdminOrders = () => {
                       #{o.id.slice(0, 8)}
                     </span>
                     <span className="font-bold text-sm text-foreground">
-                      KSh {Number(o.total).toLocaleString()}
+                      ${Number(o.total).toLocaleString()}
                     </span>
                     <span className={`status-pill ${o.payment_status === "paid" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                       {o.payment_status}
@@ -157,8 +157,8 @@ const AdminOrders = () => {
                                 </td>
                                 <td className="text-muted-foreground text-xs">{(item.vendors as any)?.store_name || "—"}</td>
                                 <td>{item.quantity}</td>
-                                <td>KSh {(Number(item.price) * item.quantity).toLocaleString()}</td>
-                                <td className="text-xs text-muted-foreground">KSh {Number(item.commission_amount).toLocaleString()}</td>
+                                <td>${(Number(item.price) * item.quantity).toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground">${Number(item.commission_amount).toLocaleString()}</td>
                                 <td><span className={`status-pill ${statusPill(item.status)}`}>{item.status}</span></td>
                               </tr>
                             ))}

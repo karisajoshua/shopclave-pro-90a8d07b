@@ -123,10 +123,10 @@ const VendorEarnings = () => {
   };
 
   const stats = [
-    { label: "Gross Revenue", value: `KSh ${totalRevenue.toLocaleString()}`, icon: DollarSign, accent: "text-foreground", iconBg: "bg-muted text-muted-foreground" },
-    { label: `Platform Fee (${vendor?.commission_rate}%)`, value: `- KSh ${totalCommission.toLocaleString()}`, icon: TrendingUp, accent: "text-destructive", iconBg: "bg-destructive/10 text-destructive" },
-    { label: "Net Earnings", value: `KSh ${netEarnings.toLocaleString()}`, icon: Wallet, accent: "text-success", iconBg: "bg-success/10 text-success" },
-    { label: "Available Balance", value: `KSh ${Math.max(0, availableBalance).toLocaleString()}`, icon: Clock, accent: "text-primary", iconBg: "bg-primary/10 text-primary" },
+    { label: "Gross Revenue", value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, accent: "text-foreground", iconBg: "bg-muted text-muted-foreground" },
+    { label: `Platform Fee (${vendor?.commission_rate}%)`, value: `- $${totalCommission.toLocaleString()}`, icon: TrendingUp, accent: "text-destructive", iconBg: "bg-destructive/10 text-destructive" },
+    { label: "Net Earnings", value: `$${netEarnings.toLocaleString()}`, icon: Wallet, accent: "text-success", iconBg: "bg-success/10 text-success" },
+    { label: "Available Balance", value: `$${Math.max(0, availableBalance).toLocaleString()}`, icon: Clock, accent: "text-primary", iconBg: "bg-primary/10 text-primary" },
   ];
 
   return (
@@ -160,7 +160,7 @@ const VendorEarnings = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Amount (KSh)</Label>
+              <Label>Amount (USD)</Label>
               <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} max={availableBalance} />
             </div>
             <div>
@@ -246,7 +246,7 @@ const VendorEarnings = () => {
                       <td className="text-muted-foreground">{idx + 1}</td>
                       <td className="font-medium">{p.name}</td>
                       <td>{p.units}</td>
-                      <td className="font-semibold">KSh {p.revenue.toLocaleString()}</td>
+                      <td className="font-semibold">${p.revenue.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -283,7 +283,7 @@ const VendorEarnings = () => {
                 <tbody>
                   {withdrawals.map((w: any) => (
                     <tr key={w.id}>
-                      <td className="font-bold">KSh {Number(w.amount).toLocaleString()}</td>
+                      <td className="font-bold">${Number(w.amount).toLocaleString()}</td>
                       <td className="capitalize">{w.payment_method?.replace("_", " ")}</td>
                       <td>
                         <span className={`status-pill ${statusColors[w.status] || ""}`}>{w.status}</span>

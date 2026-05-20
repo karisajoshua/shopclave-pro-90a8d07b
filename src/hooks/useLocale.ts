@@ -226,7 +226,7 @@ export function useLocale() {
           maximumFractionDigits: 0,
         }).format(amountInKES);
       } catch {
-        return `KSh ${Math.round(amountInKES).toLocaleString()}`;
+        return `$${Math.round(amountInKES).toLocaleString()}`;
       }
     }
     const noDecimals = CURRENCIES_NO_DECIMALS.has(target);

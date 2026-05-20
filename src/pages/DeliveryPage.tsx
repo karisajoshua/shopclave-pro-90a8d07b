@@ -10,7 +10,7 @@ const DeliveryPage = () => (
 
     <h2 className="text-lg font-semibold text-foreground mt-6">Delivery Options</h2>
     <ul className="list-disc pl-6 space-y-1">
-      <li><strong>Standard Delivery:</strong> 3–7 business days. Free on orders over KSh 2,000.</li>
+      <li><strong>Standard Delivery:</strong> 3–7 business days. Free on orders over $2,000.</li>
       <li><strong>Express Delivery:</strong> 1–2 business days. Available in select cities for an additional fee.</li>
       <li><strong>Pick-up Points:</strong> Collect your order from a convenient pick-up location near you.</li>
     </ul>

@@ -82,8 +82,8 @@ const FiltersPanel = ({
         onValueChange={(v) => onPriceChange([v[0], v[1]] as [number, number])}
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>KSh {priceRange[0].toLocaleString()}</span>
-        <span>KSh {priceRange[1].toLocaleString()}</span>
+        <span>${priceRange[0].toLocaleString()}</span>
+        <span>${priceRange[1].toLocaleString()}</span>
       </div>
     </div>
 
