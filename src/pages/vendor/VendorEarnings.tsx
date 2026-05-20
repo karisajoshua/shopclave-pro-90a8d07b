@@ -160,7 +160,7 @@ const VendorEarnings = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Amount (KSh)</Label>
+              <Label>Amount (USD)</Label>
               <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} max={availableBalance} />
             </div>
             <div>

@@ -233,7 +233,7 @@ const AdminSubscriptions = () => {
                       <Input type="number" value={newSub.max_listings} onChange={(e) => setNewSub({ ...newSub, max_listings: parseInt(e.target.value) || 5 })} />
                     </div>
                     <div>
-                      <Label>Price (KSh)</Label>
+                      <Label>Price (USD)</Label>
                       <Input type="number" value={newSub.price} onChange={(e) => setNewSub({ ...newSub, price: parseInt(e.target.value) || 0 })} />
                     </div>
                   </div>

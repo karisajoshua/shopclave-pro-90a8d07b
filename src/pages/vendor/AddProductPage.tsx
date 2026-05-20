@@ -419,7 +419,7 @@ const AddProductPage = () => {
             <h3 className="font-semibold text-lg">Pricing & Stock</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Price (KSh) *</Label>
+                <Label>Price (USD) *</Label>
                 <Input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               </div>
               <div>
@@ -434,7 +434,7 @@ const AddProductPage = () => {
               </button>
               {showBulkPrice && (
                 <div className="mt-2">
-                  <Label>Bulk Price (KSh)</Label>
+                  <Label>Bulk Price (USD)</Label>
                   <Input type="number" min="0" step="0.01" value={form.bulkPrice} onChange={(e) => setForm({ ...form, bulkPrice: e.target.value })} placeholder="Price for bulk orders" />
                 </div>
               )}
@@ -560,11 +560,11 @@ const AddProductPage = () => {
                           <p className="text-xs font-semibold text-foreground">{Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <Label className="text-xs font-medium">Original Price (KSh)</Label>
+                              <Label className="text-xs font-medium">Original Price (USD)</Label>
                               <Input type="number" min="0" step="0.01" placeholder={form.compareAtPrice || "Optional"} value={row.compareAtPrice} onChange={(e) => updateVariantRow(idx, "compareAtPrice", e.target.value)} />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs font-medium">Current Price (KSh)</Label>
+                              <Label className="text-xs font-medium">Current Price (USD)</Label>
                               <Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} />
                             </div>
                           </div>
