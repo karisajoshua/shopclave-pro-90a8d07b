@@ -1,110 +1,51 @@
 
-## Goal
+## Continuation plan (secrets deferred)
 
-Move Barakaz from a classifieds model (buyers contact vendors directly, pay them outside the platform) to a full transactional marketplace where:
-- Customers pay online (Stripe, multi-currency: USD / GBP / CAD).
-- Vendors get paid automatically via Stripe Connect when they request a withdrawal.
-- Shipping costs are quoted live via Shippo at checkout.
-- All vendor phone / WhatsApp contact options are removed from product pages.
+The schema is already migrated. I'll build everything else now. Edge functions that need `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `SHIPPO_API_KEY` will read them at runtime and return a clean `503 "Integration not configured"` until you add them. The rest of the app (UI, balances UI, vendor onboarding banner) works without the secrets.
 
-Initial markets: US, UK, Canada.
+### Execution order
 
----
+**Phase A — UI cleanup (no secrets needed)**
+1. `ProductDetailPage.tsx`: remove "Call vendor" phone reveal + WhatsApp button. Keep in-app chat.
+2. `VendorStorePage.tsx`: remove phone/WhatsApp surfaces.
+3. `CheckoutPage.tsx`: drop `vendor_payment` (Pay Vendor Directly) and `mpesa` options; keep `card` only.
+4. `VendorSettings`: hide M-Pesa/bank-detail fields behind a deprecated note; add a "Payouts" tab placeholder that wires into Stripe Connect onboarding (Phase C).
+5. Add a global `<Money>` component and `CurrencyContext` (USD/GBP/CAD), with selector in `Navbar`. Replace all `KSh {n.toLocaleString()}` usages in product cards, cart, checkout, order pages.
 
-## 1. Remove direct vendor contact (UI cleanup)
+**Phase B — Shippo shipping rates**
+6. Add weight / dimensions / ships-from fields to the Add/Edit Product wizard (step "Shipping").
+7. Add warehouse address fields to Vendor Settings.
+8. Edge function `get-shipping-rates` — groups cart by vendor, calls Shippo per vendor, returns cheapest rates. Graceful 503 if no key.
+9. Checkout step 2: after address entry, fetch rates, let buyer pick per vendor, add to total.
 
-- Product detail page (`ProductDetailPage.tsx`): remove the "Call vendor" phone reveal and the "Chat on WhatsApp" button. Keep in-app chat with vendor (for pre-sale questions only).
-- Vendor store page (`VendorStorePage.tsx`): remove visible phone/WhatsApp; keep store name, rating, follow.
-- Vendor settings: hide M-Pesa / direct-bank-payout fields (replaced by Stripe Connect onboarding).
-- Remove "Pay Vendor Directly" option from checkout payment methods.
-- Update `marketplace-logic` and `communication` memory files to reflect the new model.
+**Phase C — Stripe Connect onboarding**
+10. Edge function `stripe-connect-onboard` — creates Express account + onboarding link.
+11. Edge function `stripe-connect-refresh` — refreshes account status from Stripe.
+12. Vendor Settings → Payouts tab: "Connect bank account" CTA, status pills (charges enabled / payouts enabled / requirements due), refresh button.
+13. Vendor dashboard banner urging incomplete vendors to finish KYC.
 
-## 2. Multi-currency online checkout (Stripe)
+**Phase D — Checkout (Stripe Payment Intent w/ destination charges)**
+14. Edge function `create-stripe-checkout` — builds a Stripe Checkout Session with `payment_intent_data.transfer_group` per order (Connect destination charges not used directly because we have multi-vendor carts; instead capture funds to platform, then push to vendors via Transfers on payout request).
+15. Edge function `stripe-webhook` — handles `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`, `account.updated`, `payout.paid`, `payout.failed`, `transfer.created`. Writes ledger entries and updates balances.
+16. Rewrite `create-order` → `create-order` returns the existing order + a Stripe Checkout URL; cart redirects to Stripe; on return, `OrderConfirmationPage` polls order status.
 
-- Enable Lovable's built-in Stripe payments (`enable_stripe_payments`). Pre-check: confirm the project is on Pro plan and Lovable Cloud is enabled.
-- Tax handling: recommend **option 2 — automatic tax calculation only** (Stripe Tax) since vendors will be the merchants of record via Connect; this avoids managed-payments restrictions and works for physical goods.
-- Store product prices in **USD** as the base; convert display prices to GBP/CAD using the existing `fx.ts` helper (extend cache list).
-- Add a currency selector in the navbar; persist to localStorage.
-- At Stripe checkout session creation, pass the buyer's chosen currency and let Stripe handle the charge in that currency.
-- Replace the "KSh" rendering across product cards, cart, checkout, order confirmation, vendor earnings with a `<Money>` component that formats per active currency.
+**Phase E — Vendor earnings & withdrawals**
+17. `VendorEarnings.tsx`: show available / pending / lifetime, recent ledger, "Request withdrawal" CTA.
+18. Edge function `request-withdrawal` — validates Connect payouts enabled + sufficient balance, creates Stripe Transfer + Payout, inserts `withdrawal` row, inserts `withdrawal` ledger entry (negative).
+19. `AdminWithdrawals.tsx`: read-only monitoring of automatic payouts; manual override action when a payout fails.
 
-## 3. Stripe Connect for vendor payouts
+**Phase F — Memory + cleanup**
+20. Update `mem://features/marketplace-logic`, `mem://integrations/communication`, `mem://ui/checkout-experience`, and Core index to reflect the new transactional model.
+21. Remove `natively-geolocation` references from checkout (no longer used for delivery quotes; Shippo handles).
 
-- Add a "Payouts" section in Vendor Settings with a "Connect bank account" button → creates a Stripe Connect **Express** account, returns onboarding link, redirects vendor through Stripe-hosted KYC.
-- New table `vendor_stripe_accounts` (vendor_id, stripe_account_id, charges_enabled, payouts_enabled, country, default_currency, requirements_due, updated_at) with RLS: vendor reads own, admins read all.
-- Edge function `stripe-connect-onboard` — creates account + onboarding link.
-- Edge function `stripe-connect-refresh` — refreshes account status (called on return from Stripe).
-- Edge function `stripe-webhook` — listens for `account.updated`, `payout.paid`, `payout.failed`, `charge.succeeded`, `charge.refunded`, `transfer.created` and updates our DB.
+### What I will NOT touch this round
+- KES/Swahili copy elsewhere in the site (will mark for a follow-up i18n pass).
+- Returns/refund self-service UI — admins handle via Stripe dashboard + manual ledger entry.
+- Real label-purchase flow (`buy-shipping-label`) — stubbed; vendor copies tracking number manually for v1.
 
-## 4. Vendor earnings & withdrawal flow
+### Risks / open items
+- Stripe Connect requires the platform's own Stripe account with Connect enabled in the dashboard (BYOK). The seamless Lovable-managed Stripe payments does not expose Connect APIs, so you'll need to provide `STRIPE_SECRET_KEY` from a Stripe account where you've enabled Connect → Express accounts.
+- Multi-vendor cart payouts use the "Separate charges & transfers" pattern (platform receives funds, transfers per vendor on payout). This means the platform briefly holds funds — review your jurisdiction's money-transmitter rules.
+- Existing in-flight orders in the `orders` table default to `currency='usd'`; verify no legacy KES orders break.
 
-- New table `vendor_balances` (vendor_id PK, available_amount, pending_amount, currency, updated_at).
-- New table `vendor_ledger` (vendor_id, order_item_id, type ∈ {sale, commission, refund, withdrawal, adjustment}, amount, currency, status, stripe_reference, created_at). Source of truth for balance.
-- On `charge.succeeded` webhook: insert `sale` (gross) and `commission` (negative platform cut) rows for each order item belonging to that order; recompute available/pending.
-- New table `withdrawals` (vendor_id, amount, currency, status, stripe_payout_id, requested_at, completed_at, failure_reason).
-- Edge function `request-withdrawal`:
-  1. Validates vendor's Stripe Connect account is `payouts_enabled`.
-  2. Checks `vendor_balances.available_amount >= requested amount`.
-  3. Creates Stripe Transfer to connected account + Payout, inserts `withdrawal` row, deducts from balance.
-  4. Returns success/failure.
-- Vendor dashboard updates:
-  - `VendorEarnings.tsx`: show available balance, pending balance, lifetime sales, ledger table, "Request withdrawal" CTA.
-  - `VendorDashboard.tsx`: KPI tiles (sales count, revenue, pending payout, completed payouts).
-- Admin: `AdminWithdrawals.tsx` becomes a monitoring view (read-only) since payouts are now automated.
-
-## 5. Shippo shipping rates
-
-- Add `SHIPPO_API_KEY` as a runtime secret.
-- New edge function `get-shipping-rates`:
-  - Input: cart items (with vendor_id, weight, dimensions), buyer address.
-  - Groups items by vendor (each vendor ships separately).
-  - For each vendor: builds a Shippo Shipment (from vendor's warehouse address → buyer address) and returns the cheapest rate per carrier.
-  - Output: per-vendor shipping options + total.
-- Vendor product form: add weight (g) + dimensions (cm) + ships-from country fields to `products` table.
-- Vendor settings: add warehouse address (used as Shippo "from" address).
-- Checkout step 2: after buyer enters address, call `get-shipping-rates`, let buyer pick a rate per vendor, sum into order total.
-- Order: persist chosen `shipping_rate_id` and Shippo `tracking_number` once label is purchased.
-- Vendor orders page: "Buy label" button → edge function `buy-shipping-label` calls Shippo, attaches tracking to order item, charges shipping back against vendor balance.
-
-## 6. Database migrations needed
-
-- `vendor_stripe_accounts` (new)
-- `vendor_balances` (new)
-- `vendor_ledger` (new)
-- `withdrawals` (new)
-- `products`: add `weight_g`, `length_cm`, `width_cm`, `height_cm`, `ships_from_country`
-- `vendors`: add `warehouse_address` JSONB, `default_currency`
-- `orders`: add `currency`, `shipping_total`, `tax_total`, `stripe_payment_intent_id`
-- `order_items`: add `shipping_rate_id`, `tracking_number`, `carrier`, `label_url`, `shipping_amount`
-- RLS on all new tables (vendor reads own, admins read all, service role writes via webhooks).
-
-## 7. Edge functions to add
-
-- `stripe-connect-onboard`
-- `stripe-connect-refresh`
-- `stripe-webhook` (extends existing payment webhook patterns)
-- `request-withdrawal`
-- `get-shipping-rates`
-- `buy-shipping-label`
-
-## 8. Secrets
-
-- `SHIPPO_API_KEY` (request via add_secret after plan approval).
-- Stripe keys are managed automatically by Lovable's built-in Stripe.
-
-## 9. Out of scope (this iteration)
-
-- KES / M-Pesa support removal of UI references only; full delocalization to follow once US/UK/CA traffic stabilises.
-- Returns/refund self-service UI (admin-handled for now via Stripe dashboard refund + ledger `refund` entry).
-- Multi-warehouse per vendor.
-- Customs/duties calculation beyond what Shippo includes.
-
----
-
-## Approvals needed before I start building
-
-1. Confirm Pro plan + Lovable Cloud are enabled (required for Stripe Connect).
-2. You'll need to create a Shippo account and have an API key ready (free tier works for rate quotes).
-3. Vendors will each need to complete Stripe Connect KYC before they can receive payouts — existing vendors will see a banner prompting them.
-
-Once approved I'll execute in this order: DB migrations → Stripe Connect onboarding → checkout (Stripe + currency) → Shippo rates → earnings/withdrawal → UI cleanup of phone/WhatsApp.
+Ready to execute Phase A → F end-to-end without waiting for the secrets.
