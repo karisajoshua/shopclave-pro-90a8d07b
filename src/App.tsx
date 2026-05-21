@@ -42,6 +42,7 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminBulkImport from "./pages/admin/AdminBulkImport";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminCommissions from "./pages/admin/AdminCommissions";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
@@ -144,6 +145,7 @@ const App = () => (
                   <Route path="evidence" element={<RequirePermission perm={PERMISSIONS.EVIDENCE_VIEW}><AdminEvidence /></RequirePermission>} />
                   <Route path="team" element={<RequirePermission perm={PERMISSIONS.TEAM_MANAGE}><AdminTeam /></RequirePermission>} />
                   <Route path="settings" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminSettings /></RequirePermission>} />
+                  <Route path="commissions" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminCommissions /></RequirePermission>} />
                   <Route path="marketing" element={<RequirePermission perm={PERMISSIONS.MARKETING_MANAGE}><AdminMarketing /></RequirePermission>} />
                   <Route path="resources" element={<RequirePermission perm={PERMISSIONS.RESOURCES_MANAGE}><AdminResources /></RequirePermission>} />
                   <Route path="social" element={<RequirePermission perm={PERMISSIONS.SOCIAL_MEDIA_MANAGE}><SocialLayout /></RequirePermission>}>

@@ -129,6 +129,35 @@ export type Database = {
           },
         ]
       }
+      category_commission_rates: {
+        Row: {
+          category_id: string
+          commission_pct: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category_id: string
+          commission_pct: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category_id?: string
+          commission_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_commission_rates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: true
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_attachments: {
         Row: {
           created_at: string
@@ -571,10 +600,12 @@ export type Database = {
         Row: {
           carrier: string | null
           commission_amount: number
+          commission_pct: number | null
           created_at: string
           id: string
           label_url: string | null
           order_id: string
+          payment_fee_amount: number | null
           price: number
           product_id: string | null
           quantity: number
@@ -586,14 +617,17 @@ export type Database = {
           variant_id: string | null
           variant_options: Json | null
           vendor_id: string | null
+          vendor_payout: number | null
         }
         Insert: {
           carrier?: string | null
           commission_amount?: number
+          commission_pct?: number | null
           created_at?: string
           id?: string
           label_url?: string | null
           order_id: string
+          payment_fee_amount?: number | null
           price: number
           product_id?: string | null
           quantity?: number
@@ -605,14 +639,17 @@ export type Database = {
           variant_id?: string | null
           variant_options?: Json | null
           vendor_id?: string | null
+          vendor_payout?: number | null
         }
         Update: {
           carrier?: string | null
           commission_amount?: number
+          commission_pct?: number | null
           created_at?: string
           id?: string
           label_url?: string | null
           order_id?: string
+          payment_fee_amount?: number | null
           price?: number
           product_id?: string | null
           quantity?: number
@@ -624,6 +661,7 @@ export type Database = {
           variant_id?: string | null
           variant_options?: Json | null
           vendor_id?: string | null
+          vendor_payout?: number | null
         }
         Relationships: [
           {
@@ -711,6 +749,30 @@ export type Database = {
           total?: number
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      platform_fee_settings: {
+        Row: {
+          default_commission_pct: number
+          id: number
+          payment_processing_flat: number
+          payment_processing_pct: number
+          updated_at: string
+        }
+        Insert: {
+          default_commission_pct?: number
+          id?: number
+          payment_processing_flat?: number
+          payment_processing_pct?: number
+          updated_at?: string
+        }
+        Update: {
+          default_commission_pct?: number
+          id?: number
+          payment_processing_flat?: number
+          payment_processing_pct?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2087,6 +2149,10 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      get_top_level_category: {
+        Args: { _category_id: string }
+        Returns: string
       }
       get_vendor_follower_count: { Args: { v_id: string }; Returns: number }
       has_permission: {
