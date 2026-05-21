@@ -125,7 +125,8 @@ const FiltersPanel = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
