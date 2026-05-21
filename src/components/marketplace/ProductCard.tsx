@@ -26,6 +26,7 @@ const ProductCard = ({
   id, name, price, compareAtPrice, image, rating = 0, reviewCount = 0, vendorId, vendorName, slug, dealEndsAt,
 }: ProductCardProps) => {
   const { addItem } = useCart();
+  const { formatPrice } = useLocale();
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
   const displayRating = getDisplayProductRating(id, rating, reviewCount);
 

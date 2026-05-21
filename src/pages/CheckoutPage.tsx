@@ -12,12 +12,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useLocale } from "@/hooks/useLocale";
 
 type Step = "address" | "delivery" | "payment";
 
 const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
+  const { formatPrice } = useLocale();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
@@ -297,7 +299,7 @@ const CheckoutPage = () => {
                   <div className="flex gap-3 items-start bg-muted/30 rounded-lg p-3">
                     <Truck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium">Door Delivery <span className="text-xs text-primary ml-2">(${deliveryFee})</span></p>
+                      <p className="text-sm font-medium">Door Delivery <span className="text-xs text-primary ml-2">({formatPrice(deliveryFee)})</span></p>
                       <p className="text-xs text-muted-foreground">Delivery between {fmtDate(deliveryStart)} and {fmtDate(deliveryEnd)}</p>
                     </div>
                   </div>
@@ -314,7 +316,7 @@ const CheckoutPage = () => {
                               {item.variantLabel && <p className="text-xs text-muted-foreground">{item.variantLabel}</p>}
                               <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                             </div>
-                            <p className="text-sm font-semibold">${(item.price * item.quantity).toLocaleString()}</p>
+                            <p className="text-sm font-semibold">{formatPrice(item.price * item.quantity)}</p>
                           </div>
                         ))}
                       </div>
@@ -374,11 +376,11 @@ const CheckoutPage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Item's total ({items.reduce((s, i) => s + i.quantity, 0)})</span>
-                  <span className="font-medium">${totalPrice.toLocaleString()}</span>
+                  <span className="font-medium">{formatPrice(totalPrice)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery fees</span>
-                  <span className="font-medium">${deliveryFee.toLocaleString()}</span>
+                  <span className="font-medium">{formatPrice(deliveryFee)}</span>
                 </div>
               </div>
 
@@ -386,7 +388,7 @@ const CheckoutPage = () => {
 
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total</span>
-                <span className="font-bold text-lg">${grandTotal.toLocaleString()}</span>
+                <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
               </div>
 
               <Button

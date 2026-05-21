@@ -48,8 +48,8 @@ const stepIndex = (status: string) => {
   return idx >= 0 ? idx : 0;
 };
 
-const fmtKsh = (n: number) =>
-  "$" + Number(n || 0).toLocaleString("en-KE", { maximumFractionDigits: 0 });
+// fmtKsh replaced by useLocale().formatPrice — kept stub for compatibility
+const fmtKsh = (n: number) => String(Math.round(Number(n || 0)));
 
 const AccountPage = () => {
   const { user, userRoles, signOut } = useAuth();
