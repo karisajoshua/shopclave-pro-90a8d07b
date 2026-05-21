@@ -15,8 +15,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 13 100% 53%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 48 97% 51%;
+    --primary-foreground: 0 0% 7%;
 
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 20% 10%;
@@ -24,43 +24,43 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 13 100% 53%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 48 97% 51%;
+    --accent-foreground: 0 0% 7%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 13 100% 53%;
+    --ring: 48 97% 51%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 13 100% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 13 90% 96%;
-    --sidebar-accent-foreground: 13 100% 30%;
+    --sidebar-primary: 48 97% 51%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 48 97% 94%;
+    --sidebar-accent-foreground: 0 0% 7%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 13 100% 53%;
+    --sidebar-ring: 48 97% 51%;
 
     /* Custom marketplace tokens */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --marketplace-dark: 220 20% 10%;
-    --marketplace-orange: 13 100% 53%;
-    --marketplace-orange-hover: 13 100% 46%;
-    --marketplace-orange-light: 13 90% 96%;
+    --marketplace-dark: 0 0% 7%;
+    --marketplace-orange: 48 97% 51%;
+    --marketplace-orange-hover: 48 97% 44%;
+    --marketplace-orange-light: 48 97% 94%;
     --marketplace-green: 142 71% 45%;
     --marketplace-badge: 0 84% 60%;
-    --marketplace-banner: 220 20% 15%;
+    --marketplace-banner: 0 0% 10%;
 
     /* Amazon-style nav tokens */
-    --nav-dark: 210 29% 10%;
-    --nav-secondary: 210 25% 17%;
+    --nav-dark: 0 0% 7%;
+    --nav-secondary: 0 0% 13%;
 
     /* Admin cockpit tokens */
     --admin-surface: 220 20% 97%;
@@ -74,7 +74,7 @@
     --admin-sidebar-border: 222 25% 18%;
     --admin-accent-revenue: 142 71% 45%;
     --admin-accent-orders: 217 91% 60%;
-    --admin-accent-vendors: 13 100% 53%;
+    --admin-accent-vendors: 48 97% 51%;
     --admin-accent-warning: 38 92% 50%;
     --admin-accent-danger: 0 84% 60%;
     --admin-accent-info: 262 83% 58%;
@@ -88,12 +88,12 @@
     --vendor-sidebar-bg-elevated: 222 25% 14%;
     --vendor-sidebar-fg: 220 15% 75%;
     --vendor-sidebar-fg-muted: 220 12% 55%;
-    --vendor-sidebar-active-bg: 13 100% 53%;
-    --vendor-sidebar-active-fg: 0 0% 100%;
+    --vendor-sidebar-active-bg: 48 97% 51%;
+    --vendor-sidebar-active-fg: 0 0% 7%;
     --vendor-sidebar-border: 222 25% 18%;
     --vendor-accent-revenue: 142 71% 45%;
     --vendor-accent-orders: 217 91% 60%;
-    --vendor-accent-products: 13 100% 53%;
+    --vendor-accent-products: 48 97% 51%;
     --vendor-accent-warning: 38 92% 50%;
 
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
