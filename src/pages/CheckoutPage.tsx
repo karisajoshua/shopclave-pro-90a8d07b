@@ -22,7 +22,7 @@ const CheckoutPage = () => {
   const { formatPrice } = useLocale();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const [activeStep, setActiveStep] = useState<Step>("address");
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
@@ -168,6 +168,20 @@ const CheckoutPage = () => {
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // For card payments, create Stripe Checkout session and redirect
+      if (paymentMethod === "card") {
+        const { data: stripeData, error: stripeErr } = await supabase.functions.invoke(
+          "create-stripe-checkout",
+          { body: { order_id: data.order_id } }
+        );
+        if (stripeErr) throw stripeErr;
+        if (stripeData?.error) throw new Error(stripeData.error);
+        if (!stripeData?.url) throw new Error("Failed to start Stripe checkout");
+        clearCart();
+        window.location.href = stripeData.url;
+        return;
+      }
 
       clearCart();
       toast.success("Order placed successfully!");
