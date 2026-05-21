@@ -11,10 +11,12 @@ import { toast } from "sonner";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { AttachmentButton } from "@/components/chat/AttachmentButton";
 import { OpenDisputeDialog } from "@/components/chat/OpenDisputeDialog";
+import { useLocale } from "@/hooks/useLocale";
 
 const OrderChatPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const { user, loading } = useAuth();
+  const { formatPrice } = useLocale();
   const navigate = useNavigate();
   const [order, setOrder] = useState<any>(null);
   const [vendor, setVendor] = useState<any>(null);
@@ -206,7 +208,7 @@ const OrderChatPage = () => {
             </div>
             <div className="text-right">
               <Badge variant="secondary" className="capitalize">{order?.status || "—"}</Badge>
-              <p className="text-sm font-semibold mt-1">${Number(order?.total || 0).toLocaleString()}</p>
+              <p className="text-sm font-semibold mt-1">{formatPrice(Number(order?.total || 0))}</p>
             </div>
           </div>
           {!isLocked && (

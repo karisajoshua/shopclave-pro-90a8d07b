@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import CountdownTimer from "@/components/shared/CountdownTimer";
 import { getDisplayProductRating } from "@/lib/product-rating-fallback";
+import { useLocale } from "@/hooks/useLocale";
 
 interface ProductCardProps {
   id: string;
@@ -25,6 +26,7 @@ const ProductCard = ({
   id, name, price, compareAtPrice, image, rating = 0, reviewCount = 0, vendorId, vendorName, slug, dealEndsAt,
 }: ProductCardProps) => {
   const { addItem } = useCart();
+  const { formatPrice } = useLocale();
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
   const displayRating = getDisplayProductRating(id, rating, reviewCount);
 
@@ -77,9 +79,9 @@ const ProductCard = ({
         </div>
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-lg font-bold text-foreground">${price.toLocaleString()}</p>
+            <p className="text-lg font-bold text-foreground">{formatPrice(price)}</p>
             {compareAtPrice && (
-              <p className="text-xs text-muted-foreground line-through">${compareAtPrice.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground line-through">{formatPrice(compareAtPrice)}</p>
             )}
           </div>
           <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={handleAddToCart}>

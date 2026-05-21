@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import { useProductRatings } from "@/hooks/useProductRatings";
+import { useLocale } from "@/hooks/useLocale";
 
 type SortKey = "discount_desc" | "price_asc" | "price_desc" | "newest";
 
@@ -39,7 +40,9 @@ const FiltersPanel = ({
   priceBounds, priceRange, onPriceChange,
   minDiscount, onMinDiscountChange,
   sort, onSortChange, showDiscount, onReset,
-}: FiltersProps) => (
+}: FiltersProps) => {
+  const { formatPrice } = useLocale();
+  return (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <h3 className="font-display font-semibold">Filters</h3>
@@ -82,8 +85,8 @@ const FiltersPanel = ({
         onValueChange={(v) => onPriceChange([v[0], v[1]] as [number, number])}
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>${priceRange[0].toLocaleString()}</span>
-        <span>${priceRange[1].toLocaleString()}</span>
+        <span>{formatPrice(priceRange[0])}</span>
+        <span>{formatPrice(priceRange[1])}</span>
       </div>
     </div>
 
@@ -122,7 +125,8 @@ const FiltersPanel = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
