@@ -15,8 +15,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 48 97% 51%;
-    --primary-foreground: 0 0% 7%;
+    --primary: 14 100% 53%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 20% 10%;
@@ -24,26 +24,26 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 48 97% 51%;
-    --accent-foreground: 0 0% 7%;
+    --accent: 14 100% 53%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 48 97% 51%;
+    --ring: 14 100% 53%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 48 97% 51%;
-    --sidebar-primary-foreground: 0 0% 7%;
-    --sidebar-accent: 48 97% 94%;
-    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-primary: 14 100% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 14 100% 94%;
+    --sidebar-accent-foreground: 14 100% 30%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 48 97% 51%;
+    --sidebar-ring: 14 100% 53%;
 
     /* Custom marketplace tokens */
     --success: 142 71% 45%;
@@ -51,12 +51,16 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --marketplace-dark: 0 0% 7%;
-    --marketplace-orange: 48 97% 51%;
-    --marketplace-orange-hover: 48 97% 44%;
-    --marketplace-orange-light: 48 97% 94%;
+    --marketplace-orange: 14 100% 53%;
+    --marketplace-orange-hover: 14 100% 46%;
+    --marketplace-orange-light: 14 100% 94%;
     --marketplace-green: 142 71% 45%;
     --marketplace-badge: 0 84% 60%;
     --marketplace-banner: 0 0% 10%;
+
+    /* Minimal yellow accent — use sparingly (price highlights, badges) */
+    --brand-yellow: 48 97% 51%;
+    --brand-yellow-foreground: 0 0% 7%;
 
     /* Amazon-style nav tokens */
     --nav-dark: 0 0% 7%;
@@ -74,26 +78,26 @@
     --admin-sidebar-border: 222 25% 18%;
     --admin-accent-revenue: 142 71% 45%;
     --admin-accent-orders: 217 91% 60%;
-    --admin-accent-vendors: 48 97% 51%;
+    --admin-accent-vendors: 14 100% 53%;
     --admin-accent-warning: 38 92% 50%;
     --admin-accent-danger: 0 84% 60%;
     --admin-accent-info: 262 83% 58%;
     --shadow-admin-card: 0 1px 2px 0 hsl(220 20% 10% / 0.04), 0 1px 3px 0 hsl(220 20% 10% / 0.04);
     --shadow-admin-card-hover: 0 4px 12px -2px hsl(220 20% 10% / 0.08), 0 2px 4px -2px hsl(220 20% 10% / 0.04);
 
-    /* Vendor cockpit tokens (warm orange-tinted variant of admin shell) */
+    /* Vendor cockpit tokens */
     --vendor-surface: 30 30% 98%;
     --vendor-card: 0 0% 100%;
     --vendor-sidebar-bg: 222 28% 11%;
     --vendor-sidebar-bg-elevated: 222 25% 14%;
     --vendor-sidebar-fg: 220 15% 75%;
     --vendor-sidebar-fg-muted: 220 12% 55%;
-    --vendor-sidebar-active-bg: 48 97% 51%;
-    --vendor-sidebar-active-fg: 0 0% 7%;
+    --vendor-sidebar-active-bg: 14 100% 53%;
+    --vendor-sidebar-active-fg: 0 0% 100%;
     --vendor-sidebar-border: 222 25% 18%;
     --vendor-accent-revenue: 142 71% 45%;
     --vendor-accent-orders: 217 91% 60%;
-    --vendor-accent-products: 48 97% 51%;
+    --vendor-accent-products: 14 100% 53%;
     --vendor-accent-warning: 38 92% 50%;
 
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
