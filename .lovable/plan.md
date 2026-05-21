@@ -1,51 +1,55 @@
+## Plan: Rebrand to Yellow/Black + Location-Based Currency
 
-## Continuation plan (secrets deferred)
+### 1. Theme rebrand (orange → yellow #fccb04 + black)
 
-The schema is already migrated. I'll build everything else now. Edge functions that need `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or `SHIPPO_API_KEY` will read them at runtime and return a clean `503 "Integration not configured"` until you add them. The rest of the app (UI, balances UI, vendor onboarding banner) works without the secrets.
+Update design tokens only — components already use semantic tokens, so no per-component edits needed.
 
-### Execution order
+**`src/index.css`** — replace orange HSL values:
+- `--primary` → `48 97% 50%` (yellow #fccb04)
+- `--primary-foreground` → `0 0% 7%` (near-black, for contrast on yellow)
+- `--marketplace-orange` → yellow
+- `--marketplace-orange-hover` → darker yellow `48 97% 44%`
+- `--marketplace-orange-light` → `48 97% 92%`
+- `--marketplace-dark` / nav background → black `0 0% 7%`
+- `--ring`, `--accent` (where they referenced orange) → yellow
+- Dark-mode counterparts updated to match
 
-**Phase A — UI cleanup (no secrets needed)**
-1. `ProductDetailPage.tsx`: remove "Call vendor" phone reveal + WhatsApp button. Keep in-app chat.
-2. `VendorStorePage.tsx`: remove phone/WhatsApp surfaces.
-3. `CheckoutPage.tsx`: drop `vendor_payment` (Pay Vendor Directly) and `mpesa` options; keep `card` only.
-4. `VendorSettings`: hide M-Pesa/bank-detail fields behind a deprecated note; add a "Payouts" tab placeholder that wires into Stripe Connect onboarding (Phase C).
-5. Add a global `<Money>` component and `CurrencyContext` (USD/GBP/CAD), with selector in `Navbar`. Replace all `KSh {n.toLocaleString()}` usages in product cards, cart, checkout, order pages.
+**`tailwind.config.ts`** — no changes needed (tokens are HSL refs).
 
-**Phase B — Shippo shipping rates**
-6. Add weight / dimensions / ships-from fields to the Add/Edit Product wizard (step "Shipping").
-7. Add warehouse address fields to Vendor Settings.
-8. Edge function `get-shipping-rates` — groups cart by vendor, calls Shippo per vendor, returns cheapest rates. Graceful 503 if no key.
-9. Checkout step 2: after address entry, fetch rates, let buyer pick per vendor, add to total.
+**Logo / favicon** — leave as-is (already yellow + black).
 
-**Phase C — Stripe Connect onboarding**
-10. Edge function `stripe-connect-onboard` — creates Express account + onboarding link.
-11. Edge function `stripe-connect-refresh` — refreshes account status from Stripe.
-12. Vendor Settings → Payouts tab: "Connect bank account" CTA, status pills (charges enabled / payouts enabled / requirements due), refresh button.
-13. Vendor dashboard banner urging incomplete vendors to finish KYC.
+### 2. Location-based currency display
 
-**Phase D — Checkout (Stripe Payment Intent w/ destination charges)**
-14. Edge function `create-stripe-checkout` — builds a Stripe Checkout Session with `payment_intent_data.transfer_group` per order (Connect destination charges not used directly because we have multi-vendor carts; instead capture funds to platform, then push to vendors via Transfers on payout request).
-15. Edge function `stripe-webhook` — handles `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`, `account.updated`, `payout.paid`, `payout.failed`, `transfer.created`. Writes ledger entries and updates balances.
-16. Rewrite `create-order` → `create-order` returns the existing order + a Stripe Checkout URL; cart redirects to Stripe; on return, `OrderConfirmationPage` polls order status.
+Right now prices were hard-replaced from `KSh` to `$`. We need real geo-aware formatting.
 
-**Phase E — Vendor earnings & withdrawals**
-17. `VendorEarnings.tsx`: show available / pending / lifetime, recent ledger, "Request withdrawal" CTA.
-18. Edge function `request-withdrawal` — validates Connect payouts enabled + sufficient balance, creates Stripe Transfer + Payout, inserts `withdrawal` row, inserts `withdrawal` ledger entry (negative).
-19. `AdminWithdrawals.tsx`: read-only monitoring of automatic payouts; manual override action when a payout fails.
+**Detection** (one-time per session):
+- Use the existing `natively-geolocation` edge function (or `navigator.language` + `Intl.Locale` as fallback) to detect country.
+- Map country → currency: KE→KES, US→USD, GB→GBP, CA→CAD, EU members→EUR, else USD.
 
-**Phase F — Memory + cleanup**
-20. Update `mem://features/marketplace-logic`, `mem://integrations/communication`, `mem://ui/checkout-experience`, and Core index to reflect the new transactional model.
-21. Remove `natively-geolocation` references from checkout (no longer used for delivery quotes; Shippo handles).
+**FX rates**:
+- `src/lib/fx.ts` already exists — extend it with a static rate table (USD base) refreshed lazily, OR keep a hardcoded snapshot for now (USD, GBP, CAD, EUR, KES). All product prices in DB are stored in their `vendor.default_currency` (or implicit base). We'll treat the stored numeric `price` as **USD base** for display conversion.
 
-### What I will NOT touch this round
-- KES/Swahili copy elsewhere in the site (will mark for a follow-up i18n pass).
-- Returns/refund self-service UI — admins handle via Stripe dashboard + manual ledger entry.
-- Real label-purchase flow (`buy-shipping-label`) — stubbed; vendor copies tracking number manually for v1.
+**`CurrencyContext`** (new, lightweight):
+- Provides `{ currency, symbol, format(amount) }`.
+- On mount: detect country → set currency. Persist override in `localStorage` (`barakaz_currency`).
+- Optional manual selector in `Navbar` (USD / GBP / CAD / EUR / KES).
 
-### Risks / open items
-- Stripe Connect requires the platform's own Stripe account with Connect enabled in the dashboard (BYOK). The seamless Lovable-managed Stripe payments does not expose Connect APIs, so you'll need to provide `STRIPE_SECRET_KEY` from a Stripe account where you've enabled Connect → Express accounts.
-- Multi-vendor cart payouts use the "Separate charges & transfers" pattern (platform receives funds, transfers per vendor on payout). This means the platform briefly holds funds — review your jurisdiction's money-transmitter rules.
-- Existing in-flight orders in the `orders` table default to `currency='usd'`; verify no legacy KES orders break.
+**`<Money amount={n} />` component** (new):
+- Wraps `format()`; replaces every hardcoded `${n.toLocaleString()}` and `${n}` in product/cart/checkout UIs.
 
-Ready to execute Phase A → F end-to-end without waiting for the secrets.
+**Files to update to use `<Money>`**:
+- `ProductCard.tsx`, `ProductDetailPage.tsx`, `CartPage.tsx`, `CheckoutPage.tsx`, `SearchPage.tsx`, `VendorStorePage.tsx`, `OrderConfirmationPage.tsx`, `AccountPage.tsx`, `VendorDashboard.tsx`, `VendorOrders.tsx`, `VendorEarnings.tsx`, `AdminOrders.tsx`, `AdminDashboard.tsx`, `AdminWithdrawals.tsx`, `AdminSubscriptions.tsx`.
+- Form input labels (e.g. "Price (USD)") show the **vendor's listing currency**, not the buyer's — keep these in vendor's `default_currency`.
+
+### 3. Out of scope (kept as-is)
+- Stripe Checkout still charges in the order's stored `currency` field (USD default). Real multi-currency settlement comes with Stripe integration phase.
+- No DB schema changes.
+
+### Files changed (estimated)
+- `src/index.css` (token swap)
+- `src/lib/fx.ts` (rate table + helpers)
+- `src/contexts/CurrencyContext.tsx` (new)
+- `src/components/Money.tsx` (new)
+- `src/components/layout/Navbar.tsx` (currency selector, optional)
+- `src/App.tsx` (wrap with `<CurrencyProvider>`)
+- ~14 page/component files: swap hardcoded `$` strings for `<Money>`
