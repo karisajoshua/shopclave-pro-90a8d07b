@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree,
   Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield, UserCog,
-  Megaphone, GraduationCap, BookOpen, Share2,
+  Megaphone, GraduationCap, BookOpen, Share2, Percent,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -52,6 +52,7 @@ const groups: { label: string; items: Item[] }[] = [
     items: [
       { title: "Withdrawals", url: "/admin/withdrawals", icon: Wallet, permission: PERMISSIONS.WITHDRAWALS_VIEW },
       { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard, permission: PERMISSIONS.SUBSCRIPTIONS_VIEW },
+      { title: "Commissions", url: "/admin/commissions", icon: Percent, permission: PERMISSIONS.SETTINGS_MANAGE },
     ],
   },
   {
