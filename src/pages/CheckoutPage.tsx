@@ -454,7 +454,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery fees</span>
-                  <span className="font-medium">{formatPrice(deliveryFee)}</span>
+                  <span className="font-medium">{shippingTotal > 0 ? formatPrice(shippingTotal) : "—"}</span>
                 </div>
               </div>
 
