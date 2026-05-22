@@ -405,8 +405,13 @@ const CheckoutPage = () => {
 
                         {err && !ratesLoading && (
                           <div className="text-xs text-warning bg-warning/10 rounded p-2">
-                            {err}. A default fee will apply.
+                            {err}. An estimated fee will apply.
                           </div>
+                        )}
+                        {fallbackOrigin[vendorId] && !err && (
+                          <p className="text-[11px] text-muted-foreground italic">
+                            Estimated from Nairobi (vendor origin not set)
+                          </p>
                         )}
 
                         {rates.length > 0 && (
