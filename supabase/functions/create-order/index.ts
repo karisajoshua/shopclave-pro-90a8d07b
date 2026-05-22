@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
       });
 
       const subtotal = total;
-      const deliveryFee = 200;
+      const deliveryFee = shippingTotal > 0 ? shippingTotal : 200;
       const grandTotal = subtotal + deliveryFee;
 
       const paymentLabelMap: Record<string, string> = {
