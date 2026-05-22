@@ -8,6 +8,7 @@ import BestDealsSection from "@/components/marketplace/BestDealsSection";
 import CategoryCard from "@/components/marketplace/CategoryCard";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
