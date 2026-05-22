@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown, Crown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const FASHION_CATEGORY_ID = "a0000001-0000-0000-0000-000000000002";
@@ -24,7 +24,7 @@ import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs"
 import ChatDialog from "@/components/shared/ChatDialog";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
-import { getDisplayProductRating, seededRandom } from "@/lib/product-rating-fallback";
+import { getDisplayProductRating, seededRandom, getDisplayVendorPerformance } from "@/lib/product-rating-fallback";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -171,9 +171,21 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
         <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Contact Seller</h3>
         <Separator />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <Link to={`/store/${vendor.slug ?? vendor.id}`} className="font-semibold text-sm text-primary hover:underline">
+        <div className="flex items-center gap-3">
+          {vendor.logo_url ? (
+            <img
+              src={vendor.logo_url}
+              alt={vendor.store_name}
+              className="h-11 w-11 rounded-full object-cover border border-border shrink-0"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-base shrink-0">
+              {vendor.store_name?.[0]?.toUpperCase() || "?"}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <Link to={`/store/${vendor.slug ?? vendor.id}`} className="font-semibold text-sm text-primary hover:underline truncate block">
               {vendor.store_name}
             </Link>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
@@ -183,7 +195,7 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
           <Button
             size="sm"
             variant={isFollowing ? "outline" : "default"}
-            className="text-xs h-8 rounded-full px-4"
+            className="text-xs h-8 rounded-full px-4 shrink-0"
             onClick={() => requireAuth(() => followMutation.mutate())}
             disabled={followMutation.isPending}
           >
@@ -209,22 +221,72 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
       </div>
 
       {/* Seller Performance */}
-      <div className="bg-card rounded-lg border border-border p-4 space-y-3">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Seller Performance</h4>
-        <Separator />
-        <div className="space-y-1.5">
-          {[
-            { label: "Response Time", value: "Fast" },
-            { label: "Quality Score", value: "Good" },
-            { label: "Customer Rating", value: "Excellent" },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-xs">
-              <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-              <span className="text-muted-foreground">{item.label}: <span className="font-medium text-foreground">{item.value}</span></span>
+      {(() => {
+        const perf = getDisplayVendorPerformance(vendor.id);
+        const isVerified = vendor.status === "approved";
+        const stats = [
+          { label: "Response Rate", value: `${perf.responseRate}%` },
+          { label: "Response Time", value: `${perf.responseTime} mins` },
+          { label: "On-time Delivery", value: `${perf.onTimeDelivery}%` },
+          { label: "Order Completion", value: `${perf.orderCompletion}%` },
+        ];
+        return (
+          <div className="bg-card rounded-lg border border-border p-4 space-y-3">
+            <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Seller Performance</h4>
+
+            {(isVerified || perf.isTopRated) && (
+              <div className="space-y-1.5">
+                {isVerified && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <ShieldCheck className="h-4 w-4 text-success fill-success/20" />
+                    <span className="font-medium text-foreground">Verified Seller</span>
+                  </div>
+                )}
+                {perf.isTopRated && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Crown className="h-4 w-4 text-[hsl(265_85%_60%)]" />
+                    <span className="font-medium text-foreground">Top Rated Seller</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Separator />
+
+            <div className="space-y-2">
+              {stats.map((s) => (
+                <div key={s.label} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{s.label}</span>
+                  <span className="font-semibold text-foreground">{s.value}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Quality Score</span>
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                  {perf.qualityScore} / 5
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Customer Rating</span>
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                  {perf.customerRating} / 5
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center pt-1">
+              (Based on {perf.ratingsCount.toLocaleString()} ratings)
+            </p>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -245,7 +307,7 @@ const ProductDetailPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, vendors(id, slug, store_name, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug, parent_id)")
+        .select("*, vendors(id, slug, store_name, logo_url, status, phone, phone2, website, whatsapp), product_images(url, position, variant_id), categories(name, slug, parent_id)")
         .eq("slug", slug!)
         .single();
       return data as any;

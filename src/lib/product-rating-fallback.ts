@@ -28,3 +28,17 @@ export const getDisplayProductRating = (
     reviewCount: hasRealReviews ? reviewCount : seededRandom(`${productId}rc`, 24, 156),
   };
 };
+
+export const getDisplayVendorPerformance = (vendorId: string) => {
+  const customerRating = seededFloat(`${vendorId}cr`, 4.3, 4.9);
+  return {
+    responseRate: seededRandom(`${vendorId}rr`, 92, 99),
+    responseTime: seededRandom(`${vendorId}rt`, 5, 30),
+    onTimeDelivery: seededRandom(`${vendorId}otd`, 90, 99),
+    orderCompletion: seededRandom(`${vendorId}oc`, 95, 99),
+    qualityScore: seededFloat(`${vendorId}qs`, 4.3, 4.9),
+    customerRating,
+    ratingsCount: seededRandom(`${vendorId}rcnt`, 200, 2000),
+    isTopRated: customerRating >= 4.5,
+  };
+};
