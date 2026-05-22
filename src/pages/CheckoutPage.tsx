@@ -509,7 +509,13 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery fees</span>
-                  <span className="font-medium">{shippingTotal > 0 ? formatPrice(shippingTotal) : "—"}</span>
+                  <span className="font-medium">
+                    {ratesLoading
+                      ? "Calculating…"
+                      : shippingTotal > 0
+                        ? formatPrice(shippingTotal)
+                        : addressConfirmed ? "—" : "Enter address"}
+                  </span>
                 </div>
               </div>
 
