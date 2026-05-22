@@ -78,7 +78,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { items, shipping_address, payment_method } = parsed.data;
+    const { items, shipping_address, payment_method, shipping_selections } = parsed.data;
+    const shippingByVendor = new Map(
+      (shipping_selections || []).map((s) => [s.vendor_id, s])
+    );
 
     // Use service role client for trusted operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
