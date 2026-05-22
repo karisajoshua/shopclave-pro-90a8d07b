@@ -7,6 +7,7 @@ import heroBanner1 from "@/assets/hero-banner-1.png";
 import heroBanner2 from "@/assets/hero-banner-2.png";
 import heroBanner3 from "@/assets/hero-banner-3.png";
 import heroBanner4 from "@/assets/hero-banner-4.png";
+import heroBanner5 from "@/assets/hero-banner-5.png";
 import catSmartphones from "@/assets/cat-smartphones.jpg";
 import catLaptops from "@/assets/cat-laptops.jpg";
 import catHeadphones from "@/assets/cat-headphones.jpg";
@@ -39,22 +40,11 @@ import catCycling from "@/assets/cat-cycling.jpg";
 import catFitnessGear from "@/assets/cat-fitness-gear.jpg";
 
 const HERO_SLIDES = [
-  {
-    image: heroBanner1,
-    link: "/search?category=fashion",
-  },
-  {
-    image: heroBanner2,
-    link: "/search",
-  },
-  {
-    image: heroBanner3,
-    link: "/search?category=home-garden",
-  },
-  {
-    image: heroBanner4,
-    link: "/search?category=electronics",
-  },
+  { image: heroBanner1, link: "/search?category=fashion" },
+  { image: heroBanner2, link: "/search?category=fashion" },
+  { image: heroBanner3, link: "/search?category=kids" },
+  { image: heroBanner4, link: "/search?category=electronics" },
+  { image: heroBanner5, link: "/search?category=smartwatches" },
 ];
 
 const CATEGORY_CARDS = [
