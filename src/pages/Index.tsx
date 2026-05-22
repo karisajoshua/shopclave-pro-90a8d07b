@@ -153,11 +153,25 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {displayProducts.slice(0, 10).map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {displayProducts.slice(0, visibleCount).map((product) => (
+                  <ProductCard key={product.id} {...product} />
+                ))}
+              </div>
+              {!isFirstRunDemo && displayProducts.length > visibleCount && (
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setVisibleCount((c) => c + 10)}
+                    className="text-primary border-primary/30 hover:bg-primary/5"
+                  >
+                    {t("home.loadMore")}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
