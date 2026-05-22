@@ -116,8 +116,17 @@ const CheckoutPage = () => {
     enabled: vendorIds.length > 0,
   });
 
-  const deliveryFee = 200;
-  const grandTotal = totalPrice + deliveryFee;
+  // Live shipping rates from Shippo (keyed by vendor_id)
+  const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
+  const [shippingErrors, setShippingErrors] = useState<Record<string, string>>({});
+  const [selectedRates, setSelectedRates] = useState<Record<string, any>>({});
+  const [ratesLoading, setRatesLoading] = useState(false);
+
+  const shippingTotal = Object.values(selectedRates).reduce(
+    (s: number, r: any) => s + Number(r?.amount || 0),
+    0
+  );
+  const grandTotal = totalPrice + shippingTotal;
 
   // Delivery dates
   const deliveryStart = new Date();
