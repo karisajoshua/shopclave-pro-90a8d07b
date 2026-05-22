@@ -24,7 +24,7 @@ import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs"
 import ChatDialog from "@/components/shared/ChatDialog";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
-import { getDisplayProductRating, seededRandom } from "@/lib/product-rating-fallback";
+import { getDisplayProductRating, seededRandom, getDisplayVendorPerformance } from "@/lib/product-rating-fallback";
 import {
   Breadcrumb,
   BreadcrumbItem,
