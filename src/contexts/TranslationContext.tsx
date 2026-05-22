@@ -215,6 +215,11 @@ const translations: Translations = {
     AR: "عرض الكل", PT: "Ver tudo", DE: "Alle anzeigen", ZH: "查看全部",
     SO: "Arag Dhammaan", HI: "सभी देखें",
   },
+  "home.loadMore": {
+    EN: "Load more", SW: "Pakia zaidi", FR: "Charger plus", ES: "Cargar más",
+    AR: "تحميل المزيد", PT: "Carregar mais", DE: "Mehr laden", ZH: "加载更多",
+    SO: "Soo rar wax dheeraad ah", HI: "और लोड करें",
+  },
   "home.startSelling": {
     EN: "Start Selling on Barakaz", SW: "Anza Kuuza kwenye Barakaz", FR: "Commencez à vendre sur Barakaz", ES: "Empieza a vender en Barakaz",
     AR: "ابدأ البيع على بركاز", PT: "Comece a vender na Barakaz", DE: "Starten Sie den Verkauf auf Barakaz", ZH: "开始在Barakaz上销售",
