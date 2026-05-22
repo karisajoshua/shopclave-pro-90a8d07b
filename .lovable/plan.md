@@ -1,41 +1,61 @@
-# Vendor logo + richer Seller Performance card
+# Shippo: Live shipping rates at checkout
 
-Two scoped UI changes inside `src/pages/ProductDetailPage.tsx` (the `SellerInfoSidebar` component). No DB or backend changes.
+Use one platform-level Shippo API key (Barakaz account) to fetch live carrier rates per vendor shipment at checkout, before the buyer pays. Origin = each vendor's existing `warehouse_address`. Destination = buyer's shipping address.
 
-## 1. Show vendor logo next to store name
+No label purchasing, no tracking, no address validation in this scope — those tables/columns already exist on `order_items` and can be added later.
 
-Currently the "Contact Seller" header shows only `vendor.store_name`. The `vendors` table already has a `logo_url` column, but it isn't being selected or rendered.
+## Prerequisites (user action)
 
-- Add `logo_url` to the vendor select in the product query (line ~248): `vendors(id, slug, store_name, logo_url, phone, phone2, website, whatsapp)`.
-- In `SellerInfoSidebar`, render a 44px rounded avatar to the left of the store name:
-  - If `vendor.logo_url` → `<img>` it.
-  - Fallback → circle with the first letter of `store_name` on a `bg-primary/10 text-primary` background (same style used in `AdminVendors`).
-- Keep the existing Follow button on the right; store name + followers count move into the middle column.
+1. Create a Shippo account at goshippo.com and grab a Live API token (Settings → API).
+2. I'll request it via the secrets tool as `SHIPPO_API_TOKEN` once you approve this plan.
+3. Each vendor must fill in their `warehouse_address` (street, city, state, zip, country) in Vendor Settings — used as the ship-from address. I'll add inline UI hints + a "Shipping origin required" warning on the dashboard if missing.
+4. Each product needs `weight_g` and `length_cm/width_cm/height_cm` (already in schema) — Shippo requires parcel dimensions. I'll surface defaults (e.g. fallback to 500 g, 20×15×10 cm) so existing products without dimensions still get rates.
 
-## 2. Expand "Seller Performance" card to match the reference
+## What gets built
 
-Replace the current 3-line list with a richer block. Since we don't yet store real seller-performance metrics, values will be **deterministic per-vendor fallbacks** (same seeded approach already used in `src/lib/product-rating-fallback.ts`), so each store always shows the same numbers. This keeps the UI honest-looking without faking volatile data.
+### 1. Edge function: `get-shipping-rates`
+- Input: `{ items: [{product_id, quantity, variant_id?}], shipping_address: {...} }`
+- Validates input with Zod.
+- Groups items by `vendor_id` (each vendor = separate Shippo shipment).
+- For each vendor:
+  - Loads vendor `warehouse_address` (returns error if missing).
+  - Builds a parcel from product weights & dimensions (sums weight, takes max bounding box; fallback defaults if missing).
+  - Calls Shippo `POST /shipments` with `address_from`, `address_to`, `parcels`, `async: false`.
+  - Picks the cheapest rate per service level (or returns top 3 cheapest) — returns `{vendor_id, store_name, rates: [{object_id, provider, service, amount, currency, estimated_days}]}`.
+- Returns aggregated `{ vendors: [...], total_shipping }`.
+- Uses CORS headers, validates JWT in code.
 
-New card layout (top to bottom):
+### 2. Frontend: Checkout shipping step
+- New step in `CheckoutPage.tsx` between Address and Payment: **"Shipping"**.
+- After buyer enters the address, call `supabase.functions.invoke('get-shipping-rates', ...)`.
+- For each vendor, show a radio list of carrier options (USPS / DHL / etc. with price + ETA).
+- Buyer picks one rate per vendor → store `{vendor_id: shipping_rate_id}` map in checkout state.
+- Order total = subtotal + sum of selected shipping amounts (replaces the hard-coded `deliveryFee = 200`).
 
-- **Badges row**
-  - ✅ "Verified Seller" — shown when `vendor.status === 'approved'` (green shield icon).
-  - 👑 "Top Rated Seller" — shown when seeded customer rating ≥ 4.5 (purple crown icon).
-- **Stats list** (label left, value right, each on its own row with a thin divider):
-  - Response Rate — seeded 92–99 %
-  - Response Time — seeded 5–30 mins
-  - On-time Delivery — seeded 90–99 %
-  - Order Completion — seeded 95–99 %
-- **Separator**
-- **Ratings rows** (star icon + value out of 5):
-  - Quality Score — seeded 4.3–4.9
-  - Customer Rating — seeded 4.3–4.9
-- **Footer**: `(Based on N ratings)` — seeded 200–2,000.
+### 3. `create-order` edge function update
+- Accept new `shipping_selections: [{vendor_id, rate_id, amount, carrier, service}]` in payload.
+- Persist on each `order_items` row: `shipping_rate_id`, `shipping_amount`, `carrier` (already in schema).
+- Persist `shipping_total` on `orders` (already in schema).
+- Email template gets a "Shipping" line per vendor.
 
-All colors via existing semantic tokens (`text-success`, `text-warning`, `text-muted-foreground`, etc.). New seeded helper `getDisplayVendorPerformance(vendorId)` added to `src/lib/product-rating-fallback.ts` (or a new sibling file) so the values are stable across renders.
+### 4. Vendor settings warning
+- In `VendorSettings.tsx`, if `warehouse_address` is incomplete, show a warning banner: "Add your shipping origin address so buyers can see live shipping rates for your products."
 
-## Notes
+## Technical details
 
-- Mobile and desktop both render `SellerInfoSidebar`, so one change covers both layouts.
-- No new dependencies; icons (`ShieldCheck`, `Crown`, `Star`) are already in `lucide-react`.
-- If you later want **real** metrics (actual response times, on-time delivery, etc.), that's a separate piece of work — would need new tables/aggregations on orders + chat messages. Say the word and I'll plan that.
+- Shippo API base: `https://api.goshippo.com`
+- Auth header: `Authorization: ShippoToken <SHIPPO_API_TOKEN>`
+- Endpoint: `POST /shipments` with `async: false` returns `rates[]` synchronously (1-3 s typical).
+- Weight unit: `g`; distance unit: `cm` (matches our existing product columns).
+- Each `rate.object_id` is what we store as `shipping_rate_id` — required if we later add label purchase.
+- No DB schema changes needed — all required columns already exist on `vendors`, `products`, `order_items`, `orders`.
+- Rate caching: skip in v1; Shippo allows ~5 req/sec which is fine for checkout traffic.
+
+## Out of scope (future)
+
+- Label purchase (`POST /transactions` using stored `shipping_rate_id` → fills `shippo_transaction_id`, `label_url`, `tracking_number`).
+- Webhook `track_updated` → auto-update `order_items.status` to `shipped`/`delivered`.
+- Address validation (`POST /addresses` with `validate: true`).
+- Per-vendor Shippo accounts.
+
+After you approve, I'll request the `SHIPPO_API_TOKEN` secret and implement.
