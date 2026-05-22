@@ -160,14 +160,17 @@ const CheckoutPage = () => {
         if (error) throw error;
         const rateMap: Record<string, any[]> = {};
         const errMap: Record<string, string> = {};
+        const fbMap: Record<string, boolean> = {};
         const autoSelect: Record<string, any> = {};
         (data?.vendors || []).forEach((v: any) => {
           if (v.error) errMap[v.vendor_id] = v.error;
+          if (v.usedFallbackOrigin) fbMap[v.vendor_id] = true;
           rateMap[v.vendor_id] = v.rates || [];
           if (v.rates?.length) autoSelect[v.vendor_id] = v.rates[0];
         });
         setShippingRates(rateMap);
         setShippingErrors(errMap);
+        setFallbackOrigin(fbMap);
         setSelectedRates(autoSelect);
       } catch (e: any) {
         if (!cancelled) toast.error(e.message || "Could not fetch shipping rates");
