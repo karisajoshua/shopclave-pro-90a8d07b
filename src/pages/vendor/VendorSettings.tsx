@@ -137,8 +137,10 @@ const VendorSettings = () => {
     whatsapp: vendor.whatsapp || "",
     website: vendor.website || "",
     payment_details: vendor.payment_details || {},
+    warehouse_address: vendor.warehouse_address || {},
   });
   const paymentDetails = form.payment_details as any;
+  const warehouse = form.warehouse_address as any;
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
