@@ -449,6 +449,11 @@ const CheckoutPage = () => {
                             ))}
                           </RadioGroup>
                         )}
+                        {rates.length > 0 && selected?.is_estimate && (
+                          <p className="text-[11px] text-muted-foreground italic">
+                            Estimated rate based on destination — final cost confirmed by carrier.
+                          </p>
+                        )}
                       </div>
                     );
                   })}
