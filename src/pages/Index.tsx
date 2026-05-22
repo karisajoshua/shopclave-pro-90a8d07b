@@ -51,6 +51,8 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
 
 const Index = () => {
   const { t } = useTranslation();
+  const [visibleCount, setVisibleCount] = useState(10);
+
 
   const { data: featuredData, isLoading } = useQuery({
     queryKey: ["featured-products"],
