@@ -160,21 +160,56 @@ Deno.serve(async (req) => {
       }
       weight = Math.max(weight, 1);
 
-      // Synthesized estimate fallback (KES). ~300 base + 250/kg, rounded to 50.
+      // Destination-aware multi-option estimate (Economy / Standard / Express).
+      const KE_HUBS = new Set([
+        "nairobi","mombasa","kisumu","nakuru","eldoret","thika","nyeri","machakos","kakamega","meru",
+      ]);
+      const normCity = (s: string) =>
+        (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z]/g, "").trim();
+
+      const originCountry = usedFallbackOrigin ? FALLBACK_ORIGIN.country : toISO(wh.country || "KE");
+      const destCountry = toISO(shipping_address.country);
+      const originCity = normCity(usedFallbackOrigin ? FALLBACK_ORIGIN.city : (wh.city || ""));
+      const destCity = normCity(shipping_address.city);
+
+      let zone: "same_city" | "intercity_ke" | "remote_ke" | "international";
+      if (originCountry !== "KE" || destCountry !== "KE") zone = "international";
+      else if (originCity && destCity && originCity === destCity) zone = "same_city";
+      else if (KE_HUBS.has(destCity)) zone = "intercity_ke";
+      else zone = "remote_ke";
+
+      const ZONE_PRICING: Record<string, { base: number; perKg: number }> = {
+        same_city:     { base: 250,  perKg: 120 },
+        intercity_ke:  { base: 550,  perKg: 180 },
+        remote_ke:     { base: 750,  perKg: 220 },
+        international: { base: 1800, perKg: 600 },
+      };
+      const SERVICES = [
+        { key: "Economy",  mult: 0.85, days: 6, terms: "5-7 business days",
+          carrierKE: "G4S Courier",          carrierIntl: "Aramex Economy" },
+        { key: "Standard", mult: 1.0,  days: 4, terms: "3-5 business days",
+          carrierKE: "Wells Fargo Courier",  carrierIntl: "DHL eCommerce" },
+        { key: "Express",  mult: 1.6,  days: 2, terms: "1-2 business days",
+          carrierKE: "Sendy Express",        carrierIntl: "DHL Express" },
+      ];
+
       const synthesizeEstimate = () => {
         const kg = Math.max(weight / 1000, 0.1);
-        const raw = 300 + kg * 250;
-        const amount = Math.ceil(raw / 50) * 50;
-        return [{
-          rate_id: `est-${vendorId}`,
-          provider: "Estimated",
-          service: "Standard delivery",
-          amount,
-          currency: "KES",
-          estimated_days: 5,
-          duration_terms: "Estimated 3-7 business days",
-          is_estimate: true,
-        }];
+        const { base, perKg } = ZONE_PRICING[zone];
+        return SERVICES.map((s) => {
+          const raw = (base + kg * perKg) * s.mult;
+          const amount = Math.max(200, Math.ceil(raw / 50) * 50);
+          return {
+            rate_id: `est-${vendorId}-${s.key.toLowerCase()}`,
+            provider: zone === "international" ? s.carrierIntl : s.carrierKE,
+            service: `${s.key} delivery`,
+            amount,
+            currency: "KES",
+            estimated_days: s.days,
+            duration_terms: s.terms,
+            is_estimate: true,
+          };
+        });
       };
 
       const origin = usedFallbackOrigin ? FALLBACK_ORIGIN : {
