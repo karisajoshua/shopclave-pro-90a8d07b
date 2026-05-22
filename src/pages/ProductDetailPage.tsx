@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown, Crown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const FASHION_CATEGORY_ID = "a0000001-0000-0000-0000-000000000002";
