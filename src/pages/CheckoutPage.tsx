@@ -119,6 +119,7 @@ const CheckoutPage = () => {
   // Live shipping rates from Shippo (keyed by vendor_id)
   const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
   const [shippingErrors, setShippingErrors] = useState<Record<string, string>>({});
+  const [fallbackOrigin, setFallbackOrigin] = useState<Record<string, boolean>>({});
   const [selectedRates, setSelectedRates] = useState<Record<string, any>>({});
   const [ratesLoading, setRatesLoading] = useState(false);
 
