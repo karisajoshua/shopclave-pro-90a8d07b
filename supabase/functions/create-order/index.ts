@@ -14,6 +14,14 @@ const OrderItemSchema = z.object({
   variant_label: z.string().max(255).nullable().optional(),
 });
 
+const ShippingSelectionSchema = z.object({
+  vendor_id: z.string().uuid(),
+  rate_id: z.string().min(1).max(255),
+  amount: z.number().min(0).max(100000),
+  carrier: z.string().max(100).optional(),
+  service: z.string().max(255).optional(),
+});
+
 const OrderSchema = z.object({
   items: z.array(OrderItemSchema).min(1).max(50),
   shipping_address: z.object({
@@ -21,10 +29,13 @@ const OrderSchema = z.object({
     phone: z.string().min(1).max(50),
     addressLine: z.string().min(1).max(500),
     city: z.string().min(1).max(100),
+    state: z.string().max(100).optional().or(z.literal("")),
+    zip: z.string().max(20).optional().or(z.literal("")),
     country: z.string().min(1).max(100),
     email: z.string().email().max(255).optional().or(z.literal("")),
   }),
   payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
+  shipping_selections: z.array(ShippingSelectionSchema).optional().default([]),
 });
 
 Deno.serve(async (req) => {
@@ -67,7 +78,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { items, shipping_address, payment_method } = parsed.data;
+    const { items, shipping_address, payment_method, shipping_selections } = parsed.data;
+    const shippingByVendor = new Map(
+      (shipping_selections || []).map((s) => [s.vendor_id, s])
+    );
 
     // Use service role client for trusted operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -175,12 +189,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Compute shipping total from selections
+    const shippingTotal = (shipping_selections || []).reduce((s, x) => s + Number(x.amount || 0), 0);
+
     // Insert order
     const { data: order, error: orderError } = await adminClient
       .from("orders")
       .insert({
         user_id: user.id,
-        total,
+        total: total + shippingTotal,
+        shipping_total: shippingTotal,
         shipping_address,
         payment_method,
         status: "pending",
@@ -196,8 +214,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Insert order items
-    const itemsToInsert = orderItems.map((oi) => ({ ...oi, order_id: order.id }));
+    // Insert order items (attach shipping selection per vendor — applied to first item per vendor)
+    const usedVendor = new Set<string>();
+    const itemsToInsert = orderItems.map((oi) => {
+      const sel = shippingByVendor.get(oi.vendor_id);
+      const base: any = { ...oi, order_id: order.id };
+      if (sel && !usedVendor.has(oi.vendor_id)) {
+        base.shipping_rate_id = sel.rate_id;
+        base.shipping_amount = sel.amount;
+        base.carrier = sel.carrier ?? null;
+        usedVendor.add(oi.vendor_id);
+      }
+      return base;
+    });
     const { error: itemsError } = await adminClient.from("order_items").insert(itemsToInsert);
 
     if (itemsError) {
@@ -233,7 +262,7 @@ Deno.serve(async (req) => {
       });
 
       const subtotal = total;
-      const deliveryFee = 200;
+      const deliveryFee = shippingTotal > 0 ? shippingTotal : 200;
       const grandTotal = subtotal + deliveryFee;
 
       const paymentLabelMap: Record<string, string> = {

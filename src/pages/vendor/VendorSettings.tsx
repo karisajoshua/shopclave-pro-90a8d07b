@@ -137,8 +137,10 @@ const VendorSettings = () => {
     whatsapp: vendor.whatsapp || "",
     website: vendor.website || "",
     payment_details: vendor.payment_details || {},
+    warehouse_address: vendor.warehouse_address || {},
   });
   const paymentDetails = form.payment_details as any;
+  const warehouse = form.warehouse_address as any;
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -222,6 +224,60 @@ const VendorSettings = () => {
         <div>
           <Label>Website (Optional)</Label>
           <Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://yourstore.com" />
+        </div>
+
+        <h3 className="font-semibold pt-2 border-t border-border">Shipping Origin Address</h3>
+        <p className="text-xs text-muted-foreground">Used to calculate live shipping rates for buyers at checkout. Required for your products to be shippable.</p>
+
+        {(!warehouse.street1 || !warehouse.city || !warehouse.country) && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 text-warning p-3 text-xs">
+            ⚠️ Shipping origin is incomplete. Buyers won't see live shipping rates for your products until you fill in street, city and country.
+          </div>
+        )}
+
+        <div>
+          <Label>Street Address</Label>
+          <Input
+            value={warehouse.street1 || ""}
+            onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, street1: e.target.value } })}
+            placeholder="e.g., 123 Moi Avenue"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>City</Label>
+            <Input
+              value={warehouse.city || ""}
+              onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, city: e.target.value } })}
+              placeholder="Nairobi"
+            />
+          </div>
+          <div>
+            <Label>State / Region</Label>
+            <Input
+              value={warehouse.state || ""}
+              onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, state: e.target.value } })}
+              placeholder="Optional"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>ZIP / Postal Code</Label>
+            <Input
+              value={warehouse.zip || ""}
+              onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, zip: e.target.value } })}
+              placeholder="00100"
+            />
+          </div>
+          <div>
+            <Label>Country (ISO code or name)</Label>
+            <Input
+              value={warehouse.country || ""}
+              onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, country: e.target.value } })}
+              placeholder="KE"
+            />
+          </div>
         </div>
 
         <h3 className="font-semibold pt-2 border-t border-border">Payment Details</h3>

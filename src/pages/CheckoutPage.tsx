@@ -116,8 +116,17 @@ const CheckoutPage = () => {
     enabled: vendorIds.length > 0,
   });
 
-  const deliveryFee = 200;
-  const grandTotal = totalPrice + deliveryFee;
+  // Live shipping rates from Shippo (keyed by vendor_id)
+  const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
+  const [shippingErrors, setShippingErrors] = useState<Record<string, string>>({});
+  const [selectedRates, setSelectedRates] = useState<Record<string, any>>({});
+  const [ratesLoading, setRatesLoading] = useState(false);
+
+  const shippingTotal = Object.values(selectedRates).reduce(
+    (s: number, r: any) => s + Number(r?.amount || 0),
+    0
+  );
+  const grandTotal = totalPrice + shippingTotal;
 
   // Delivery dates
   const deliveryStart = new Date();
@@ -125,6 +134,50 @@ const CheckoutPage = () => {
   const deliveryEnd = new Date();
   deliveryEnd.setDate(deliveryEnd.getDate() + 7);
   const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { day: "2-digit", month: "short" });
+
+  // Fetch live shipping rates when entering delivery step
+  useEffect(() => {
+    if (activeStep !== "delivery" || !addressConfirmed) return;
+    if (ratesLoading) return;
+    if (Object.keys(shippingRates).length > 0) return;
+
+    let cancelled = false;
+    const fetchRates = async () => {
+      setRatesLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("get-shipping-rates", {
+          body: {
+            items: items.map((it) => ({
+              product_id: it.productId,
+              quantity: it.quantity,
+              variant_id: it.variantId || null,
+            })),
+            shipping_address: address,
+          },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const rateMap: Record<string, any[]> = {};
+        const errMap: Record<string, string> = {};
+        const autoSelect: Record<string, any> = {};
+        (data?.vendors || []).forEach((v: any) => {
+          if (v.error) errMap[v.vendor_id] = v.error;
+          rateMap[v.vendor_id] = v.rates || [];
+          if (v.rates?.length) autoSelect[v.vendor_id] = v.rates[0];
+        });
+        setShippingRates(rateMap);
+        setShippingErrors(errMap);
+        setSelectedRates(autoSelect);
+      } catch (e: any) {
+        if (!cancelled) toast.error(e.message || "Could not fetch shipping rates");
+      } finally {
+        if (!cancelled) setRatesLoading(false);
+      }
+    };
+    fetchRates();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep, addressConfirmed]);
 
   const handleConfirmAddress = () => {
     if (!address.fullName || !address.phone || !address.addressLine || !address.city) {
@@ -160,6 +213,13 @@ const CheckoutPage = () => {
         })),
         shipping_address: address,
         payment_method: paymentMethod,
+        shipping_selections: Object.entries(selectedRates).map(([vendor_id, r]: [string, any]) => ({
+          vendor_id,
+          rate_id: r.rate_id,
+          amount: Number(r.amount),
+          carrier: r.provider,
+          service: r.service,
+        })),
       };
 
       const { data, error } = await supabase.functions.invoke("create-order", {
@@ -310,34 +370,85 @@ const CheckoutPage = () => {
               <StepHeader step="delivery" title="Delivery Details" />
               {activeStep === "delivery" && (
                 <div className="px-4 pb-4 space-y-4">
-                  <div className="flex gap-3 items-start bg-muted/30 rounded-lg p-3">
-                    <Truck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Door Delivery <span className="text-xs text-primary ml-2">({formatPrice(deliveryFee)})</span></p>
-                      <p className="text-xs text-muted-foreground">Delivery between {fmtDate(deliveryStart)} and {fmtDate(deliveryEnd)}</p>
+                  {ratesLoading && (
+                    <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+                      Fetching live shipping rates…
                     </div>
-                  </div>
+                  )}
 
-                  {Object.entries(vendorGroups).map(([vendorId, group]) => (
-                    <div key={vendorId} className="border border-border rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground mb-2">Shipment from <span className="font-medium text-foreground">{group.vendorName}</span></p>
-                      <div className="space-y-2">
-                        {group.items.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3">
-                            <img src={item.image} alt="" className="w-12 h-12 rounded object-cover bg-secondary border border-border" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium line-clamp-1">{item.name}</p>
-                              {item.variantLabel && <p className="text-xs text-muted-foreground">{item.variantLabel}</p>}
-                              <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                  {Object.entries(vendorGroups).map(([vendorId, group]) => {
+                    const rates = shippingRates[vendorId] || [];
+                    const err = shippingErrors[vendorId];
+                    const selected = selectedRates[vendorId];
+                    return (
+                      <div key={vendorId} className="border border-border rounded-lg p-3 space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          Shipment from <span className="font-medium text-foreground">{group.vendorName}</span>
+                        </p>
+                        <div className="space-y-2">
+                          {group.items.map((item) => (
+                            <div key={item.id} className="flex items-center gap-3">
+                              <img src={item.image} alt="" className="w-12 h-12 rounded object-cover bg-secondary border border-border" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium line-clamp-1">{item.name}</p>
+                                {item.variantLabel && <p className="text-xs text-muted-foreground">{item.variantLabel}</p>}
+                                <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                              </div>
+                              <p className="text-sm font-semibold">{formatPrice(item.price * item.quantity)}</p>
                             </div>
-                            <p className="text-sm font-semibold">{formatPrice(item.price * item.quantity)}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                          ))}
+                        </div>
 
-                  <Button className="w-full" onClick={handleConfirmDelivery}>
+                        {err && !ratesLoading && (
+                          <div className="text-xs text-warning bg-warning/10 rounded p-2">
+                            {err}. A default fee will apply.
+                          </div>
+                        )}
+
+                        {rates.length > 0 && (
+                          <RadioGroup
+                            value={selected?.rate_id || ""}
+                            onValueChange={(rid) => {
+                              const r = rates.find((x) => x.rate_id === rid);
+                              if (r) setSelectedRates((s) => ({ ...s, [vendorId]: r }));
+                            }}
+                            className="space-y-1.5"
+                          >
+                            {rates.map((r) => (
+                              <label
+                                key={r.rate_id}
+                                htmlFor={`${vendorId}-${r.rate_id}`}
+                                className={`flex items-center gap-3 p-2 rounded-md border cursor-pointer text-sm ${
+                                  selected?.rate_id === r.rate_id ? "border-primary bg-primary/5" : "border-border"
+                                }`}
+                              >
+                                <RadioGroupItem value={r.rate_id} id={`${vendorId}-${r.rate_id}`} />
+                                <Truck className="h-4 w-4 text-primary shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{r.provider} — {r.service}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {r.estimated_days ? `${r.estimated_days} day${r.estimated_days > 1 ? "s" : ""}` : r.duration_terms || "Standard"}
+                                  </p>
+                                </div>
+                                <p className="font-semibold">{formatPrice(r.amount)}</p>
+                              </label>
+                            ))}
+                          </RadioGroup>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <Button
+                    className="w-full"
+                    onClick={handleConfirmDelivery}
+                    disabled={
+                      ratesLoading ||
+                      Object.keys(vendorGroups).some(
+                        (vid) => (shippingRates[vid]?.length || 0) > 0 && !selectedRates[vid]
+                      )
+                    }
+                  >
                     Confirm Delivery Details
                   </Button>
                 </div>
@@ -394,7 +505,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery fees</span>
-                  <span className="font-medium">{formatPrice(deliveryFee)}</span>
+                  <span className="font-medium">{shippingTotal > 0 ? formatPrice(shippingTotal) : "—"}</span>
                 </div>
               </div>
 
