@@ -169,6 +169,13 @@ const CheckoutPage = () => {
         })),
         shipping_address: address,
         payment_method: paymentMethod,
+        shipping_selections: Object.entries(selectedRates).map(([vendor_id, r]: [string, any]) => ({
+          vendor_id,
+          rate_id: r.rate_id,
+          amount: Number(r.amount),
+          carrier: r.provider,
+          service: r.service,
+        })),
       };
 
       const { data, error } = await supabase.functions.invoke("create-order", {
