@@ -188,6 +188,11 @@ const CheckoutPage = () => {
       toast.error("Please fill in all address fields");
       return;
     }
+    // Reset rates so they re-fetch for the (possibly updated) address
+    setShippingRates({});
+    setSelectedRates({});
+    setShippingErrors({});
+    setFallbackOrigin({});
     setAddressConfirmed(true);
     setActiveStep("delivery");
   };
