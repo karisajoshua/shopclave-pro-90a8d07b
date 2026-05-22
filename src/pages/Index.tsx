@@ -8,6 +8,7 @@ import BestDealsSection from "@/components/marketplace/BestDealsSection";
 import CategoryCard from "@/components/marketplace/CategoryCard";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -50,6 +51,8 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
 
 const Index = () => {
   const { t } = useTranslation();
+  const [visibleCount, setVisibleCount] = useState(10);
+
 
   const { data: featuredData, isLoading } = useQuery({
     queryKey: ["featured-products"],
@@ -61,7 +64,7 @@ const Index = () => {
         .eq("status", "active")
         .eq("featured", true)
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(60);
 
       // Determine if any active products exist at all (for first-run demo logic)
       const anyActiveQ = await supabase
@@ -150,11 +153,25 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {displayProducts.slice(0, 10).map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {displayProducts.slice(0, visibleCount).map((product) => (
+                  <ProductCard key={product.id} {...product} />
+                ))}
+              </div>
+              {!isFirstRunDemo && displayProducts.length > visibleCount && (
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setVisibleCount((c) => c + 10)}
+                    className="text-primary border-primary/30 hover:bg-primary/5"
+                  >
+                    {t("home.loadMore")}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

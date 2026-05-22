@@ -119,6 +119,7 @@ const CheckoutPage = () => {
   // Live shipping rates from Shippo (keyed by vendor_id)
   const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
   const [shippingErrors, setShippingErrors] = useState<Record<string, string>>({});
+  const [fallbackOrigin, setFallbackOrigin] = useState<Record<string, boolean>>({});
   const [selectedRates, setSelectedRates] = useState<Record<string, any>>({});
   const [ratesLoading, setRatesLoading] = useState(false);
 
@@ -159,14 +160,17 @@ const CheckoutPage = () => {
         if (error) throw error;
         const rateMap: Record<string, any[]> = {};
         const errMap: Record<string, string> = {};
+        const fbMap: Record<string, boolean> = {};
         const autoSelect: Record<string, any> = {};
         (data?.vendors || []).forEach((v: any) => {
           if (v.error) errMap[v.vendor_id] = v.error;
+          if (v.usedFallbackOrigin) fbMap[v.vendor_id] = true;
           rateMap[v.vendor_id] = v.rates || [];
           if (v.rates?.length) autoSelect[v.vendor_id] = v.rates[0];
         });
         setShippingRates(rateMap);
         setShippingErrors(errMap);
+        setFallbackOrigin(fbMap);
         setSelectedRates(autoSelect);
       } catch (e: any) {
         if (!cancelled) toast.error(e.message || "Could not fetch shipping rates");
@@ -184,6 +188,11 @@ const CheckoutPage = () => {
       toast.error("Please fill in all address fields");
       return;
     }
+    // Reset rates so they re-fetch for the (possibly updated) address
+    setShippingRates({});
+    setSelectedRates({});
+    setShippingErrors({});
+    setFallbackOrigin({});
     setAddressConfirmed(true);
     setActiveStep("delivery");
   };
@@ -401,8 +410,13 @@ const CheckoutPage = () => {
 
                         {err && !ratesLoading && (
                           <div className="text-xs text-warning bg-warning/10 rounded p-2">
-                            {err}. A default fee will apply.
+                            {err}. An estimated fee will apply.
                           </div>
+                        )}
+                        {fallbackOrigin[vendorId] && !err && (
+                          <p className="text-[11px] text-muted-foreground italic">
+                            Estimated from Nairobi (vendor origin not set)
+                          </p>
                         )}
 
                         {rates.length > 0 && (
@@ -505,7 +519,13 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery fees</span>
-                  <span className="font-medium">{shippingTotal > 0 ? formatPrice(shippingTotal) : "—"}</span>
+                  <span className="font-medium">
+                    {ratesLoading
+                      ? "Calculating…"
+                      : shippingTotal > 0
+                        ? formatPrice(shippingTotal)
+                        : addressConfirmed ? "—" : "Enter address"}
+                  </span>
                 </div>
               </div>
 
