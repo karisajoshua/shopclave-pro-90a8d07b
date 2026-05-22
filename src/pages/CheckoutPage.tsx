@@ -135,6 +135,50 @@ const CheckoutPage = () => {
   deliveryEnd.setDate(deliveryEnd.getDate() + 7);
   const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { day: "2-digit", month: "short" });
 
+  // Fetch live shipping rates when entering delivery step
+  useEffect(() => {
+    if (activeStep !== "delivery" || !addressConfirmed) return;
+    if (ratesLoading) return;
+    if (Object.keys(shippingRates).length > 0) return;
+
+    let cancelled = false;
+    const fetchRates = async () => {
+      setRatesLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("get-shipping-rates", {
+          body: {
+            items: items.map((it) => ({
+              product_id: it.productId,
+              quantity: it.quantity,
+              variant_id: it.variantId || null,
+            })),
+            shipping_address: address,
+          },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const rateMap: Record<string, any[]> = {};
+        const errMap: Record<string, string> = {};
+        const autoSelect: Record<string, any> = {};
+        (data?.vendors || []).forEach((v: any) => {
+          if (v.error) errMap[v.vendor_id] = v.error;
+          rateMap[v.vendor_id] = v.rates || [];
+          if (v.rates?.length) autoSelect[v.vendor_id] = v.rates[0];
+        });
+        setShippingRates(rateMap);
+        setShippingErrors(errMap);
+        setSelectedRates(autoSelect);
+      } catch (e: any) {
+        if (!cancelled) toast.error(e.message || "Could not fetch shipping rates");
+      } finally {
+        if (!cancelled) setRatesLoading(false);
+      }
+    };
+    fetchRates();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep, addressConfirmed]);
+
   const handleConfirmAddress = () => {
     if (!address.fullName || !address.phone || !address.addressLine || !address.city) {
       toast.error("Please fill in all address fields");
