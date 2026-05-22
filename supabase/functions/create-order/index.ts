@@ -14,6 +14,14 @@ const OrderItemSchema = z.object({
   variant_label: z.string().max(255).nullable().optional(),
 });
 
+const ShippingSelectionSchema = z.object({
+  vendor_id: z.string().uuid(),
+  rate_id: z.string().min(1).max(255),
+  amount: z.number().min(0).max(100000),
+  carrier: z.string().max(100).optional(),
+  service: z.string().max(255).optional(),
+});
+
 const OrderSchema = z.object({
   items: z.array(OrderItemSchema).min(1).max(50),
   shipping_address: z.object({
@@ -21,10 +29,13 @@ const OrderSchema = z.object({
     phone: z.string().min(1).max(50),
     addressLine: z.string().min(1).max(500),
     city: z.string().min(1).max(100),
+    state: z.string().max(100).optional().or(z.literal("")),
+    zip: z.string().max(20).optional().or(z.literal("")),
     country: z.string().min(1).max(100),
     email: z.string().email().max(255).optional().or(z.literal("")),
   }),
   payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
+  shipping_selections: z.array(ShippingSelectionSchema).optional().default([]),
 });
 
 Deno.serve(async (req) => {
