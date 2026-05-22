@@ -171,9 +171,21 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
         <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Contact Seller</h3>
         <Separator />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <Link to={`/store/${vendor.slug ?? vendor.id}`} className="font-semibold text-sm text-primary hover:underline">
+        <div className="flex items-center gap-3">
+          {vendor.logo_url ? (
+            <img
+              src={vendor.logo_url}
+              alt={vendor.store_name}
+              className="h-11 w-11 rounded-full object-cover border border-border shrink-0"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-base shrink-0">
+              {vendor.store_name?.[0]?.toUpperCase() || "?"}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <Link to={`/store/${vendor.slug ?? vendor.id}`} className="font-semibold text-sm text-primary hover:underline truncate block">
               {vendor.store_name}
             </Link>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
@@ -183,7 +195,7 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
           <Button
             size="sm"
             variant={isFollowing ? "outline" : "default"}
-            className="text-xs h-8 rounded-full px-4"
+            className="text-xs h-8 rounded-full px-4 shrink-0"
             onClick={() => requireAuth(() => followMutation.mutate())}
             disabled={followMutation.isPending}
           >
