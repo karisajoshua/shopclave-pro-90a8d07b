@@ -133,23 +133,22 @@ Deno.serve(async (req) => {
 
     const vendorResults: Array<any> = [];
 
+    const FALLBACK_ORIGIN = {
+      street1: "Moi Avenue",
+      city: "Nairobi",
+      state: "",
+      zip: "00100",
+      country: "KE",
+      phone: "+254700000000",
+    };
+
     for (const [vendorId, vItems] of byVendor.entries()) {
       const v = vendorMap.get(vendorId);
       const wh = (v?.warehouse_address as any) || {};
-      const missingOrigin =
-        !wh.street1 || !wh.city || !wh.country;
+      const missingOrigin = !wh.street1 || !wh.city || !wh.country;
+      const usedFallbackOrigin = missingOrigin;
 
-      if (missingOrigin) {
-        vendorResults.push({
-          vendor_id: vendorId,
-          store_name: v?.store_name ?? "Vendor",
-          error: "Vendor has not set a shipping origin address.",
-          rates: [],
-        });
-        continue;
-      }
-
-      // Build a single combined parcel: sum weight, take max bounding box, fallback defaults.
+      // Combined parcel
       let weight = 0;
       let L = 0, W = 0, H = 0;
       for (const it of vItems) {
@@ -159,30 +158,41 @@ Deno.serve(async (req) => {
         W = Math.max(W, Number(p.width_cm ?? 15));
         H = Math.max(H, Number(p.height_cm ?? 10));
       }
-      // Shippo minimum weight 1g
       weight = Math.max(weight, 1);
 
+      // Synthesized estimate fallback (KES). ~300 base + 250/kg, rounded to 50.
+      const synthesizeEstimate = () => {
+        const kg = Math.max(weight / 1000, 0.1);
+        const raw = 300 + kg * 250;
+        const amount = Math.ceil(raw / 50) * 50;
+        return [{
+          rate_id: `est-${vendorId}`,
+          provider: "Estimated",
+          service: "Standard delivery",
+          amount,
+          currency: "KES",
+          estimated_days: 5,
+          duration_terms: "Estimated 3-7 business days",
+          is_estimate: true,
+        }];
+      };
+
+      const origin = usedFallbackOrigin ? FALLBACK_ORIGIN : {
+        street1: wh.street1,
+        city: wh.city,
+        state: wh.state || "",
+        zip: wh.zip || "00000",
+        country: toISO(wh.country),
+        phone: wh.phone || FALLBACK_ORIGIN.phone,
+      };
+
       const shippoBody = {
-        address_from: {
-          name: v?.store_name ?? "Vendor",
-          street1: wh.street1,
-          city: wh.city,
-          state: wh.state || "",
-          zip: wh.zip || "00000",
-          country: toISO(wh.country),
-          phone: wh.phone || "",
-        },
+        address_from: { name: v?.store_name ?? "Vendor", ...origin },
         address_to,
-        parcels: [
-          {
-            length: String(L),
-            width: String(W),
-            height: String(H),
-            distance_unit: "cm",
-            weight: String(weight),
-            mass_unit: "g",
-          },
-        ],
+        parcels: [{
+          length: String(L), width: String(W), height: String(H),
+          distance_unit: "cm", weight: String(weight), mass_unit: "g",
+        }],
         async: false,
       };
 
@@ -202,13 +212,13 @@ Deno.serve(async (req) => {
           vendorResults.push({
             vendor_id: vendorId,
             store_name: v?.store_name ?? "Vendor",
-            error: data?.detail || data?.messages?.[0]?.text || "Failed to fetch rates",
-            rates: [],
+            usedFallbackOrigin,
+            rates: synthesizeEstimate(),
           });
           continue;
         }
 
-        const rates = (data.rates || [])
+        let rates = (data.rates || [])
           .map((rt: any) => ({
             rate_id: rt.object_id,
             provider: rt.provider,
@@ -221,9 +231,12 @@ Deno.serve(async (req) => {
           .sort((a: any, b: any) => a.amount - b.amount)
           .slice(0, 4);
 
+        if (rates.length === 0) rates = synthesizeEstimate();
+
         vendorResults.push({
           vendor_id: vendorId,
           store_name: v?.store_name ?? "Vendor",
+          usedFallbackOrigin,
           rates,
         });
       } catch (err) {
@@ -231,8 +244,8 @@ Deno.serve(async (req) => {
         vendorResults.push({
           vendor_id: vendorId,
           store_name: v?.store_name ?? "Vendor",
-          error: "Network error contacting shipping service",
-          rates: [],
+          usedFallbackOrigin,
+          rates: synthesizeEstimate(),
         });
       }
     }
