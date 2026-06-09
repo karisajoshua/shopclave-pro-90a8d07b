@@ -125,8 +125,8 @@ const Index = () => {
   return (
     <MarketplaceLayout>
       <SEO
-        title="Barakaz | Kenya's best Online Marketplace"
-        description="Shop electronics, fashion, home & beauty from thousands of verified Kenyan vendors. Fast delivery, M-Pesa, Visa & more."
+        title="Barakaz | The best Online Marketplace"
+        description="Shop electronics, fashion, home & beauty from thousands of verified vendors. Fast delivery, M-Pesa, Visa & more."
         canonicalPath="/"
       />
       <HeroBanner />
