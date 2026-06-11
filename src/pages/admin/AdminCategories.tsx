@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 const AdminCategories = () => {
   const { user } = useAuth();
