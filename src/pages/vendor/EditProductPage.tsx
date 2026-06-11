@@ -209,9 +209,10 @@ const EditProductPage = () => {
   const uploadImages = async (prodId: string): Promise<{ url: string; dbId?: string }[]> => {
     const results = await Promise.all(images.map(async (img) => {
       if (img.file) {
-        const ext = img.file.name.split(".").pop();
+        const optimized = await convertImageToWebp(img.file);
+        const ext = optimized.name.split(".").pop() || "webp";
         const path = `vendors/${vendor.id}/products/${prodId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error } = await supabase.storage.from("product-images").upload(path, img.file);
+        const { error } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: optimized.type });
         if (error) throw error;
         return { url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
       }
@@ -221,10 +222,11 @@ const EditProductPage = () => {
   };
 
   const uploadVariantImages = async (files: File[], prodId: string): Promise<string[]> => {
-    return Promise.all(files.map(async (file) => {
-      const ext = file.name.split(".").pop();
+    return Promise.all(files.map(async (raw) => {
+      const file = await convertImageToWebp(raw);
+      const ext = file.name.split(".").pop() || "webp";
       const path = `vendors/${vendor.id}/products/${prodId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file);
+      const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type });
       if (error) throw error;
       return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }));
