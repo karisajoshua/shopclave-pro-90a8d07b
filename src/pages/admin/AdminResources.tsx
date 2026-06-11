@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Upload, Eye, BookOpen, PlayCircle, Images, FileText, GripVertical, Star, Loader2, X } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
