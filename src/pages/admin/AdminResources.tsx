@@ -27,7 +27,8 @@ const TYPES = [
   { value: "gallery", label: "Image gallery", icon: Images },
 ];
 
-const uploadToBucket = async (file: File, folder: string): Promise<string> => {
+const uploadToBucket = async (rawFile: File, folder: string): Promise<string> => {
+  const file = await convertImageToWebp(rawFile);
   const ext = file.name.split(".").pop() || "bin";
   const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from("vendor-resources").upload(path, file, {
