@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Play } from "lucide-react";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 import ImageZoom from "@/components/product/ImageZoom";
 
 function getEmbedUrl(url: string): string | null {

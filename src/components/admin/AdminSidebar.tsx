@@ -17,8 +17,8 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
-import barakazLogo from "@/assets/barakaz-logo.png";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazLogo from "@/assets/barakaz-logo.webp";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 import { useAuth } from "@/contexts/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 

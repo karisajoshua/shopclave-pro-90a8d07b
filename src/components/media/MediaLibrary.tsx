@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,13 +235,14 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     setEditing(null);
   };
 
-  const handleReplaceFile = async (file: File) => {
+  const handleReplaceFile = async (rawFile: File) => {
     if (!replacingFor) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const file = await convertImageToWebp(rawFile);
+      const ext = file.name.split(".").pop() || "webp";
       const path = `${replacingFor.product_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
@@ -279,10 +281,11 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
         .limit(1);
       let nextPos = ((existing?.[0]?.position as number) ?? -1) + 1;
 
-      const uploads = Array.from(files).map(async (file) => {
-        const ext = file.name.split(".").pop() || "jpg";
+      const uploads = Array.from(files).map(async (raw) => {
+        const file = await convertImageToWebp(raw);
+        const ext = file.name.split(".").pop() || "webp";
         const path = `${uploadProductId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
         return pub.publicUrl;
@@ -318,10 +321,11 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     setUploading(true);
     try {
       const arr = Array.from(files);
-      const uploadOne = async (file: File) => {
-        const ext = file.name.split(".").pop() || "jpg";
+      const uploadOne = async (raw: File) => {
+        const file = await convertImageToWebp(raw);
+        const ext = file.name.split(".").pop() || "webp";
         const storage_path = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false });
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false, contentType: file.type });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storage_path);
         return {
@@ -360,13 +364,14 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     setDeletingUpload(null);
   };
 
-  const handleReplaceUpload = async (file: File) => {
+  const handleReplaceUpload = async (rawFile: File) => {
     if (!replacingUpload || !user) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const file = await convertImageToWebp(rawFile);
+      const ext = file.name.split(".").pop() || "webp";
       const storage_path = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false, contentType: file.type });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storage_path);
 

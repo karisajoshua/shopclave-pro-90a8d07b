@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 const AdminCategories = () => {
   const { user } = useAuth();
@@ -35,9 +36,10 @@ const AdminCategories = () => {
 
   const autoSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-  const uploadImage = async (file: File, slug: string): Promise<string | null> => {
+  const uploadImage = async (rawFile: File, slug: string): Promise<string | null> => {
+    const file = await convertImageToWebp(rawFile);
     const path = `categories/${slug}-${Date.now()}.webp`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: true, contentType: file.type });
     if (error) { toast.error("Image upload failed"); return null; }
     const { data } = supabase.storage.from("product-images").getPublicUrl(path);
     return data.publicUrl;

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Paperclip, Mic, Square, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 interface AttachmentButtonProps {
   userId: string;
@@ -46,7 +47,8 @@ export const AttachmentButton = ({ userId, onUploaded, disabled }: AttachmentBut
       toast.error("File must be under 20MB");
       return;
     }
-    await upload(file, file.name, file.type || "application/octet-stream");
+    const optimized = await convertImageToWebp(file);
+    await upload(optimized, optimized.name, optimized.type || "application/octet-stream");
     e.target.value = "";
   };
 

@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 import CountdownTimer from "@/components/shared/CountdownTimer";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 interface EditProduct {
   id: string;
@@ -95,9 +96,10 @@ const AdminProducts = () => {
         const startPosition = editProduct.images.length;
         for (let i = 0; i < newFiles.length; i++) {
           const f = newFiles[i];
-          const ext = f.file.name.split(".").pop();
+          const optimized = await convertImageToWebp(f.file);
+          const ext = optimized.name.split(".").pop() || "webp";
           const path = `${editProduct.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error } = await supabase.storage.from("product-images").upload(path, f.file);
+          const { error } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: optimized.type });
           if (error) throw error;
           const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
           await supabase.from("product_images").insert({

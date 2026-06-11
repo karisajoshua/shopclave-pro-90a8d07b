@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Megaphone, Upload, Layers, CheckCircle2, XCircle, Loader2, ExternalLink, Search, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 
 // ----- Spec definitions shown in the UI -----
@@ -351,8 +352,9 @@ const DestinationPicker = ({
 
 
 // ----- Upload helper -----
-async function uploadToBucket(file: File, prefix: string): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+async function uploadToBucket(rawFile: File, prefix: string): Promise<string> {
+  const file = await convertImageToWebp(rawFile);
+  const ext = (file.name.split(".").pop() || "webp").toLowerCase();
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from("marketing-assets").upload(path, file, {
     cacheControl: "3600",

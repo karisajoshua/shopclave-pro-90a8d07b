@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ProductCard from "./ProductCard";
 import { useProductRatings } from "@/hooks/useProductRatings";
 import { Tag } from "lucide-react";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 
 const BestDealsSection = () => {
   const { data: products = [], isLoading } = useQuery({
