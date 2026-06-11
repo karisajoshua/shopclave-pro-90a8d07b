@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Upload, Trash2, ImageIcon } from "lucide-react";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 type ImageKind = "logo" | "banner";
 
