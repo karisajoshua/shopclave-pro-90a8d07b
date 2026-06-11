@@ -96,9 +96,10 @@ const AdminProducts = () => {
         const startPosition = editProduct.images.length;
         for (let i = 0; i < newFiles.length; i++) {
           const f = newFiles[i];
-          const ext = f.file.name.split(".").pop();
+          const optimized = await convertImageToWebp(f.file);
+          const ext = optimized.name.split(".").pop() || "webp";
           const path = `${editProduct.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error } = await supabase.storage.from("product-images").upload(path, f.file);
+          const { error } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: optimized.type });
           if (error) throw error;
           const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
           await supabase.from("product_images").insert({
