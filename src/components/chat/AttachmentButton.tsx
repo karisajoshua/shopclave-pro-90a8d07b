@@ -47,7 +47,8 @@ export const AttachmentButton = ({ userId, onUploaded, disabled }: AttachmentBut
       toast.error("File must be under 20MB");
       return;
     }
-    await upload(file, file.name, file.type || "application/octet-stream");
+    const optimized = await convertImageToWebp(file);
+    await upload(optimized, optimized.name, optimized.type || "application/octet-stream");
     e.target.value = "";
   };
 
