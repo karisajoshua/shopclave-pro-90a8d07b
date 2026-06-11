@@ -281,10 +281,11 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
         .limit(1);
       let nextPos = ((existing?.[0]?.position as number) ?? -1) + 1;
 
-      const uploads = Array.from(files).map(async (file) => {
-        const ext = file.name.split(".").pop() || "jpg";
+      const uploads = Array.from(files).map(async (raw) => {
+        const file = await convertImageToWebp(raw);
+        const ext = file.name.split(".").pop() || "webp";
         const path = `${uploadProductId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
         return pub.publicUrl;
