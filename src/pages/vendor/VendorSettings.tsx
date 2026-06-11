@@ -28,14 +28,14 @@ const ImageUploadField = ({ kind, label, value, userId, onChange }: ImageUploadF
   const handlePick = () => inputRef.current?.click();
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const original = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    if (!original) return;
+    if (!original.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (original.size > 5 * 1024 * 1024) {
       toast.error("Image must be 5MB or smaller");
       return;
     }
@@ -45,7 +45,8 @@ const ImageUploadField = ({ kind, label, value, userId, onChange }: ImageUploadF
     }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const file = await convertImageToWebp(original);
+      const ext = file.name.split(".").pop() || "webp";
       const path = `uploads/${userId}/vendor-assets/${kind}-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
