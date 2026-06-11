@@ -364,13 +364,14 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     setDeletingUpload(null);
   };
 
-  const handleReplaceUpload = async (file: File) => {
+  const handleReplaceUpload = async (rawFile: File) => {
     if (!replacingUpload || !user) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const file = await convertImageToWebp(rawFile);
+      const ext = file.name.split(".").pop() || "webp";
       const storage_path = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false, contentType: file.type });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storage_path);
 
