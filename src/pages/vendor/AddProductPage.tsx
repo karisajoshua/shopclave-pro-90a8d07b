@@ -111,9 +111,10 @@ const AddProductPage = () => {
   const uploadImages = async (productId: string): Promise<string[]> => {
     const results = await Promise.all(images.map(async (img) => {
       if (img.file) {
-        const ext = img.file.name.split(".").pop();
+        const optimized = await convertImageToWebp(img.file);
+        const ext = optimized.name.split(".").pop() || "webp";
         const path = `vendors/${vendor.id}/products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error } = await supabase.storage.from("product-images").upload(path, img.file);
+        const { error } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: optimized.type });
         if (error) throw error;
         return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       }
