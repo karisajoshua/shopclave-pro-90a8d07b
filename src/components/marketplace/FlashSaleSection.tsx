@@ -5,7 +5,7 @@ import ProductCard from "./ProductCard";
 import { useProductRatings } from "@/hooks/useProductRatings";
 import { Zap } from "lucide-react";
 import CountdownTimer from "@/components/shared/CountdownTimer";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 
 const FlashSaleSection = () => {
   const { data: products = [], isLoading } = useQuery({

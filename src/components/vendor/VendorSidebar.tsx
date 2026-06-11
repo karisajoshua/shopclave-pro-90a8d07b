@@ -16,7 +16,7 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
-import barakazLogo from "@/assets/barakaz-logo.png";
+import barakazLogo from "@/assets/barakaz-logo.webp";
 
 const groups: { label: string; items: { title: string; url: string; icon: any }[] }[] = [
   {

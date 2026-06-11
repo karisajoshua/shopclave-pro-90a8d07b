@@ -3,8 +3,8 @@ import { MessageCircle, Facebook, Instagram, Twitter, Youtube, Linkedin } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
-import barakazLogo from "@/assets/barakaz-logo.png";
-import appBadges from "@/assets/app-store-badges.png";
+import barakazLogo from "@/assets/barakaz-logo.webp";
+import appBadges from "@/assets/app-store-badges.webp";
 
 const Footer = () => {
   const { t } = useTranslation();

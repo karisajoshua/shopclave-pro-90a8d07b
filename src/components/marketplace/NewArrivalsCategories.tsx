@@ -1,15 +1,15 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import barakazIcon from "@/assets/barakaz-icon.png";
-import electronicsImg from "@/assets/categories/electronics.jpeg";
-import fashionImg from "@/assets/categories/fashion.jpeg";
-import homeGardenImg from "@/assets/categories/home-garden.jpeg";
-import healthBeautyImg from "@/assets/categories/health-beauty.jpeg";
-import sportsImg from "@/assets/categories/sports.jpeg";
-import phonesTabletsImg from "@/assets/categories/phones-tablets.jpeg";
-import automotiveImg from "@/assets/categories/automotive.jpeg";
-import booksImg from "@/assets/categories/books.jpeg";
+import barakazIcon from "@/assets/barakaz-icon.webp";
+import electronicsImg from "@/assets/categories/electronics.webp";
+import fashionImg from "@/assets/categories/fashion.webp";
+import homeGardenImg from "@/assets/categories/home-garden.webp";
+import healthBeautyImg from "@/assets/categories/health-beauty.webp";
+import sportsImg from "@/assets/categories/sports.webp";
+import phonesTabletsImg from "@/assets/categories/phones-tablets.webp";
+import automotiveImg from "@/assets/categories/automotive.webp";
+import booksImg from "@/assets/categories/books.webp";
 
 const FALLBACK_IMAGES: Record<string, string> = {
   electronics: electronicsImg,

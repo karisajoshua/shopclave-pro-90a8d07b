@@ -9,7 +9,7 @@ import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "@/contexts/TranslationContext";
 import SidebarMenu from "./MegaMenu";
 import SearchSuggestions from "./SearchSuggestions";
-import barakazLogo from "@/assets/barakaz-logo.png";
+import barakazLogo from "@/assets/barakaz-logo.webp";
 import {
   DropdownMenu,
   DropdownMenuContent,

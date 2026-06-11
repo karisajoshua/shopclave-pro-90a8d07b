@@ -3,7 +3,7 @@ import { Star, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 import CountdownTimer from "@/components/shared/CountdownTimer";
 import { getDisplayProductRating } from "@/lib/product-rating-fallback";
 import { useLocale } from "@/hooks/useLocale";

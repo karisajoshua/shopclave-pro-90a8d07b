@@ -22,7 +22,7 @@ import ProductGallery from "@/components/product/ProductGallery";
 import ProductReviews from "@/components/product/ProductReviews";
 import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs";
 import ChatDialog from "@/components/shared/ChatDialog";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
 import { getDisplayProductRating, seededRandom, getDisplayVendorPerformance } from "@/lib/product-rating-fallback";
 import {

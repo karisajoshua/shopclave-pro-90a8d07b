@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Search, Star, StarOff, Eye, EyeOff, Pencil, Upload, X, Video, Trash2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
-import barakazIcon from "@/assets/barakaz-icon.png";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 import CountdownTimer from "@/components/shared/CountdownTimer";
 import { convertImageToWebp } from "@/lib/imageToWebp";
 
