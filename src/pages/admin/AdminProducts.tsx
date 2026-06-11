@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useState, useRef } from "react";
 import barakazIcon from "@/assets/barakaz-icon.png";
 import CountdownTimer from "@/components/shared/CountdownTimer";
+import { convertImageToWebp } from "@/lib/imageToWebp";
 
 interface EditProduct {
   id: string;
