@@ -321,10 +321,11 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     setUploading(true);
     try {
       const arr = Array.from(files);
-      const uploadOne = async (file: File) => {
-        const ext = file.name.split(".").pop() || "jpg";
+      const uploadOne = async (raw: File) => {
+        const file = await convertImageToWebp(raw);
+        const ext = file.name.split(".").pop() || "webp";
         const storage_path = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false });
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(storage_path, file, { upsert: false, contentType: file.type });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storage_path);
         return {
