@@ -235,13 +235,14 @@ const MediaLibrary = ({ mode }: MediaLibraryProps) => {
     setEditing(null);
   };
 
-  const handleReplaceFile = async (file: File) => {
+  const handleReplaceFile = async (rawFile: File) => {
     if (!replacingFor) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const file = await convertImageToWebp(rawFile);
+      const ext = file.name.split(".").pop() || "webp";
       const path = `${replacingFor.product_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
