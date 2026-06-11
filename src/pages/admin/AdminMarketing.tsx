@@ -352,8 +352,9 @@ const DestinationPicker = ({
 
 
 // ----- Upload helper -----
-async function uploadToBucket(file: File, prefix: string): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+async function uploadToBucket(rawFile: File, prefix: string): Promise<string> {
+  const file = await convertImageToWebp(rawFile);
+  const ext = (file.name.split(".").pop() || "webp").toLowerCase();
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from("marketing-assets").upload(path, file, {
     cacheControl: "3600",
