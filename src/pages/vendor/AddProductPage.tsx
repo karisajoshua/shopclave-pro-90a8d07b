@@ -150,10 +150,11 @@ const AddProductPage = () => {
   };
   const removeVariantImage = (vi: number, ii: number) => { const next = [...variantRows]; next[vi] = { ...next[vi], imageFiles: next[vi].imageFiles.filter((_, i) => i !== ii), imagePreviews: next[vi].imagePreviews.filter((_, i) => i !== ii) }; setVariantRows(next); };
   const uploadVariantImages = async (files: File[], productId: string): Promise<string[]> => {
-    return Promise.all(files.map(async (file) => {
-      const ext = file.name.split(".").pop();
+    return Promise.all(files.map(async (raw) => {
+      const file = await convertImageToWebp(raw);
+      const ext = file.name.split(".").pop() || "webp";
       const path = `vendors/${vendor.id}/products/${productId}/variant-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file);
+      const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type });
       if (error) throw error;
       return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }));
