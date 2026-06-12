@@ -103,14 +103,14 @@ const CheckoutPage = () => {
     return acc;
   }, {} as Record<string, { vendorName: string; items: typeof items }>);
 
-  // Fetch vendor payment details
+  // Fetch vendor payment details via SECURITY DEFINER RPC (table access to
+  // payment_details is restricted; the RPC requires an authenticated caller).
   const { data: vendorPaymentDetails } = useQuery({
     queryKey: ["vendor-payment-details", vendorIds],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vendors")
-        .select("id, store_name, payment_details")
-        .in("id", vendorIds);
+      const { data } = await supabase.rpc("get_vendor_payment_details", {
+        _vendor_ids: vendorIds,
+      });
       return data || [];
     },
     enabled: vendorIds.length > 0,
