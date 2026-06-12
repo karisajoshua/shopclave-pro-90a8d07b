@@ -17,7 +17,18 @@ const VendorLayout = () => {
     queryKey: ["vendor", user?.id],
     queryFn: async () => {
       const { data } = await supabase.from("vendors").select("*").eq("user_id", user!.id).single();
-      return data;
+      if (!data) return null;
+      // payment_details and warehouse_address are restricted at the column level;
+      // fetch them via the owner-scoped SECURITY DEFINER RPC.
+      const { data: priv } = await supabase.rpc("get_vendor_private_fields", {
+        _vendor_id: data.id,
+      });
+      const privRow = Array.isArray(priv) ? priv[0] : null;
+      return {
+        ...data,
+        payment_details: privRow?.payment_details ?? {},
+        warehouse_address: privRow?.warehouse_address ?? {},
+      };
     },
     enabled: !!user,
   });

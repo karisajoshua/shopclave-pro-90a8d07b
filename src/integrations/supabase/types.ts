@@ -2155,6 +2155,22 @@ export type Database = {
         Returns: string
       }
       get_vendor_follower_count: { Args: { v_id: string }; Returns: number }
+      get_vendor_payment_details: {
+        Args: { _vendor_ids: string[] }
+        Returns: {
+          id: string
+          payment_details: Json
+          store_name: string
+        }[]
+      }
+      get_vendor_private_fields: {
+        Args: { _vendor_id: string }
+        Returns: {
+          id: string
+          payment_details: Json
+          warehouse_address: string
+        }[]
+      }
       has_permission: {
         Args: { _perm: string; _user_id: string }
         Returns: boolean
