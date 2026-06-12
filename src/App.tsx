@@ -71,6 +71,7 @@ import VendorProducts from "./pages/vendor/VendorProducts";
 import AddProductPage from "./pages/vendor/AddProductPage";
 import VendorOrders from "./pages/vendor/VendorOrders";
 import VendorEarnings from "./pages/vendor/VendorEarnings";
+import VendorPayments from "./pages/vendor/VendorPayments";
 import VendorNotifications from "./pages/vendor/VendorNotifications";
 import VendorSettings from "./pages/vendor/VendorSettings";
 import VendorBulkImport from "./pages/vendor/VendorBulkImport";
@@ -173,6 +174,7 @@ const App = () => (
                   <Route path="products/edit/:id" element={<EditProductPage />} />
                   <Route path="orders" element={<VendorOrders />} />
                   <Route path="earnings" element={<VendorEarnings />} />
+                  <Route path="payments" element={<VendorPayments />} />
                   <Route path="notifications" element={<VendorNotifications />} />
                   <Route path="messages" element={<VendorMessages />} />
                   <Route path="settings" element={<VendorSettings />} />

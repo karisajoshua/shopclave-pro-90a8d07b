@@ -613,6 +613,8 @@ export type Database = {
           shipping_rate_id: string | null
           shippo_transaction_id: string | null
           status: string
+          stripe_destination_account: string | null
+          stripe_transfer_id: string | null
           tracking_number: string | null
           variant_id: string | null
           variant_options: Json | null
@@ -635,6 +637,8 @@ export type Database = {
           shipping_rate_id?: string | null
           shippo_transaction_id?: string | null
           status?: string
+          stripe_destination_account?: string | null
+          stripe_transfer_id?: string | null
           tracking_number?: string | null
           variant_id?: string | null
           variant_options?: Json | null
@@ -657,6 +661,8 @@ export type Database = {
           shipping_rate_id?: string | null
           shippo_transaction_id?: string | null
           status?: string
+          stripe_destination_account?: string | null
+          stripe_transfer_id?: string | null
           tracking_number?: string | null
           variant_id?: string | null
           variant_options?: Json | null

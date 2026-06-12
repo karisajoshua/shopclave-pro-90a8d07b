@@ -116,6 +116,26 @@ const CheckoutPage = () => {
     enabled: vendorIds.length > 0,
   });
 
+  // Stripe Connect readiness per vendor in the cart — card payment requires every
+  // vendor to have an active Connect account so funds route directly to them.
+  const { data: vendorStripeStatuses } = useQuery({
+    queryKey: ["vendor-stripe-statuses", vendorIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendor_stripe_accounts")
+        .select("vendor_id, charges_enabled, payouts_enabled")
+        .in("vendor_id", vendorIds);
+      return data || [];
+    },
+    enabled: vendorIds.length > 0,
+  });
+
+  const unreadyVendors = vendorIds.filter((vid) => {
+    const row = vendorStripeStatuses?.find((r) => r.vendor_id === vid);
+    return !row?.charges_enabled;
+  });
+  const cardPaymentReady = unreadyVendors.length === 0;
+
   // Live shipping rates from Shippo (keyed by vendor_id)
   const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
   const [shippingErrors, setShippingErrors] = useState<Record<string, string>>({});
@@ -495,13 +515,23 @@ const CheckoutPage = () => {
                   </RadioGroup>
 
                   <p className="mt-3 text-xs text-muted-foreground">
-                    You'll be redirected to a secure Stripe checkout to complete payment.
+                    You'll be redirected to a secure Stripe checkout. Your payment is split
+                    automatically — each seller is paid directly into their Stripe account, and
+                    Barakaz keeps only its commission.
                   </p>
+
+                  {!cardPaymentReady && (
+                    <div className="mt-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-xs text-warning-foreground">
+                      Card payment isn't available for this order yet — one or more sellers in
+                      your cart haven't finished setting up their Stripe account. Please contact
+                      them directly to pay via M-Pesa, bank transfer or cash on delivery.
+                    </div>
+                  )}
 
                   <Button
                     className="w-full mt-4 font-semibold h-12 text-base"
                     size="lg"
-                    disabled={loading}
+                    disabled={loading || !cardPaymentReady}
                     onClick={handlePlaceOrder}
                   >
                     {loading ? "Redirecting to payment..." : "Continue to payment"}
