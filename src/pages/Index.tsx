@@ -8,7 +8,8 @@ import BestDealsSection from "@/components/marketplace/BestDealsSection";
 import CategoryCard from "@/components/marketplace/CategoryCard";
 import ProductCard from "@/components/marketplace/ProductCard";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -52,6 +53,24 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
 const Index = () => {
   const { t } = useTranslation();
   const [visibleCount, setVisibleCount] = useState(10);
+  const isMobile = useIsMobile();
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => c + 10);
+        }
+      },
+      { rootMargin: "400px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isMobile, visibleCount]);
 
 
   const { data: featuredData, isLoading } = useQuery({
@@ -160,16 +179,20 @@ const Index = () => {
                 ))}
               </div>
               {!isFirstRunDemo && displayProducts.length > visibleCount && (
-                <div className="flex justify-center mt-6">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setVisibleCount((c) => c + 10)}
-                    className="text-primary border-primary/30 hover:bg-primary/5"
-                  >
-                    {t("home.loadMore")}
-                  </Button>
-                </div>
+                isMobile ? (
+                  <div ref={sentinelRef} className="h-10 w-full" aria-hidden />
+                ) : (
+                  <div className="flex justify-center mt-6">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setVisibleCount((c) => c + 10)}
+                      className="text-primary border-primary/30 hover:bg-primary/5"
+                    >
+                      {t("home.loadMore")}
+                    </Button>
+                  </div>
+                )
               )}
             </>
           )}
