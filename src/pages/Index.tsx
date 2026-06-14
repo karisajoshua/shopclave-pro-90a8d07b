@@ -53,6 +53,8 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
 const Index = () => {
   const { t } = useTranslation();
   const [visibleCount, setVisibleCount] = useState(10);
+  const isMobile = useIsMobile();
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
 
   const { data: featuredData, isLoading } = useQuery({
@@ -161,16 +163,20 @@ const Index = () => {
                 ))}
               </div>
               {!isFirstRunDemo && displayProducts.length > visibleCount && (
-                <div className="flex justify-center mt-6">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setVisibleCount((c) => c + 10)}
-                    className="text-primary border-primary/30 hover:bg-primary/5"
-                  >
-                    {t("home.loadMore")}
-                  </Button>
-                </div>
+                isMobile ? (
+                  <div ref={sentinelRef} className="h-10 w-full" aria-hidden />
+                ) : (
+                  <div className="flex justify-center mt-6">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setVisibleCount((c) => c + 10)}
+                      className="text-primary border-primary/30 hover:bg-primary/5"
+                    >
+                      {t("home.loadMore")}
+                    </Button>
+                  </div>
+                )
               )}
             </>
           )}
