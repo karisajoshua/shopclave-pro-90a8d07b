@@ -56,6 +56,22 @@ const Index = () => {
   const isMobile = useIsMobile();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => c + 10);
+        }
+      },
+      { rootMargin: "400px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isMobile, visibleCount]);
+
 
   const { data: featuredData, isLoading } = useQuery({
     queryKey: ["featured-products"],
