@@ -1,4 +1,4 @@
-import { Home, Search, ShoppingCart, User } from "lucide-react";
+import { Home, Search, Heart, ShoppingCart, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useCart } from "@/contexts/CartContext";
 
@@ -12,6 +12,7 @@ const MobileBottomNav = () => {
         {[
           { to: "/", icon: Home, label: "Home" },
           { to: "/search", icon: Search, label: "Search" },
+          { to: "/wishlist", icon: Heart, label: "Wishlist" },
           { to: "/cart", icon: ShoppingCart, label: "Cart", badge: cartCount },
           { to: "/account", icon: User, label: "Account" },
         ].map((item) => (
