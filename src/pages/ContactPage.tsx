@@ -3,24 +3,20 @@ import SEO from "@/components/seo/SEO";
 
 const contactJsonLd = {
   "@context": "https://schema.org",
-  "@type": "LocalBusiness",
+  "@type": "Organization",
   name: "Barakaz",
   url: "https://barakaz.com/",
   email: "support@barakaz.com",
-  telephone: "+254-700-000-000",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Nairobi",
-    addressLocality: "Nairobi",
-    addressCountry: "KE",
+    addressCountry: "CA",
   },
   contactPoint: [
     {
       "@type": "ContactPoint",
-      telephone: "+254-700-000-000",
-      contactType: "customer service",
       email: "support@barakaz.com",
-      availableLanguage: ["English", "Swahili"],
+      contactType: "customer service",
+      availableLanguage: ["English", "French"],
     },
     {
       "@type": "ContactPoint",
@@ -28,18 +24,17 @@ const contactJsonLd = {
       contactType: "vendor support",
     },
   ],
-  openingHours: "Mo-Fr 08:00-18:00",
 };
 
 const ContactPage = () => (
   <StaticPage
     title="Contact Us"
-    description="Reach Barakaz support by email, phone, or WhatsApp. Vendor and issue reporting contacts included."
+    description="Reach Barakaz support by email. Vendor and issue reporting contacts included."
     canonicalPath="/contact"
   >
     <SEO
       title="Contact Barakaz | Support, Vendor & Reporting"
-      description="Reach Barakaz support by email, phone, or WhatsApp. Vendor and issue reporting contacts included."
+      description="Reach Barakaz support by email. Vendor and issue reporting contacts included."
       canonicalPath="/contact"
       jsonLd={contactJsonLd}
     />
@@ -48,13 +43,11 @@ const ContactPage = () => (
     <h2 className="text-lg font-semibold text-foreground mt-6">Get in Touch</h2>
     <ul className="list-none space-y-2">
       <li><strong>Email:</strong> support@barakaz.com</li>
-      <li><strong>Phone:</strong> +254 700 000 000</li>
-      <li><strong>WhatsApp:</strong> +254 700 000 000</li>
-      <li><strong>Business Hours:</strong> Monday – Friday, 8:00 AM – 6:00 PM (EAT)</li>
+      <li><strong>Business Hours:</strong> Monday – Friday, 9:00 AM – 6:00 PM</li>
     </ul>
 
-    <h2 className="text-lg font-semibold text-foreground mt-6">Office Address</h2>
-    <p>Barakaz Marketplace<br />Nairobi, Kenya</p>
+    <h2 className="text-lg font-semibold text-foreground mt-6">Headquarters</h2>
+    <p>Barakaz Marketplace<br />Canada</p>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">For Vendors</h2>
     <p>If you are a vendor and need assistance with your account, please contact us at <strong>vendors@barakaz.com</strong> or visit the Vendor Hub.</p>
