@@ -301,6 +301,7 @@ const ProductDetailPage = () => {
   const { country, formatPrice } = useLocale();
   const { addItem } = useCart();
   const { user } = useAuth();
+  // Wishlist hooks declared at module scope below — using dynamic import would be cleaner, but inline is fine
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
