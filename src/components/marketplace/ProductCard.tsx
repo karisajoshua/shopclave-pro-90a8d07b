@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, ShoppingCart } from "lucide-react";
+import { Star, ShoppingCart, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import barakazIcon from "@/assets/barakaz-icon.webp";
 import CountdownTimer from "@/components/shared/CountdownTimer";
 import { getDisplayProductRating } from "@/lib/product-rating-fallback";
 import { useLocale } from "@/hooks/useLocale";
+import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
 
 interface ProductCardProps {
   id: string;
@@ -27,6 +28,9 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const { formatPrice } = useLocale();
+  const { data: wishlistIds } = useWishlist();
+  const toggleWishlist = useToggleWishlist();
+  const inWishlist = wishlistIds?.has(id) ?? false;
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
   const displayRating = getDisplayProductRating(id, rating, reviewCount);
 
@@ -35,6 +39,12 @@ const ProductCard = ({
     e.stopPropagation();
     addItem({ productId: id, name, price, image, vendorId, vendorName });
     toast.success(`${name} added to cart`);
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist.mutate(id);
   };
 
   const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -59,6 +69,16 @@ const ProductCard = ({
             -{discount}%
           </span>
         )}
+        <button
+          type="button"
+          onClick={handleToggleWishlist}
+          aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-sm flex items-center justify-center transition-colors"
+        >
+          <Heart
+            className={`h-4 w-4 ${inWishlist ? "fill-[hsl(var(--marketplace-orange))] text-[hsl(var(--marketplace-orange))]" : "text-foreground/70"}`}
+          />
+        </button>
         {dealEndsAt && new Date(dealEndsAt).getTime() > Date.now() && (
           <span className="absolute bottom-2 left-2">
             <CountdownTimer endsAt={dealEndsAt} variant="badge" />

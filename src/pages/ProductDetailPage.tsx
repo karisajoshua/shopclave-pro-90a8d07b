@@ -22,6 +22,7 @@ import ProductGallery from "@/components/product/ProductGallery";
 import ProductReviews from "@/components/product/ProductReviews";
 import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs";
 import ChatDialog from "@/components/shared/ChatDialog";
+import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
 import { getDisplayProductRating, seededRandom, getDisplayVendorPerformance } from "@/lib/product-rating-fallback";
@@ -301,6 +302,8 @@ const ProductDetailPage = () => {
   const { country, formatPrice } = useLocale();
   const { addItem } = useCart();
   const { user } = useAuth();
+  const { data: wishlistIds } = useWishlist();
+  const toggleWishlist = useToggleWishlist();
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -863,6 +866,17 @@ const ProductDetailPage = () => {
                   }}
                 >
                   Buy Now
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  aria-label={wishlistIds?.has(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                  onClick={() => toggleWishlist.mutate(product.id)}
+                >
+                  <Heart
+                    className={`h-5 w-5 ${wishlistIds?.has(product.id) ? "fill-[hsl(var(--marketplace-orange))] text-[hsl(var(--marketplace-orange))]" : ""}`}
+                  />
                 </Button>
               </div>
             )}

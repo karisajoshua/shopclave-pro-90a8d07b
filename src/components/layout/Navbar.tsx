@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, MapPin, Globe, User } from "lucide-react";
+import { ShoppingCart, Search, Menu, MapPin, Globe, User, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -184,6 +184,11 @@ const Navbar = () => {
                   {user ? t("nav.helloWelcome") : t("nav.hello")}
                 </span>
                 <span className="font-bold text-sm leading-tight">{t("nav.accountLists")}</span>
+              </Link>
+              {/* Wishlist */}
+              <Link to="/wishlist" className="flex items-center gap-1 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-2 py-1" aria-label="Wishlist">
+                <Heart className="h-6 w-6" />
+                <span className="text-xs font-bold hidden lg:inline">Wishlist</span>
               </Link>
 
               {/* Cart */}

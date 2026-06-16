@@ -326,12 +326,12 @@ const SearchPage = () => {
         ? `${categoryInfo.name} | Barakaz`
         : "All Products | Barakaz";
   const seoDescription = query
-    ? `Shop products matching "${query}" from verified vendors on Barakaz with fast delivery across Kenya.`
+    ? `Shop products matching "${query}" from verified vendors on Barakaz with worldwide delivery.`
     : dealsMode
       ? "Today's best deals and discounts from verified Barakaz vendors. Limited-time prices on top products."
       : categoryInfo?.name
-        ? `Browse ${categoryInfo.name} products from verified vendors on Barakaz. Compare prices and order with M-Pesa.`
-        : "Browse all products on Barakaz from thousands of verified vendors across Kenya.";
+        ? `Browse ${categoryInfo.name} products from verified vendors on Barakaz. Compare prices and order with secure checkout.`
+        : "Browse all products on Barakaz from thousands of verified vendors worldwide.";
   const seoCanonical = categorySlug
     ? `/category/${categorySlug}`
     : dealsMode

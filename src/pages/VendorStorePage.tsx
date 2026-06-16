@@ -184,7 +184,7 @@ const VendorStorePage = () => {
   const storeUrl = `${SITE_URL}${storePath}`;
   const seoDescription =
     vendor.store_description ||
-    `Shop ${vendor.store_name} on Barakaz — verified vendor with ${products.length} products. Fast delivery across Kenya.`;
+    `Shop ${vendor.store_name} on Barakaz — verified vendor with ${products.length} products. Worldwide delivery available.`;
 
   const storeJsonLd = {
     "@context": "https://schema.org",

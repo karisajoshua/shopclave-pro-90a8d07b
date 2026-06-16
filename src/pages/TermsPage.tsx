@@ -25,7 +25,7 @@ const TermsPage = () => (
     <p>Barakaz shall not be liable for any indirect, incidental, or consequential damages arising from the use of our platform. Our total liability shall not exceed the amount paid by you in the last 12 months.</p>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">6. Governing Law</h2>
-    <p>These Terms shall be governed by and construed in accordance with the laws of the Republic of Kenya.</p>
+    <p>These Terms shall be governed by and construed in accordance with the laws of Canada.</p>
   </StaticPage>
 );
 
