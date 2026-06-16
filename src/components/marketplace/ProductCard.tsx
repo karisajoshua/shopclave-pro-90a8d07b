@@ -69,6 +69,16 @@ const ProductCard = ({
             -{discount}%
           </span>
         )}
+        <button
+          type="button"
+          onClick={handleToggleWishlist}
+          aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-sm flex items-center justify-center transition-colors"
+        >
+          <Heart
+            className={`h-4 w-4 ${inWishlist ? "fill-[hsl(var(--marketplace-orange))] text-[hsl(var(--marketplace-orange))]" : "text-foreground/70"}`}
+          />
+        </button>
         {dealEndsAt && new Date(dealEndsAt).getTime() > Date.now() && (
           <span className="absolute bottom-2 left-2">
             <CountdownTimer endsAt={dealEndsAt} variant="badge" />
