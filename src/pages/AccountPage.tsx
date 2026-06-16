@@ -103,6 +103,11 @@ const AccountPage = () => {
             <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
           <div className="flex gap-2">
+            <Link to="/wishlist">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Heart className="h-4 w-4" /> Wishlist
+              </Button>
+            </Link>
             {!userRoles.includes("vendor") && (
               <Link to="/vendor/register">
                 <Button variant="outline" size="sm" className="gap-1.5">
