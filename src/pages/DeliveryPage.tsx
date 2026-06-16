@@ -16,7 +16,7 @@ const DeliveryPage = () => (
     </ul>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">Delivery Areas</h2>
-    <p>We currently deliver across Kenya, with expansion plans for East Africa. Delivery times may vary based on your location.</p>
+    <p>Vendors on Barakaz ship locally and internationally. Available delivery options and timelines vary by vendor and destination.</p>
 
     <h2 className="text-lg font-semibold text-foreground mt-6">Order Tracking</h2>
     <p>Once your order is shipped, you will receive a tracking number via email and SMS. Use this to track your delivery in real time through your Account page.</p>
