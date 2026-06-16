@@ -19,6 +19,7 @@ import SearchPage from "./pages/SearchPage";
 import VendorRegisterPage from "./pages/VendorRegisterPage";
 import VendorStorePage from "./pages/VendorStorePage";
 import NotFound from "./pages/NotFound";
+import WishlistPage from "./pages/WishlistPage";
 
 // Static pages
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
