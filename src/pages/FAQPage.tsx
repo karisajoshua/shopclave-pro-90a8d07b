@@ -75,9 +75,9 @@ const faqCategories: FAQCategory[] = [
           "Delivery times vary by vendor and location. Most local orders arrive within 1-3 business days. Check the product page or ask the vendor for an exact estimate.",
       },
       {
-        question: "Do you deliver nationwide?",
+        question: "Do you deliver internationally?",
         answer:
-          "Yes, most of our vendors deliver across Kenya. Some vendors also offer regional and international shipping.",
+          "Yes, vendors on Barakaz ship locally and internationally. Available shipping destinations vary by vendor — check the product page for details.",
       },
       {
         question: "How much does delivery cost?",
