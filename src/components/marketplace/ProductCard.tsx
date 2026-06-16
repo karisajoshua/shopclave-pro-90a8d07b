@@ -28,6 +28,9 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const { formatPrice } = useLocale();
+  const { data: wishlistIds } = useWishlist();
+  const toggleWishlist = useToggleWishlist();
+  const inWishlist = wishlistIds?.has(id) ?? false;
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
   const displayRating = getDisplayProductRating(id, rating, reviewCount);
 
@@ -36,6 +39,12 @@ const ProductCard = ({
     e.stopPropagation();
     addItem({ productId: id, name, price, image, vendorId, vendorName });
     toast.success(`${name} added to cart`);
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist.mutate(id);
   };
 
   const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
