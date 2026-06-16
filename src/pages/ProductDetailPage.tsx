@@ -867,6 +867,17 @@ const ProductDetailPage = () => {
                 >
                   Buy Now
                 </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  aria-label={wishlistIds?.has(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                  onClick={() => toggleWishlist.mutate(product.id)}
+                >
+                  <Heart
+                    className={`h-5 w-5 ${wishlistIds?.has(product.id) ? "fill-[hsl(var(--marketplace-orange))] text-[hsl(var(--marketplace-orange))]" : ""}`}
+                  />
+                </Button>
               </div>
             )}
 
