@@ -327,6 +327,117 @@ Deno.serve(async (req) => {
       console.error("order confirmation email failed:", emailErr);
     }
 
+    // Vendor notification emails (best-effort — never fail the order)
+    try {
+      const orderShortId = order.id.slice(0, 8).toUpperCase();
+      const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const paymentLabelMap: Record<string, string> = {
+        mpesa: "M-Pesa",
+        card: "Card",
+        cod: "Pay on Delivery",
+        vendor_payment: "Pay Vendor Directly",
+      };
+
+      // Fetch vendor owners
+      const { data: vendorRows } = await adminClient
+        .from("vendors")
+        .select("id, store_name, user_id")
+        .in("id", vendorIds);
+      const vendorOwnerMap = new Map((vendorRows || []).map((v) => [v.id, v]));
+
+      // Group items by vendor
+      const itemsByVendor = new Map<string, typeof orderItems>();
+      for (const oi of orderItems) {
+        const arr = itemsByVendor.get(oi.vendor_id) ?? [];
+        arr.push(oi);
+        itemsByVendor.set(oi.vendor_id, arr);
+      }
+
+      for (const [vendorId, vItems] of itemsByVendor.entries()) {
+        const vendor = vendorOwnerMap.get(vendorId);
+        if (!vendor?.user_id) {
+          console.warn(`[order ${order.id}] vendor ${vendorId} has no user_id; skipping vendor email`);
+          continue;
+        }
+
+        let vendorEmail: string | null = null;
+        let vendorFullName: string | null = null;
+        try {
+          const { data: vUserData } = await adminClient.auth.admin.getUserById(vendor.user_id);
+          vendorEmail = vUserData?.user?.email ?? null;
+          vendorFullName =
+            (vUserData?.user?.user_metadata as any)?.full_name ?? null;
+        } catch (lookupErr) {
+          console.error(`[order ${order.id}] vendor user lookup failed:`, lookupErr);
+        }
+
+        if (!vendorEmail) {
+          console.warn(
+            `[order ${order.id}] No email for vendor ${vendorId} (user ${vendor.user_id}). Skipping.`
+          );
+          continue;
+        }
+
+        const vendorEmailItems = vItems.map((oi) => {
+          const product = productMap.get(oi.product_id);
+          const variantLabel =
+            oi.variant_options && typeof oi.variant_options === "object"
+              ? (oi.variant_options as Record<string, string>).label ?? null
+              : null;
+          return {
+            name: product?.name ?? "Product",
+            variantLabel,
+            quantity: oi.quantity,
+            unitPrice: oi.price,
+            lineTotal: oi.price * oi.quantity,
+          };
+        });
+        const vendorSubtotal = vendorEmailItems.reduce((s, i) => s + i.lineTotal, 0);
+
+        const payload = {
+          templateName: "vendor-new-order",
+          recipientEmail: vendorEmail,
+          idempotencyKey: `vendor-new-order-${order.id}-${vendorId}`,
+          templateData: {
+            vendorName: vendorFullName,
+            storeName: vendor.store_name,
+            orderShortId,
+            orderDate,
+            items: vendorEmailItems,
+            vendorSubtotal,
+            buyerName: shipping_address.fullName,
+            shippingAddress: shipping_address,
+            paymentMethodLabel: paymentLabelMap[payment_method] ?? payment_method,
+            manageUrl: "https://barakaz.com/vendor/orders",
+          },
+        };
+
+        try {
+          const { error: invokeError } = await adminClient.functions.invoke(
+            "send-transactional-email",
+            { body: payload }
+          );
+          if (invokeError) {
+            console.error(
+              `[order ${order.id}] vendor-new-order invoke failed for ${vendorEmail}: ${JSON.stringify(invokeError)}`
+            );
+          } else {
+            console.log(`[order ${order.id}] vendor-new-order enqueued for ${vendorEmail}`);
+          }
+        } catch (sendErr) {
+          console.error(`[order ${order.id}] vendor-new-order send error:`, sendErr);
+        }
+      }
+    } catch (vendorEmailErr) {
+      console.error("vendor notification emails failed:", vendorEmailErr);
+    }
+
+
+
     return new Response(JSON.stringify({ order_id: order.id }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
