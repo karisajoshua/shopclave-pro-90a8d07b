@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen, Car, Tag } from "lucide-react";
+import { ChevronRight, ChevronDown, User, Monitor, Shirt, Home, Heart, Dumbbell, Smartphone, BookOpen, Car, Tag, Footprints, Watch, Gem, Luggage, ShoppingBag, Scissors } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,13 @@ import type { LucideIcon } from "lucide-react";
 const TOP_LEVEL_ICONS: Record<string, LucideIcon> = {
   electronics: Monitor,
   fashion: Shirt,
+  "fashion-clothing": Shirt,
+  shoes: Footprints,
+  watches: Watch,
+  jewelry: Gem,
+  "travel-and-luggage": Luggage,
+  "bags-and-accessories": ShoppingBag,
+  "fabric-and-tailoring": Scissors,
   "home-garden": Home,
   "health-beauty": Heart,
   sports: Dumbbell,
