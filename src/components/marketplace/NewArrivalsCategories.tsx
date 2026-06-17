@@ -14,6 +14,7 @@ import booksImg from "@/assets/categories/books.webp";
 const FALLBACK_IMAGES: Record<string, string> = {
   electronics: electronicsImg,
   fashion: fashionImg,
+  "fashion-clothing": fashionImg,
   "home-garden": homeGardenImg,
   "home-and-garden": homeGardenImg,
   home: homeGardenImg,
@@ -32,6 +33,12 @@ const FALLBACK_IMAGES: Record<string, string> = {
   cars: automotiveImg,
   vehicles: automotiveImg,
   books: booksImg,
+  shoes: fashionImg,
+  watches: fashionImg,
+  jewelry: fashionImg,
+  "travel-and-luggage": fashionImg,
+  "bags-and-accessories": fashionImg,
+  "fabric-and-tailoring": fashionImg,
 };
 
 const NewArrivalsCategories = () => {
