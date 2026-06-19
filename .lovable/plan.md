@@ -1,48 +1,56 @@
 ## Goal
-
-Import the full Fashion / Shoes / Watches / Jewelry / Travel & Luggage / Bags / Fabric & Tailoring taxonomy (~5,000 leaves, 5 levels deep) from the uploaded file into `public.categories`, replacing the existing fashion-related branches and keeping non-fashion ones (Electronics, Home & Garden, Health & Beauty, Sports, Phones & Tablets, Automotive, Books).
+Import the uploaded Sports & Fitness taxonomy (~5,925 lines, 5 levels deep) into `public.categories`, merging it under the existing `Sports & Fitness` department (slug `sports`, id `a0000001-…-0005`). Keep existing rows untouched; only add what's missing.
 
 ## Approach
 
-### 1. Parse the uploaded file
-Write a small Node script (run locally, not shipped) that walks `pasted-2026-06-17T12-27-54-334Z.txt` and emits a normalized tree:
+### 1. Parse the file
+A Python script walks `pasted-2026-06-19T11-55-39-156Z.txt` and emits a normalized tree:
 
 ```text
-Level 1  Department      e.g. "Fashion Clothing", "Shoes", "Watches", "Jewelry",
-                              "Travel & Luggage", "Bags & Accessories", "Fabric & Tailoring"
-Level 2  Section         e.g. "Women's Fashion Clothing", "Men's Shoes", "Kids Watches"
-Level 3  Category        e.g. "Tops", "Dresses", "Sneakers", "Smart Watches"
-Level 4  Subcategory     e.g. "T-Shirts", "Heels"            (group header inside a category)
-Level 5  Leaf            e.g. "Plain T-Shirts", "Skinny Jeans"
+Level 1 = "Sports & Fitness"          (already exists — root, not inserted)
+Level 2 = Department section          e.g. "Combat Sports", "Team Sports"   (1- 🥊 UPPERCASE)
+Level 3 = Category                    e.g. "Boxing", "Martial Arts"         (N. 🥊 Title)
+Level 4 = Subcategory                 e.g. "Boxing Gloves"                   (N- Title)
+Level 5 = Leaf                        e.g. "Training Boxing Gloves"          (bare text)
 ```
 
-Detection rules: emoji-prefixed UPPERCASE = Department/Section, `N- Name` or `N. Name` = Category/Subcategory, bare text lines = Leaves. The parser keeps a stack and re-parents accordingly.
+Stack-based reparenting detects level from prefix pattern (`N- 🥊 UPPERCASE`, `N. Title`, `N- Title`, bare text).
 
-### 2. Slug strategy
-Per your choice, every slug is **prefixed with its parent's slug** to guarantee uniqueness, e.g. `mens-shoes-sneakers`, `womens-shoes-sneakers`, `kids-shoes-sneakers`. Top-level departments keep clean slugs (`fashion-clothing`, `shoes`, `watches`, …). Slugs are lowercased, ASCII-only, hyphenated, max 80 chars.
+### 2. Slug strategy (parent-prefixed)
+Same scheme as the previous import: each slug = `<parent-slug>-<slugified-name>`, lowercased, hyphenated, max 80 chars. Root department keeps `sports`. Example: `sports-combat-sports`, `sports-combat-sports-boxing`, `sports-combat-sports-boxing-boxing-gloves`, `sports-combat-sports-boxing-boxing-gloves-training-boxing-gloves`.
 
-### 3. Replace fashion-related existing categories
-In the same migration, before insert:
-- Identify existing top-level slugs that overlap (`fashion`, `shoes`, `jewelry`, `bags`, `watches`, `travel`, etc. — exact list confirmed from current data first).
-- For each overlapping branch, **reassign any `products.category_id` pointing to its descendants to the new closest-matching department** (best-effort: by old top-level slug → new department slug). Products under matched branches won't be orphaned.
-- Delete the old branches (cascade through `parent_id`).
-- Untouched departments: Electronics, Home & Garden, Health & Beauty, Sports/Fitness, Phones & Tablets, Automotive, Books.
+### 3. Merge logic (no destruction)
+For each parsed node, top-down:
+- Look up an existing child of the current parent by **case-insensitive name match** OR exact slug match.
+- If found → reuse its id, recurse into its children. Do NOT update the row.
+- If not found → `INSERT` a new row (`id = gen_random_uuid()`, `parent_id`, `name`, `slug`, `image_url = null`, `description = null`).
 
-### 4. Bulk insert
-Generate a single migration containing the full INSERT statements (≈5,000 rows) for `public.categories(id, name, slug, parent_id, image_url, description)`. `image_url` left null — sidebar/category cards already fall back to `barakaz-icon.webp` / `FALLBACK_IMAGES` map. No new GRANTs needed (table already correctly granted).
+This preserves existing Sports children (`Combat Sports`, `Cycling`, `Fitness & Gym Equipment`, …) and the products linked to them. New branches (e.g. uploaded subtrees not yet in DB) are added; overlapping branches receive only the missing leaves.
 
-### 5. Frontend adjustments
-- `MegaMenu.tsx`: extend `TOP_LEVEL_ICONS` map with icons for the new departments (`shoes` → Footprints, `watches` → Watch, `jewelry` → Gem, `travel-luggage` → Luggage, `bags-accessories` → ShoppingBag, `fabric-tailoring` → Scissors, `fashion-clothing` → Shirt). Unmapped still falls back to `Tag` — no crash.
-- `NewArrivalsCategories.tsx` + `Index.tsx` already query DB for top-level categories and use `FALLBACK_IMAGES` keyed by slug; no logic change required, but extend `FALLBACK_IMAGES` with placeholder entries for the new top-level slugs so they render the existing category hero images where reasonable (else fall back to barakaz icon — already handled).
-- No changes to `SearchPage`, product wizard, or admin category pages — they all read `categories` generically.
+Slug uniqueness collisions (rare, only if a different branch already owns the prefixed slug) are resolved by appending `-2`, `-3`, … to the new row only.
+
+### 4. Execution
+- Run the parser locally to emit a deterministic ordered SQL file (`sports_merge.sql`) of pure `INSERT … WHERE NOT EXISTS …` statements, level-by-level, so foreign keys resolve.
+- Execute via `psql` against the project DB (existing exec access, insert-only — fits the constraint, no schema changes).
+- No migration file is needed because schema is unchanged; only data is added.
+
+### 5. Frontend
+No changes required:
+- `MegaMenu.tsx` already maps `sports` to a Dumbbell icon; new descendants render generically.
+- `NewArrivalsCategories.tsx` `FALLBACK_IMAGES` already covers `sports`.
+- `SearchPage`, product wizard, admin category UI all read the table generically.
 
 ### 6. Verify
-After migration approval:
-- `SELECT count(*) FROM categories;` → expect ≈5,000 + retained non-fashion rows.
-- Spot-check `/search?category=mens-shoes-sneakers` and the sidebar mega menu render.
-- Confirm `SELECT count(*) FROM products WHERE category_id NOT IN (SELECT id FROM categories);` returns 0.
+- `SELECT count(*) FROM categories WHERE slug LIKE 'sports-%' OR id = '…-0005';` → expect old + new rows.
+- Spot-check via admin Categories page that `Sports & Fitness → Combat Sports → Boxing → Boxing Gloves → Training Boxing Gloves` exists exactly once.
+- `SELECT count(*) FROM products WHERE category_id NOT IN (SELECT id FROM categories);` → 0.
+
+## Technical details
+- Parser language: Python 3 (already in sandbox), regex-driven, ~120 lines.
+- Insert volume: roughly 1,500–3,000 new rows (depends on overlap with existing 11 Sports children).
+- Idempotent: re-running the script inserts nothing new because of name+parent uniqueness checks.
 
 ## Out of scope
-- No new images uploaded for the 5,000 leaves (image_url null, fallback handles display).
-- No edits to product creation wizard, admin category management UI, or commission rates table (existing top-level commission rules continue to apply; new top-level departments can be configured later in the admin panel).
-- No changes to RLS, grants, or unrelated tables.
+- No image uploads for new categories (image_url null → existing fallback handles display).
+- No commission-rate rows for the new top-level (Sports already has its rate).
+- No edits to product wizard, admin UI, or unrelated tables.
