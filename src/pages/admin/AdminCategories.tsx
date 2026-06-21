@@ -167,18 +167,12 @@ const AdminCategories = () => {
         <Label>Slug</Label>
         <Input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} placeholder="auto-generated" />
       </div>
-      <div>
-        <Label>Parent Category (optional)</Label>
-        <Select value={form.parent_id} onValueChange={(v) => setForm((f) => ({ ...f, parent_id: v === "none" ? "" : v }))}>
-          <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None (top-level)</SelectItem>
-            {categories.filter((c: any) => c.id !== editCat?.id).map((c: any) => (
-              <SelectItem key={c.id} value={c.id}>{c.parent_id ? `  └ ${c.name}` : c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ParentPickerField
+        value={form.parent_id}
+        onChange={(v) => setForm((f) => ({ ...f, parent_id: v }))}
+        excludeId={editCat?.id}
+      />
+
       <div>
         <Label>Image</Label>
         <div
