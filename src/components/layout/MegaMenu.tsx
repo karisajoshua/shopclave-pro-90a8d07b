@@ -54,7 +54,7 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
   const [expandedSub, setExpandedSub] = useState<string | null>(null);
   const { user, signOut, userRoles } = useAuth();
 
-  const { data: topLevel = [], isLoading } = useCategoryChildren(null, open);
+  const { data: topLevel = [], isLoading } = useCategoryChildren(null);
 
   const close = () => onOpenChange(false);
 
