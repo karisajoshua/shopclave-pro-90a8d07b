@@ -11,6 +11,32 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import { convertImageToWebp } from "@/lib/imageToWebp";
+import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
+import { Button as UiButton } from "@/components/ui/button";
+
+function ParentPickerField({ value, onChange, excludeId }: { value: string; onChange: (v: string) => void; excludeId?: string }) {
+  const { data: ancestors = [] } = useCategoryAncestors(value || null);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <Label>Parent Category (optional)</Label>
+        {value && (
+          <UiButton type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onChange("")}>
+            Clear (top-level)
+          </UiButton>
+        )}
+      </div>
+      <CategoryPicker
+        value={value}
+        onChange={onChange}
+        initialPath={ancestors}
+        excludeId={excludeId}
+        showBreadcrumb
+      />
+    </div>
+  );
+}
+
 
 const AdminCategories = () => {
   const { user } = useAuth();
@@ -25,8 +51,21 @@ const AdminCategories = () => {
   const { data: categories = [] } = useQuery({
     queryKey: ["admin-categories"],
     queryFn: async () => {
-      const { data } = await supabase.from("categories").select("*").order("name");
-      return data || [];
+      // Paginate to bypass PostgREST 1000-row default cap (taxonomy has ~9k rows).
+      const pageSize = 1000;
+      let all: any[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*")
+          .order("name")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < pageSize) break;
+      }
+      return all;
     },
     enabled: !!user,
   });
@@ -153,18 +192,12 @@ const AdminCategories = () => {
         <Label>Slug</Label>
         <Input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} placeholder="auto-generated" />
       </div>
-      <div>
-        <Label>Parent Category (optional)</Label>
-        <Select value={form.parent_id} onValueChange={(v) => setForm((f) => ({ ...f, parent_id: v === "none" ? "" : v }))}>
-          <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None (top-level)</SelectItem>
-            {categories.filter((c: any) => c.id !== editCat?.id).map((c: any) => (
-              <SelectItem key={c.id} value={c.id}>{c.parent_id ? `  └ ${c.name}` : c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ParentPickerField
+        value={form.parent_id}
+        onChange={(v) => setForm((f) => ({ ...f, parent_id: v }))}
+        excludeId={editCat?.id}
+      />
+
       <div>
         <Label>Image</Label>
         <div

@@ -15,6 +15,7 @@ import { Plus, X, Layers, Upload, Video, ImageIcon, ChevronRight, Check } from "
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { isAdminUnlimited } from "@/lib/subscriptionPlans";
+import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
 
 const STEPS = [
   { label: "Category", icon: "1" },
@@ -51,10 +52,8 @@ const AddProductPage = () => {
   const [loading, setLoading] = useState(false);
   const isAdmin = isAdminUnlimited(userRoles);
 
-  // Category state
-  const [cat1, setCat1] = useState("");
-  const [cat2, setCat2] = useState("");
-  const [cat3, setCat3] = useState("");
+  // Category state — single selected leaf id, picker is variable depth.
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   // Form state
   const [form, setForm] = useState({
@@ -78,27 +77,8 @@ const AddProductPage = () => {
   const [newValueInputs, setNewValueInputs] = useState<Record<number, string>>({});
   const variantFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // Categories query
-  const { data: categories = [] } = useQuery({
-    queryKey: ["all-categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("categories").select("id, name, parent_id, slug").order("name");
-      return data || [];
-    },
-  });
-
-  const level1 = useMemo(() => categories.filter((c: any) => !c.parent_id), [categories]);
-  const level2 = useMemo(() => cat1 ? categories.filter((c: any) => c.parent_id === cat1) : [], [categories, cat1]);
-  const level3 = useMemo(() => cat2 ? categories.filter((c: any) => c.parent_id === cat2) : [], [categories, cat2]);
-
-  const selectedCategoryId = cat3 || cat2 || cat1;
-  const categoryPath = useMemo(() => {
-    const parts: string[] = [];
-    if (cat1) parts.push(categories.find((c: any) => c.id === cat1)?.name || "");
-    if (cat2) parts.push(categories.find((c: any) => c.id === cat2)?.name || "");
-    if (cat3) parts.push(categories.find((c: any) => c.id === cat3)?.name || "");
-    return parts.filter(Boolean);
-  }, [cat1, cat2, cat3, categories]);
+  const { data: ancestors = [] } = useCategoryAncestors(selectedCategoryId);
+  const categoryPath = useMemo(() => ancestors.map((a) => a.name), [ancestors]);
 
   // Image handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,51 +265,7 @@ const AddProductPage = () => {
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Select Category</h3>
             <p className="text-sm text-muted-foreground">Choose the category that best fits your product.</p>
-
-            {categoryPath.length > 0 && (
-              <div className="flex items-center gap-1 flex-wrap">
-                {categoryPath.map((name, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                    <Badge variant="secondary" className="text-xs">{name}</Badge>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div>
-              <Label>Main Category *</Label>
-              <Select value={cat1} onValueChange={(v) => { setCat1(v); setCat2(""); setCat3(""); }}>
-                <SelectTrigger><SelectValue placeholder="Select main category" /></SelectTrigger>
-                <SelectContent>
-                  {level1.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {level2.length > 0 && (
-              <div>
-                <Label>Sub-category</Label>
-                <Select value={cat2} onValueChange={(v) => { setCat2(v); setCat3(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Select sub-category" /></SelectTrigger>
-                  <SelectContent>
-                    {level2.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {level3.length > 0 && (
-              <div>
-                <Label>Final Sub-category</Label>
-                <Select value={cat3} onValueChange={setCat3}>
-                  <SelectTrigger><SelectValue placeholder="Select final sub-category" /></SelectTrigger>
-                  <SelectContent>
-                    {level3.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <CategoryPicker value={selectedCategoryId} onChange={setSelectedCategoryId} required />
           </div>
         )}
 
