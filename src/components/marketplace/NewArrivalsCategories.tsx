@@ -49,8 +49,7 @@ const NewArrivalsCategories = () => {
         .from("categories")
         .select("id, name, slug, image_url")
         .is("parent_id", null)
-        .order("name")
-        .limit(12);
+        .order("name");
       return data || [];
     },
   });
