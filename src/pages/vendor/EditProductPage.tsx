@@ -15,6 +15,7 @@ import { Plus, X, Layers, Upload, Video, ImageIcon, ChevronRight, Check } from "
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
 
 const STEPS = [
   { label: "Category", icon: "1" },
