@@ -1,33 +1,20 @@
 ## Problem
 
-The `categories` table has no Data API permissions. PostgREST blocks all reads, so:
-
-- Homepage category grid is empty
-- Vendor "Add Product" CategoryPicker shows no options
-- Admin Categories page is empty
-- Mega menu has no categories
-
-The previous grant migration did not actually apply — I just re-checked and `information_schema.role_table_grants` still returns zero rows for `public.categories`. RLS is already correct (`USING (true)` for SELECT), but without GRANTs PostgREST returns permission errors.
+The sidebar's "Shop by Category" section is empty because `SidebarMenu` (in `src/components/layout/MegaMenu.tsx`) tries to fetch the entire taxonomy (~19,540 rows, ~20 paginated requests) before rendering anything. The grid renders only after every page completes — until then the section appears blank, and on slow connections it can fail/stall.
 
 ## Fix
 
-Run a single migration that grants Data API access on `public.categories`:
+Switch the sidebar to **lazy loading**, mirroring the pattern already used by `CategoryPicker`:
 
-```sql
-GRANT SELECT ON public.categories TO anon, authenticated;
-GRANT INSERT, UPDATE, DELETE ON public.categories TO authenticated;
-GRANT ALL ON public.categories TO service_role;
-```
+1. On open, fetch only top-level categories (`parent_id IS NULL`, ~14 rows) → render immediately.
+2. When the user expands a top-level item, fetch its direct children on demand.
+3. When the user expands a sub-category, fetch that node's children on demand.
+4. Cache each level via React Query (`["sidebar-children", parentId]`, 5-min staleTime).
 
-This restores:
-- Public read for guests and signed-in users (homepage grid, mega menu, search)
-- Admin writes via existing RLS policy `Admins can manage categories`
-- Edge-function/service-role access
+Leaf detection: PostgREST can't tell us "has children" cheaply per row. Render every sub-item as expandable; if the children fetch returns zero rows, auto-treat it as a leaf link to `/search?category=<slug>`.
 
-No code changes required — the React queries are correct; they just can't reach the table.
+## Files to change
 
-## Verification after apply
+- `src/components/layout/MegaMenu.tsx` — replace the single all-rows query + `buildTree` with three level components (`TopLevelList`, `SubList`, `LeafList`), each using its own `useQuery` keyed by `parentId`. Keep existing icons map, sheet layout, account links, and styling unchanged.
 
-1. Reload the homepage — the category grid renders all 14 top-level categories.
-2. Open vendor dashboard → Add Product → Step 1 — the CategoryPicker dropdown lists main categories and cascades into subcategories.
-3. Open admin Categories — the tree loads.
+No DB, RLS, or other component changes needed — `categories` grants are already correct (top-level requests are returning 200s).
