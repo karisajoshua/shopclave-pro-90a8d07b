@@ -12,6 +12,31 @@ import { toast } from "sonner";
 import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import { convertImageToWebp } from "@/lib/imageToWebp";
 import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
+import { Button as UiButton } from "@/components/ui/button";
+
+function ParentPickerField({ value, onChange, excludeId }: { value: string; onChange: (v: string) => void; excludeId?: string }) {
+  const { data: ancestors = [] } = useCategoryAncestors(value || null);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <Label>Parent Category (optional)</Label>
+        {value && (
+          <UiButton type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onChange("")}>
+            Clear (top-level)
+          </UiButton>
+        )}
+      </div>
+      <CategoryPicker
+        value={value}
+        onChange={onChange}
+        initialPath={ancestors}
+        excludeId={excludeId}
+        showBreadcrumb
+      />
+    </div>
+  );
+}
+
 
 const AdminCategories = () => {
   const { user } = useAuth();
