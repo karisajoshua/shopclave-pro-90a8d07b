@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import { convertImageToWebp } from "@/lib/imageToWebp";
+import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
 
 const AdminCategories = () => {
   const { user } = useAuth();
