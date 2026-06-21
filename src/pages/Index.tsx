@@ -108,7 +108,7 @@ const Index = () => {
         .from("categories")
         .select("*")
         .is("parent_id", null)
-        .limit(6);
+        .order("name");
       return data;
     },
   });
