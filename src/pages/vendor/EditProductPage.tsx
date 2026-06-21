@@ -77,15 +77,6 @@ const EditProductPage = () => {
   const [newValueInputs, setNewValueInputs] = useState<Record<number, string>>({});
   const variantFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // Categories query
-  const { data: categories = [] } = useQuery({
-    queryKey: ["all-categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("categories").select("id, name, parent_id, slug").order("name");
-      return data || [];
-    },
-  });
-
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ["edit-product", productId],
     queryFn: async () => {
@@ -99,9 +90,14 @@ const EditProductPage = () => {
     enabled: !!productId,
   });
 
+  // Resolve ancestors of the product's saved category — feeds initial picker path.
+  const { data: initialAncestors = [] } = useCategoryAncestors((product as any)?.category_id);
+  const { data: ancestors = [] } = useCategoryAncestors(selectedCategoryId);
+  const categoryPath = useMemo(() => ancestors.map((a) => a.name), [ancestors]);
+
   // Populate form when product loads
   useEffect(() => {
-    if (!product || !categories.length) return;
+    if (!product) return;
     const p = product as any;
     setForm({
       name: p.name,
@@ -120,28 +116,7 @@ const EditProductPage = () => {
     setWhatsInBoxItems(Array.isArray(p.whats_in_box) && p.whats_in_box.length ? [...p.whats_in_box] : [""]);
     setVideoUrl(p.video_url || "");
 
-    // Resolve category hierarchy
-    if (p.category_id) {
-      const cat = categories.find((c: any) => c.id === p.category_id);
-      if (cat) {
-        if (cat.parent_id) {
-          const parent = categories.find((c: any) => c.id === cat.parent_id);
-          if (parent && parent.parent_id) {
-            setCat1(parent.parent_id);
-            setCat2(parent.id);
-            setCat3(cat.id);
-          } else if (parent) {
-            setCat1(parent.id);
-            setCat2(cat.id);
-            setCat3("");
-          } else {
-            setCat1(cat.id);
-          }
-        } else {
-          setCat1(cat.id);
-        }
-      }
-    }
+    if (p.category_id) setSelectedCategoryId(p.category_id);
 
     // Load existing product-level images
     const existingImages: ImageFile[] = (p.product_images || [])
@@ -182,20 +157,7 @@ const EditProductPage = () => {
         };
       }));
     }
-  }, [product, categories]);
-
-  const level1 = useMemo(() => categories.filter((c: any) => !c.parent_id), [categories]);
-  const level2 = useMemo(() => cat1 ? categories.filter((c: any) => c.parent_id === cat1) : [], [categories, cat1]);
-  const level3 = useMemo(() => cat2 ? categories.filter((c: any) => c.parent_id === cat2) : [], [categories, cat2]);
-
-  const selectedCategoryId = cat3 || cat2 || cat1;
-  const categoryPath = useMemo(() => {
-    const parts: string[] = [];
-    if (cat1) parts.push(categories.find((c: any) => c.id === cat1)?.name || "");
-    if (cat2) parts.push(categories.find((c: any) => c.id === cat2)?.name || "");
-    if (cat3) parts.push(categories.find((c: any) => c.id === cat3)?.name || "");
-    return parts.filter(Boolean);
-  }, [cat1, cat2, cat3, categories]);
+  }, [product]);
 
   // Image handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
