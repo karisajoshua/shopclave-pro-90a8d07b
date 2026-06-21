@@ -1,18 +1,33 @@
 ## Problem
-1. **Homepage category section** doesn't show **Kids Fashion** because `Index.tsx` queries top-level categories with `.limit(6)` (and `NewArrivalsCategories.tsx` with `.limit(12)`) — there are now 7+ top-level departments, and ordering is unspecified so Kids Fashion gets clipped.
-2. **MegaMenu** fetches every category in one shot with no pagination — but the taxonomy has ~9,000 rows and PostgREST caps responses at 1,000 by default, so most subcategories never load. This is the "not all categories show" symptom shoppers see in the nav.
-3. **Vendor "Add Product" picker** uses the lazy `CategoryPicker` (fetches direct children per level, capped at 2,000 per level — fine). The likely visible gap there is the same React Query cache hit on stale data; a fresh load already shows Kids Fashion. No code change needed beyond invalidating the cache on next visit.
 
-## Fixes
+The `categories` table has no Data API permissions. PostgREST blocks all reads, so:
 
-| File | Change |
-|---|---|
-| `src/pages/Index.tsx` | Drop `.limit(6)`, add `.order("name")`. Render all top-level departments in the homepage category grid. |
-| `src/components/marketplace/NewArrivalsCategories.tsx` | Drop `.limit(12)`, keep `.order("name")`. |
-| `src/components/layout/MegaMenu.tsx` | Replace single `select` with a paginated fetch loop (`.range(from, from+999)` until empty) so the full taxonomy (~9k rows) is loaded and the tree is complete. |
-| `src/components/shared/CategoryPicker.tsx` | No structural change required — already lazy per level. Confirmed sufficient. |
+- Homepage category grid is empty
+- Vendor "Add Product" CategoryPicker shows no options
+- Admin Categories page is empty
+- Mega menu has no categories
 
-## Out of scope
-- Visual redesign of the homepage category grid or MegaMenu.
-- Touching `AdminCategories` (already paginates correctly).
-- Pre-fetching all categories on every page — MegaMenu has a 5-minute `staleTime` cache, so the larger payload loads once per session.
+The previous grant migration did not actually apply — I just re-checked and `information_schema.role_table_grants` still returns zero rows for `public.categories`. RLS is already correct (`USING (true)` for SELECT), but without GRANTs PostgREST returns permission errors.
+
+## Fix
+
+Run a single migration that grants Data API access on `public.categories`:
+
+```sql
+GRANT SELECT ON public.categories TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.categories TO authenticated;
+GRANT ALL ON public.categories TO service_role;
+```
+
+This restores:
+- Public read for guests and signed-in users (homepage grid, mega menu, search)
+- Admin writes via existing RLS policy `Admins can manage categories`
+- Edge-function/service-role access
+
+No code changes required — the React queries are correct; they just can't reach the table.
+
+## Verification after apply
+
+1. Reload the homepage — the category grid renders all 14 top-level categories.
+2. Open vendor dashboard → Add Product → Step 1 — the CategoryPicker dropdown lists main categories and cascades into subcategories.
+3. Open admin Categories — the tree loads.
