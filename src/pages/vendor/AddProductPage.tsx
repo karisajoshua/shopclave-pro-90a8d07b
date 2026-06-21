@@ -52,10 +52,8 @@ const AddProductPage = () => {
   const [loading, setLoading] = useState(false);
   const isAdmin = isAdminUnlimited(userRoles);
 
-  // Category state
-  const [cat1, setCat1] = useState("");
-  const [cat2, setCat2] = useState("");
-  const [cat3, setCat3] = useState("");
+  // Category state — single selected leaf id, picker is variable depth.
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   // Form state
   const [form, setForm] = useState({
@@ -79,27 +77,8 @@ const AddProductPage = () => {
   const [newValueInputs, setNewValueInputs] = useState<Record<number, string>>({});
   const variantFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // Categories query
-  const { data: categories = [] } = useQuery({
-    queryKey: ["all-categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("categories").select("id, name, parent_id, slug").order("name");
-      return data || [];
-    },
-  });
-
-  const level1 = useMemo(() => categories.filter((c: any) => !c.parent_id), [categories]);
-  const level2 = useMemo(() => cat1 ? categories.filter((c: any) => c.parent_id === cat1) : [], [categories, cat1]);
-  const level3 = useMemo(() => cat2 ? categories.filter((c: any) => c.parent_id === cat2) : [], [categories, cat2]);
-
-  const selectedCategoryId = cat3 || cat2 || cat1;
-  const categoryPath = useMemo(() => {
-    const parts: string[] = [];
-    if (cat1) parts.push(categories.find((c: any) => c.id === cat1)?.name || "");
-    if (cat2) parts.push(categories.find((c: any) => c.id === cat2)?.name || "");
-    if (cat3) parts.push(categories.find((c: any) => c.id === cat3)?.name || "");
-    return parts.filter(Boolean);
-  }, [cat1, cat2, cat3, categories]);
+  const { data: ancestors = [] } = useCategoryAncestors(selectedCategoryId);
+  const categoryPath = useMemo(() => ancestors.map((a) => a.name), [ancestors]);
 
   // Image handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
