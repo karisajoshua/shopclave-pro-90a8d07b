@@ -1,0 +1,1 @@
+DELETE FROM public.vendor_stripe_accounts;
