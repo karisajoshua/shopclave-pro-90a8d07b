@@ -57,11 +57,21 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
   const { data: menuCategories = [] } = useQuery({
     queryKey: ["sidebar-menu-categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("id, name, slug, parent_id");
-      if (error) throw error;
-      return buildTree((data ?? []) as CategoryRow[]);
+      // Paginate to bypass PostgREST 1000-row default cap (taxonomy has ~9k rows).
+      const pageSize = 1000;
+      let all: CategoryRow[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("id, name, slug, parent_id")
+          .order("name")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all = all.concat(data as CategoryRow[]);
+        if (data.length < pageSize) break;
+      }
+      return buildTree(all);
     },
     staleTime: 5 * 60 * 1000,
   });
