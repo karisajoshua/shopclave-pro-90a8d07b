@@ -1,20 +1,23 @@
-## Problem
+## Goal
 
-The sidebar's "Shop by Category" section is empty because `SidebarMenu` (in `src/components/layout/MegaMenu.tsx`) tries to fetch the entire taxonomy (~19,540 rows, ~20 paginated requests) before rendering anything. The grid renders only after every page completes — until then the section appears blank, and on slow connections it can fail/stall.
+Make the sidebar's top-level categories appear instantly when the user opens the menu — no "Loading…" flash.
 
-## Fix
+## Approach
 
-Switch the sidebar to **lazy loading**, mirroring the pattern already used by `CategoryPicker`:
+Prefetch + cache top-level categories so they're already in React Query's cache by the time the sidebar opens.
 
-1. On open, fetch only top-level categories (`parent_id IS NULL`, ~14 rows) → render immediately.
-2. When the user expands a top-level item, fetch its direct children on demand.
-3. When the user expands a sub-category, fetch that node's children on demand.
-4. Cache each level via React Query (`["sidebar-children", parentId]`, 5-min staleTime).
+### Changes
 
-Leaf detection: PostgREST can't tell us "has children" cheaply per row. Render every sub-item as expandable; if the children fetch returns zero rows, auto-treat it as a leaf link to `/search?category=<slug>`.
+1. **`src/components/layout/MegaMenu.tsx`**
+   - Remove the `enabled: open` gate on the top-level query — fetch it as soon as the component mounts (the Navbar mounts `SidebarMenu` on every page, so this runs once at app load).
+   - Bump `staleTime` to `Infinity` for top-level (taxonomy roots rarely change in a session) and keep 5 min for deeper levels.
+   - Add `placeholderData` / `initialData: []` so the empty state doesn't flash before the first fetch resolves.
 
-## Files to change
+2. **`src/App.tsx`** (or wherever `QueryClientProvider` is set up)
+   - On app mount, call `queryClient.prefetchQuery` for `["sidebar-children", "root"]` so the request fires in parallel with the rest of the page load, not when the user clicks the hamburger.
 
-- `src/components/layout/MegaMenu.tsx` — replace the single all-rows query + `buildTree` with three level components (`TopLevelList`, `SubList`, `LeafList`), each using its own `useQuery` keyed by `parentId`. Keep existing icons map, sheet layout, account links, and styling unchanged.
+### Why this is enough
 
-No DB, RLS, or other component changes needed — `categories` grants are already correct (top-level requests are returning 200s).
+The top-level query is ~14 rows and already returns in <200 ms. Firing it at app start instead of at sheet-open means the data is cached before any user interaction. Sub-level fetches stay lazy (on expand) — they're not the bottleneck the user is complaining about.
+
+No DB, RLS, or styling changes.

@@ -28,6 +28,7 @@ const TOP_LEVEL_ICONS: Record<string, LucideIcon> = {
 type CategoryRow = { id: string; name: string; slug: string; parent_id: string | null };
 
 function useCategoryChildren(parentId: string | null, enabled = true) {
+  const isRoot = parentId === null;
   return useQuery({
     queryKey: ["sidebar-children", parentId ?? "root"],
     queryFn: async (): Promise<CategoryRow[]> => {
@@ -38,7 +39,8 @@ function useCategoryChildren(parentId: string | null, enabled = true) {
       return (data ?? []) as CategoryRow[];
     },
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: isRoot ? Infinity : 5 * 60 * 1000,
+    gcTime: isRoot ? Infinity : 5 * 60 * 1000,
   });
 }
 
@@ -52,7 +54,7 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
   const [expandedSub, setExpandedSub] = useState<string | null>(null);
   const { user, signOut, userRoles } = useAuth();
 
-  const { data: topLevel = [], isLoading } = useCategoryChildren(null, open);
+  const { data: topLevel = [], isLoading } = useCategoryChildren(null);
 
   const close = () => onOpenChange(false);
 
