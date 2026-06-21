@@ -52,10 +52,8 @@ const EditProductPage = () => {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Category state
-  const [cat1, setCat1] = useState("");
-  const [cat2, setCat2] = useState("");
-  const [cat3, setCat3] = useState("");
+  // Category state — selected leaf id
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   // Form state
   const [form, setForm] = useState({
