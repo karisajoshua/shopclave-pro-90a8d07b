@@ -26,8 +26,21 @@ const AdminCategories = () => {
   const { data: categories = [] } = useQuery({
     queryKey: ["admin-categories"],
     queryFn: async () => {
-      const { data } = await supabase.from("categories").select("*").order("name");
-      return data || [];
+      // Paginate to bypass PostgREST 1000-row default cap (taxonomy has ~9k rows).
+      const pageSize = 1000;
+      let all: any[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*")
+          .order("name")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < pageSize) break;
+      }
+      return all;
     },
     enabled: !!user,
   });
