@@ -2169,6 +2169,16 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_category_ancestors: {
+        Args: { _category_id: string }
+        Returns: {
+          depth: number
+          id: string
+          name: string
+          parent_id: string
+          slug: string
+        }[]
+      }
       get_product_ratings: {
         Args: { product_ids: string[] }
         Returns: {
