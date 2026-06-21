@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LucideIcon } from "lucide-react";
 
-// Icons keyed by top-level category slug. Categories themselves come from the database.
 const TOP_LEVEL_ICONS: Record<string, LucideIcon> = {
   electronics: Monitor,
   fashion: Shirt,
@@ -27,21 +26,20 @@ const TOP_LEVEL_ICONS: Record<string, LucideIcon> = {
 };
 
 type CategoryRow = { id: string; name: string; slug: string; parent_id: string | null };
-type MenuNode = { id: string; name: string; slug: string; children: MenuNode[] };
 
-function buildTree(rows: CategoryRow[]): (MenuNode & { icon: LucideIcon })[] {
-  const byParent = new Map<string | null, CategoryRow[]>();
-  for (const r of rows) {
-    const k = r.parent_id;
-    if (!byParent.has(k)) byParent.set(k, []);
-    byParent.get(k)!.push(r);
-  }
-  const build = (parentId: string | null): MenuNode[] =>
-    (byParent.get(parentId) ?? [])
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((r) => ({ id: r.id, name: r.name, slug: r.slug, children: build(r.id) }));
-
-  return build(null).map((n) => ({ ...n, icon: TOP_LEVEL_ICONS[n.slug] ?? Tag }));
+function useCategoryChildren(parentId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["sidebar-children", parentId ?? "root"],
+    queryFn: async (): Promise<CategoryRow[]> => {
+      let q = supabase.from("categories").select("id, name, slug, parent_id").order("name").limit(2000);
+      q = parentId ? q.eq("parent_id", parentId) : q.is("parent_id", null);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as CategoryRow[];
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 interface SidebarMenuProps {
@@ -54,42 +52,14 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
   const [expandedSub, setExpandedSub] = useState<string | null>(null);
   const { user, signOut, userRoles } = useAuth();
 
-  const { data: menuCategories = [] } = useQuery({
-    queryKey: ["sidebar-menu-categories"],
-    queryFn: async () => {
-      // Paginate to bypass PostgREST 1000-row default cap (taxonomy has ~9k rows).
-      const pageSize = 1000;
-      let all: CategoryRow[] = [];
-      for (let from = 0; ; from += pageSize) {
-        const { data, error } = await supabase
-          .from("categories")
-          .select("id, name, slug, parent_id")
-          .order("name")
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        all = all.concat(data as CategoryRow[]);
-        if (data.length < pageSize) break;
-      }
-      return buildTree(all);
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: topLevel = [], isLoading } = useCategoryChildren(null, open);
 
-  const toggleCat = (slug: string) => {
-    setExpandedCat(expandedCat === slug ? null : slug);
-    setExpandedSub(null);
-  };
-
-  const toggleSub = (slug: string) => {
-    setExpandedSub(expandedSub === slug ? null : slug);
-  };
+  const close = () => onOpenChange(false);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-[320px] sm:w-[360px] p-0 bg-card overflow-y-auto">
         <SheetTitle className="sr-only">Menu</SheetTitle>
-        {/* User greeting */}
         <div className="bg-[hsl(var(--nav-dark))] text-primary-foreground px-5 py-4 flex items-center gap-3">
           <User className="h-6 w-6" />
           <span className="font-semibold text-base">
@@ -97,83 +67,144 @@ const SidebarMenu = ({ open, onOpenChange }: SidebarMenuProps) => {
           </span>
         </div>
 
-        {/* Categories */}
         <div className="py-2">
           <p className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Shop by Category</p>
-          {menuCategories.map((cat) => (
-            <div key={cat.slug}>
-              <button
-                onClick={() => toggleCat(cat.slug)}
-                className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium hover:bg-secondary transition-colors"
-              >
-                <span className="flex items-center gap-2.5"><cat.icon className="h-4 w-4 text-muted-foreground" /> {cat.name}</span>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedCat === cat.slug ? "rotate-180" : ""}`} />
-              </button>
-              {expandedCat === cat.slug && (
-                <div className="bg-secondary/50">
-                  {cat.children.map((sub) => (
-                    <div key={sub.slug}>
-                      {sub.children.length > 0 ? (
-                        <>
-                          <button
-                            onClick={() => toggleSub(sub.slug)}
-                            className="w-full flex items-center justify-between pl-10 pr-5 py-2.5 text-sm hover:bg-secondary transition-colors"
-                          >
-                            <span>{sub.name}</span>
-                            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expandedSub === sub.slug ? "rotate-90" : ""}`} />
-                          </button>
-                          {expandedSub === sub.slug && (
-                            <div className="bg-secondary/80">
-                              {sub.children.map((child) => (
-                                <Link
-                                  key={child.slug}
-                                  to={`/search?category=${child.slug}`}
-                                  className="block pl-14 pr-5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                                  onClick={() => onOpenChange(false)}
-                                >
-                                  {child.name}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <Link
-                          to={`/search?category=${sub.slug}`}
-                          className="block pl-10 pr-5 py-2.5 text-sm hover:bg-secondary transition-colors"
-                          onClick={() => onOpenChange(false)}
-                        >
-                          {sub.name}
-                        </Link>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          {isLoading && (
+            <p className="px-5 py-3 text-sm text-muted-foreground">Loading…</p>
+          )}
+          {!isLoading && topLevel.length === 0 && (
+            <p className="px-5 py-3 text-sm text-muted-foreground">No categories available</p>
+          )}
+          {topLevel.map((cat) => {
+            const Icon = TOP_LEVEL_ICONS[cat.slug] ?? Tag;
+            const isOpen = expandedCat === cat.id;
+            return (
+              <div key={cat.id}>
+                <button
+                  onClick={() => { setExpandedCat(isOpen ? null : cat.id); setExpandedSub(null); }}
+                  className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium hover:bg-secondary transition-colors"
+                >
+                  <span className="flex items-center gap-2.5"><Icon className="h-4 w-4 text-muted-foreground" /> {cat.name}</span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+                {isOpen && (
+                  <SubLevel
+                    parent={cat}
+                    expandedSub={expandedSub}
+                    setExpandedSub={setExpandedSub}
+                    onNavigate={close}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Account links */}
         <div className="border-t border-border py-2">
           <p className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Help & Settings</p>
           {user ? (
             <>
-              <Link to="/account" className="block px-5 py-3 text-sm hover:bg-secondary" onClick={() => onOpenChange(false)}>Your Account</Link>
+              <Link to="/account" className="block px-5 py-3 text-sm hover:bg-secondary" onClick={close}>Your Account</Link>
               {userRoles.includes("vendor") && (
-                <Link to="/vendor/dashboard" className="block px-5 py-3 text-sm hover:bg-secondary" onClick={() => onOpenChange(false)}>Seller Hub</Link>
+                <Link to="/vendor/dashboard" className="block px-5 py-3 text-sm hover:bg-secondary" onClick={close}>Seller Hub</Link>
               )}
               {userRoles.includes("admin") && (
-                <Link to="/admin" className="block px-5 py-3 text-sm hover:bg-secondary" onClick={() => onOpenChange(false)}>Admin Dashboard</Link>
+                <Link to="/admin" className="block px-5 py-3 text-sm hover:bg-secondary" onClick={close}>Admin Dashboard</Link>
               )}
-              <button onClick={() => { signOut(); onOpenChange(false); }} className="block w-full text-left px-5 py-3 text-sm text-destructive hover:bg-secondary">Sign Out</button>
+              <button onClick={() => { signOut(); close(); }} className="block w-full text-left px-5 py-3 text-sm text-destructive hover:bg-secondary">Sign Out</button>
             </>
           ) : (
-            <Link to="/auth" className="block px-5 py-3 text-sm font-medium text-primary hover:bg-secondary" onClick={() => onOpenChange(false)}>Sign In / Register</Link>
+            <Link to="/auth" className="block px-5 py-3 text-sm font-medium text-primary hover:bg-secondary" onClick={close}>Sign In / Register</Link>
           )}
         </div>
       </SheetContent>
     </Sheet>
+  );
+};
+
+const SubLevel = ({
+  parent,
+  expandedSub,
+  setExpandedSub,
+  onNavigate,
+}: {
+  parent: CategoryRow;
+  expandedSub: string | null;
+  setExpandedSub: (id: string | null) => void;
+  onNavigate: () => void;
+}) => {
+  const { data: subs = [], isLoading } = useCategoryChildren(parent.id);
+
+  if (isLoading) return <div className="bg-secondary/50 px-10 py-2 text-xs text-muted-foreground">Loading…</div>;
+
+  if (subs.length === 0) {
+    // No children — provide direct link to the top-level category
+    return (
+      <div className="bg-secondary/50">
+        <Link
+          to={`/search?category=${parent.slug}`}
+          className="block pl-10 pr-5 py-2.5 text-sm hover:bg-secondary transition-colors"
+          onClick={onNavigate}
+        >
+          Browse all {parent.name}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-secondary/50">
+      {subs.map((sub) => {
+        const isOpen = expandedSub === sub.id;
+        return (
+          <div key={sub.id}>
+            <button
+              onClick={() => setExpandedSub(isOpen ? null : sub.id)}
+              className="w-full flex items-center justify-between pl-10 pr-5 py-2.5 text-sm hover:bg-secondary transition-colors"
+            >
+              <span>{sub.name}</span>
+              <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+            </button>
+            {isOpen && <LeafLevel parent={sub} onNavigate={onNavigate} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const LeafLevel = ({ parent, onNavigate }: { parent: CategoryRow; onNavigate: () => void }) => {
+  const { data: children = [], isLoading } = useCategoryChildren(parent.id);
+
+  if (isLoading) return <div className="bg-secondary/80 pl-14 py-2 text-xs text-muted-foreground">Loading…</div>;
+
+  if (children.length === 0) {
+    return (
+      <div className="bg-secondary/80">
+        <Link
+          to={`/search?category=${parent.slug}`}
+          className="block pl-14 pr-5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          onClick={onNavigate}
+        >
+          Browse all {parent.name}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-secondary/80">
+      {children.map((child) => (
+        <Link
+          key={child.id}
+          to={`/search?category=${child.slug}`}
+          className="block pl-14 pr-5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          onClick={onNavigate}
+        >
+          {child.name}
+        </Link>
+      ))}
+    </div>
   );
 };
 
