@@ -119,7 +119,7 @@ const VendorProducts = () => {
                   <img src={p.product_images?.[0]?.url || "/placeholder.svg"} alt="" className="w-12 h-12 rounded-md object-cover bg-secondary border border-border" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm line-clamp-1">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">${Number(p.price).toLocaleString()} • Stock: {p.stock}</p>
+                    <p className="text-xs text-muted-foreground">CA${Number(p.price).toLocaleString()} • Stock: {p.stock}</p>
                     {p.vendor_featured && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full mt-1">
                         <Star className="h-2.5 w-2.5 fill-current" /> Featured on store
@@ -184,7 +184,7 @@ const ProductRow = ({ product: p, statusColor, onToggle, onDelete, onStock, onFe
           </div>
         </div>
       </td>
-      <td className="font-semibold">${Number(p.price).toLocaleString()}</td>
+      <td className="font-semibold">CA${Number(p.price).toLocaleString()}</td>
       <td>
         {editStock ? (
           <div className="flex items-center gap-1">

@@ -1,5 +1,5 @@
-// FX rate fetcher with localStorage caching. Base currency: KES (storage currency).
-const CACHE_KEY = "barakaz_fx_rates_v1";
+// FX rate fetcher with localStorage caching. Base currency: CAD (platform storage currency).
+const CACHE_KEY = "barakaz_fx_rates_cad_v1";
 const TTL_MS = 12 * 60 * 60 * 1000; // 12h
 
 interface FxCache {
@@ -16,7 +16,7 @@ export async function getFxRates(): Promise<FxCache | null> {
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const parsed: FxCache = JSON.parse(raw);
-      if (Date.now() - parsed.ts < TTL_MS && parsed.rates && parsed.base === "KES") {
+      if (Date.now() - parsed.ts < TTL_MS && parsed.rates && parsed.base === "CAD") {
         return parsed;
       }
     }
@@ -26,11 +26,11 @@ export async function getFxRates(): Promise<FxCache | null> {
 
   inflight = (async () => {
     try {
-      const res = await fetch("https://open.er-api.com/v6/latest/KES");
+      const res = await fetch("https://open.er-api.com/v6/latest/CAD");
       if (!res.ok) throw new Error("fx http");
       const data = await res.json();
       if (!data?.rates) throw new Error("fx shape");
-      const cache: FxCache = { ts: Date.now(), base: "KES", rates: data.rates };
+      const cache: FxCache = { ts: Date.now(), base: "CAD", rates: data.rates };
       try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
       return cache;
     } catch {
@@ -43,10 +43,10 @@ export async function getFxRates(): Promise<FxCache | null> {
   return inflight;
 }
 
-export function convertFromKES(amountKES: number, targetCurrency: string, rates: Record<string, number> | null | undefined): number | null {
+export function convertFromCAD(amountCAD: number, targetCurrency: string, rates: Record<string, number> | null | undefined): number | null {
   if (!rates) return null;
-  if (targetCurrency === "KES") return amountKES;
+  if (targetCurrency === "CAD") return amountCAD;
   const r = rates[targetCurrency];
   if (typeof r !== "number" || !isFinite(r) || r <= 0) return null;
-  return amountKES * r;
+  return amountCAD * r;
 }
