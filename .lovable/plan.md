@@ -1,40 +1,80 @@
-# Switch Stripe Connect to Live Mode
+## What's wrong today
 
-## Problem
-When a vendor clicks "Connect Stripe account" on `/vendor/payments`, Stripe opens its **sandbox/test** onboarding flow instead of the real live-mode onboarding. This is because the `STRIPE_SECRET_KEY` currently stored in the backend is a **test key** (starts with `sk_test_...`). Stripe decides test vs. live purely from the secret key used — there is no code flag to toggle.
+`useLocale.formatPrice()` treats every stored price as **KES** and multiplies it by an exchange rate to the visitor's country. Vendors typing `1500` see it rendered as random foreign amounts. The base currency assumption is simply wrong.
 
-The three edge functions that use Stripe all read the same secret:
-- `supabase/functions/stripe-connect-onboard/index.ts`
-- `supabase/functions/stripe-connect-status/index.ts`
-- `supabase/functions/create-stripe-checkout/index.ts`
-- `supabase/functions/stripe-webhook/index.ts`
+## What you want
 
-So replacing the key fixes vendor onboarding **and** real card checkouts in one go.
+- Every product price in the database is in **Canadian Dollars (CAD)** — that's the platform's single source-of-truth currency.
+- Vendors/admin enter prices in CAD (the form labels say so).
+- Buyers automatically see the price converted to **their own country's currency** using live FX rates.
+- If FX isn't available, fall back to showing the original CAD amount (never a wrong number).
+
+No per-product currency picker, no database column for currency — one platform currency keeps it simple.
 
 ## Plan
 
-1. **You activate your Stripe account in live mode** (if not already done) at dashboard.stripe.com → toggle "Test mode" off → complete business activation. Stripe Connect must also be enabled on the live account (Connect → Settings → enable Express accounts, set branding, set the platform profile).
+### 1. FX helper — switch base to CAD
 
-2. **Provide the live secret key.** I'll request it via the secure secret tool. You'll grab it from Stripe dashboard (live mode) → Developers → API keys → **Secret key** (starts with `sk_live_...`). I'll update `STRIPE_SECRET_KEY` with this value — no code changes needed.
+File: `src/lib/fx.ts`
 
-3. **Update the Stripe webhook for live mode.** The webhook endpoint signing secret is different in live vs. test. After switching, you'll need to:
-   - In Stripe dashboard (live mode) → Developers → Webhooks → add endpoint pointing at the existing `stripe-webhook` function URL, subscribing to the same events the test webhook uses.
-   - Copy the new signing secret and I'll update `STRIPE_WEBHOOK_SECRET` with it.
+- Change the fetch URL to `https://open.er-api.com/v6/latest/CAD`.
+- Rename `convertFromKES` → `convertFromCAD` (same shape; just a different base).
+- Bump the localStorage cache key to `barakaz_fx_rates_cad_v1` so old KES-based caches are discarded on first load.
 
-4. **Vendors who already onboarded in test mode will need to redo it.** Their `vendor_stripe_accounts.stripe_account_id` rows point to test-mode accounts that don't exist in live mode. After the key swap, the next call to `stripe-connect-status` for those vendors will fail with "No such account". Options:
-   - (a) Clear `vendor_stripe_accounts` rows so vendors re-onboard cleanly, or
-   - (b) Leave them — the Payments page will show an error and they'll have to contact support.
-   I recommend (a) since you mentioned the marketplace is still pre-launch. Let me know which you prefer.
+### 2. Display layer — `formatPrice` converts from CAD
 
-5. **Verify** by signing in as a test vendor, clicking "Connect Stripe account", and confirming the Stripe page no longer shows the orange "TEST MODE" banner.
+File: `src/hooks/useLocale.ts`
 
-## Technical details
+- `formatPrice(amountInCAD)` converts to `country.currency` using the new `convertFromCAD`.
+- If the visitor is already in Canada → render as `CA$` directly, no conversion.
+- If FX isn't loaded or the target rate is missing → render the value as CAD (`CA$ 1,500.00`) instead of a garbage number.
+- Keep the `CURRENCIES_NO_DECIMALS` list (KES, UGX, JPY, …) for clean output.
+- Add `CA` (Canada / CAD) to the country map if it isn't already the right default — it is already in the map.
 
-- No source code changes are required — Stripe's mode is determined entirely by the API key prefix (`sk_test_` vs `sk_live_`).
-- The `apiVersion: "2024-12-18.acacia"` pin stays the same.
-- `vendor_stripe_accounts` schema is unchanged.
-- Live mode means real charges. Test cards like `4242 4242 4242 4242` will be rejected once switched.
+### 3. Vendor & admin price inputs — label as CAD
 
-## Questions before I implement
-- Confirm your Stripe live account is activated and Connect (Express) is enabled.
-- Confirm option (a) wipe existing `vendor_stripe_accounts` rows, or (b) leave them.
+Files:
+- `src/pages/vendor/AddProductPage.tsx` (Step 2, Pricing) — add helper text under the Price field: "Enter price in Canadian Dollars (CAD)". Same for Compare-at price, Bulk price, and per-variant Price / Compare-at price.
+- `src/pages/vendor/EditProductPage.tsx` — same helper text.
+- `src/pages/admin/AdminCommissions.tsx` and anywhere admin sees price — clarify CAD.
+- `src/pages/vendor/VendorProducts.tsx` — the hardcoded `$...` becomes `CA$...` (or use `formatPrice` so the vendor also sees their own country's converted value if they prefer; we'll use `CA$` literal in the vendor dashboard so vendors always see exactly what they entered).
+
+No database change needed — column stays numeric, just understood as CAD.
+
+### 4. Storefront — no caller changes required
+
+Every component that currently calls `formatPrice(price)` already passes the raw numeric DB price. After Step 2's swap, those same calls auto-convert from CAD → buyer's currency. So `ProductCard`, `ProductDetailPage`, `CartPage`, `CheckoutPage`, `WishlistPage`, `VendorStorePage`, `SearchPage`, `Index`, `FlashSaleSection`, `BestDealsSection`, `OrderConfirmationPage`, `AdminOrders`, `VendorOrders`, `VendorEarnings` all work without edits.
+
+### 5. Country picker — make the conversion obvious
+
+File: `src/components/layout/Navbar.tsx` (and mobile equivalent if separate)
+
+- Below the country selector, add tiny helper text: "Prices auto-converted from CAD to {currency_code}". For Canadian visitors it just says "Prices in CAD".
+
+## What stays the same
+
+- Stripe Connect onboarding work from prior turns — untouched.
+- Cart math, commission, vendor payout, order totals — all still numeric (in CAD); the conversion happens only at display.
+- Existing product rows — no migration, no backfill. They're already interpreted as CAD going forward.
+
+## Verification
+
+1. Set country picker to **Canada** → a product priced 1500 shows `CA$1,500.00`.
+2. Set picker to **United States** → same product shows roughly `$1,098` (whatever the CAD→USD rate is).
+3. Set picker to **Kenya** → shows roughly `KSh 142,000`.
+4. Disable network, reload → falls back to `CA$1,500.00` instead of a wrong number.
+5. Vendor dashboard still shows the price the vendor entered (`CA$1,500.00`).
+
+## Files touched
+
+- `src/lib/fx.ts`
+- `src/hooks/useLocale.ts`
+- `src/pages/vendor/AddProductPage.tsx`
+- `src/pages/vendor/EditProductPage.tsx`
+- `src/pages/vendor/VendorProducts.tsx`
+- `src/components/layout/Navbar.tsx` (small helper text)
+
+## Out of scope (ask if you want next)
+
+- Storing each order's FX rate at checkout time so historical orders display the exact converted amount the buyer saw.
+- Letting individual vendors price in their own currency.
