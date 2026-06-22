@@ -446,7 +446,7 @@ const EditProductPage = () => {
             <h3 className="font-semibold text-lg">Pricing & Stock</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Price (USD) *</Label>
+                <Label>Price (CAD) *</Label>
                 <Input type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               </div>
               <div>
@@ -461,7 +461,7 @@ const EditProductPage = () => {
               </button>
               {showBulkPrice && (
                 <div className="mt-2">
-                  <Label>Bulk Price (USD)</Label>
+                  <Label>Bulk Price (CAD)</Label>
                   <Input type="number" min="0" step="0.01" value={form.bulkPrice} onChange={(e) => setForm({ ...form, bulkPrice: e.target.value })} placeholder="Price for bulk orders" />
                 </div>
               )}
@@ -586,11 +586,11 @@ const EditProductPage = () => {
                           <p className="text-xs font-semibold text-foreground">{Object.entries(row.options).map(([k, v]) => `${k}: ${v}`).join(" / ")}</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <Label className="text-xs font-medium">Original Price (USD)</Label>
+                              <Label className="text-xs font-medium">Original Price (CAD)</Label>
                               <Input type="number" min="0" step="0.01" placeholder={form.compareAtPrice || "Optional"} value={row.compareAtPrice} onChange={(e) => updateVariantRow(idx, "compareAtPrice", e.target.value)} />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs font-medium">Current Price (USD)</Label>
+                              <Label className="text-xs font-medium">Current Price (CAD)</Label>
                               <Input type="number" min="0" step="0.01" placeholder={form.price || "Default"} value={row.price} onChange={(e) => updateVariantRow(idx, "price", e.target.value)} />
                             </div>
                           </div>
@@ -649,8 +649,8 @@ const EditProductPage = () => {
               {keyFeatures.filter(f => f.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Key Features</span><span className="font-medium">{keyFeatures.filter(f => f.trim()).length} listed</span></div>}
               {whatsInBoxItems.filter(s => s.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{whatsInBoxItems.filter(s => s.trim()).length} items</span></div>}
               <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">${form.price || "—"}</span></div>
-              {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">${form.compareAtPrice}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">{form.price ? `CA$${form.price}` : "—"}</span></div>
+              {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">CA${form.compareAtPrice}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Stock</span><span className="font-medium">{hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : form.stock}</span></div>
               {form.sku && <div className="flex justify-between"><span className="text-muted-foreground">SKU</span><span className="font-medium">{form.sku}</span></div>}
               {images.length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Images</span><span className="font-medium">{images.length} uploaded</span></div>}

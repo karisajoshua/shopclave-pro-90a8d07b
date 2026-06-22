@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getFxRates, convertFromKES } from "@/lib/fx";
+import { getFxRates, convertFromCAD } from "@/lib/fx";
 
 interface CountryInfo {
   code: string;
@@ -212,21 +212,21 @@ export function useLocale() {
     try { localStorage.removeItem(MANUAL_KEY); } catch {}
   };
 
-  const formatPrice = (amountInKES: number) => {
+  const formatPrice = (amountInCAD: number) => {
     const target = country.currency;
-    // If rates aren't ready, or conversion not available, render as KES to avoid wildly wrong numbers.
-    const converted = target === "KES" ? amountInKES : convertFromKES(amountInKES, target, rates);
+    // All product prices are stored in CAD. Convert to the visitor's currency.
+    const converted = target === "CAD" ? amountInCAD : convertFromCAD(amountInCAD, target, rates);
     if (converted == null) {
-      // Fallback: show KES properly even if user is in another country
+      // FX not ready or target rate missing — fall back to CAD so the number is never wrong.
       try {
-        return new Intl.NumberFormat(undefined, {
+        return new Intl.NumberFormat("en-CA", {
           style: "currency",
-          currency: "KES",
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }).format(amountInKES);
+          currency: "CAD",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(amountInCAD);
       } catch {
-        return `$${Math.round(amountInKES).toLocaleString()}`;
+        return `CA$${amountInCAD.toFixed(2)}`;
       }
     }
     const noDecimals = CURRENCIES_NO_DECIMALS.has(target);
