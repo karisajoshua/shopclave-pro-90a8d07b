@@ -606,6 +606,8 @@ export type Database = {
           label_url: string | null
           order_id: string
           payment_fee_amount: number | null
+          paystack_split_code: string | null
+          paystack_subaccount_code: string | null
           price: number
           product_id: string | null
           quantity: number
@@ -630,6 +632,8 @@ export type Database = {
           label_url?: string | null
           order_id: string
           payment_fee_amount?: number | null
+          paystack_split_code?: string | null
+          paystack_subaccount_code?: string | null
           price: number
           product_id?: string | null
           quantity?: number
@@ -654,6 +658,8 @@ export type Database = {
           label_url?: string | null
           order_id?: string
           payment_fee_amount?: number | null
+          paystack_split_code?: string | null
+          paystack_subaccount_code?: string | null
           price?: number
           product_id?: string | null
           quantity?: number
@@ -709,11 +715,14 @@ export type Database = {
       }
       orders: {
         Row: {
+          charged_amount: number | null
+          charged_currency: string | null
           created_at: string
           currency: string
           id: string
           payment_method: string | null
           payment_status: string
+          paystack_reference: string | null
           shipping_address: Json | null
           shipping_total: number
           status: string
@@ -725,11 +734,14 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          charged_amount?: number | null
+          charged_currency?: string | null
           created_at?: string
           currency?: string
           id?: string
           payment_method?: string | null
           payment_status?: string
+          paystack_reference?: string | null
           shipping_address?: Json | null
           shipping_total?: number
           status?: string
@@ -741,11 +753,14 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          charged_amount?: number | null
+          charged_currency?: string | null
           created_at?: string
           currency?: string
           id?: string
           payment_method?: string | null
           payment_status?: string
+          paystack_reference?: string | null
           shipping_address?: Json | null
           shipping_total?: number
           status?: string
@@ -1721,6 +1736,72 @@ export type Database = {
           withdrawal_id?: string | null
         }
         Relationships: []
+      }
+      vendor_paystack_accounts: {
+        Row: {
+          account_name: string | null
+          account_number_last4: string | null
+          active: boolean
+          bank_code: string
+          bank_name: string | null
+          business_name: string | null
+          country: string | null
+          created_at: string
+          currency: string
+          id: string
+          percentage_charge: number
+          subaccount_code: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number_last4?: string | null
+          active?: boolean
+          bank_code: string
+          bank_name?: string | null
+          business_name?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          percentage_charge?: number
+          subaccount_code: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number_last4?: string | null
+          active?: boolean
+          bank_code?: string
+          bank_name?: string | null
+          business_name?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          percentage_charge?: number
+          subaccount_code?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_paystack_accounts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_paystack_accounts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_stripe_accounts: {
         Row: {
