@@ -116,14 +116,15 @@ const CheckoutPage = () => {
     enabled: vendorIds.length > 0,
   });
 
-  // Stripe Connect readiness per vendor in the cart — card payment requires every
-  // vendor to have an active Connect account so funds route directly to them.
-  const { data: vendorStripeStatuses } = useQuery({
-    queryKey: ["vendor-stripe-statuses", vendorIds],
+  // Paystack payout readiness per vendor in the cart. Vendors without a connected
+  // subaccount are still sellable — their share is held by Barakaz and released
+  // through the normal withdrawal flow.
+  const { data: vendorPaystackStatuses } = useQuery({
+    queryKey: ["vendor-paystack-statuses", vendorIds],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vendor_stripe_accounts")
-        .select("vendor_id, charges_enabled, payouts_enabled")
+        .from("vendor_paystack_accounts")
+        .select("vendor_id, active")
         .in("vendor_id", vendorIds);
       return data || [];
     },
@@ -131,10 +132,11 @@ const CheckoutPage = () => {
   });
 
   const unreadyVendors = vendorIds.filter((vid) => {
-    const row = vendorStripeStatuses?.find((r) => r.vendor_id === vid);
-    return !row?.charges_enabled;
+    const row = vendorPaystackStatuses?.find((r) => r.vendor_id === vid);
+    return !row?.active;
   });
-  const cardPaymentReady = unreadyVendors.length === 0;
+  const directSettlement = unreadyVendors.length === 0;
+
 
   // Live shipping rates from Shippo (keyed by vendor_id)
   const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
