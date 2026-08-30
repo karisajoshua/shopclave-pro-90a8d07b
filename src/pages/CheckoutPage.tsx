@@ -260,19 +260,20 @@ const CheckoutPage = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // For card payments, create Stripe Checkout session and redirect
+      // For card payments, initialize a Paystack transaction and redirect
       if (paymentMethod === "card") {
-        const { data: stripeData, error: stripeErr } = await supabase.functions.invoke(
-          "create-stripe-checkout",
+        const { data: paystackData, error: paystackErr } = await supabase.functions.invoke(
+          "paystack-initialize",
           { body: { order_id: data.order_id } }
         );
-        if (stripeErr) throw stripeErr;
-        if (stripeData?.error) throw new Error(stripeData.error);
-        if (!stripeData?.url) throw new Error("Failed to start Stripe checkout");
+        if (paystackErr) throw paystackErr;
+        if (paystackData?.error) throw new Error(paystackData.error);
+        if (!paystackData?.url) throw new Error("Failed to start Paystack checkout");
         clearCart();
-        window.location.href = stripeData.url;
+        window.location.href = paystackData.url;
         return;
       }
+
 
       clearCart();
       toast.success("Order placed successfully!");
