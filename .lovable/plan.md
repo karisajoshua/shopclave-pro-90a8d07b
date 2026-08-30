@@ -1,80 +1,82 @@
-## What's wrong today
+# Switch payment processing from Stripe to Paystack
 
-`useLocale.formatPrice()` treats every stored price as **KES** and multiplies it by an exchange rate to the visitor's country. Vendors typing `1500` see it rendered as random foreign amounts. The base currency assumption is simply wrong.
+Replace Stripe end-to-end with Paystack, keeping the exact same checkout flow buyers and vendors already use: buyer picks "Card", an order is created, buyer is redirected to a hosted payment page, a webhook confirms payment, and each vendor's share is settled automatically minus platform commission.
 
-## What you want
+## What you need to do first (guided setup)
 
-- Every product price in the database is in **Canadian Dollars (CAD)** — that's the platform's single source-of-truth currency.
-- Vendors/admin enter prices in CAD (the form labels say so).
-- Buyers automatically see the price converted to **their own country's currency** using live FX rates.
-- If FX isn't available, fall back to showing the original CAD amount (never a wrong number).
+1. Create a free account at paystack.com and complete the business profile.
+2. In the Paystack dashboard, go to Settings, API Keys & Webhooks.
+3. Copy the **Test Secret Key** (`sk_test_...`) and **Test Public Key** (`pk_test_...`).
+4. Leave the webhook URL blank for now — I will generate the callback URL during implementation and give it to you to paste in.
+5. When I ask, paste the secret key into the secure form. The public key is safe to keep in code.
 
-No per-product currency picker, no database column for currency — one platform currency keeps it simple.
+Nothing goes live until you switch to live keys later.
 
-## Plan
+## Payment flow after the change
 
-### 1. FX helper — switch base to CAD
+```text
+Buyer selects Card at checkout
+   -> create-order            (unchanged: order + order_items + fees)
+   -> paystack-initialize     (new: returns hosted payment URL)
+   -> Paystack checkout page  (card, bank, USSD, mobile money, Apple Pay)
+   -> redirect back to /order-confirmation/:id
+   -> paystack-webhook        (verifies signature, marks order paid,
+                               records per-vendor split settlement)
+```
 
-File: `src/lib/fx.ts`
+## Vendor payouts
 
-- Change the fetch URL to `https://open.er-api.com/v6/latest/CAD`.
-- Rename `convertFromKES` → `convertFromCAD` (same shape; just a different base).
-- Bump the localStorage cache key to `barakaz_fx_rates_cad_v1` so old KES-based caches are discarded on first load.
+Vendors move from Stripe Connect to **Paystack subaccounts with split payments**:
 
-### 2. Display layer — `formatPrice` converts from CAD
+- The vendor "Payments" page becomes a form for bank country, bank, and account number. Paystack resolves and validates the account name before saving.
+- A subaccount is created for each vendor; the ID is stored alongside their vendor row.
+- At payment time the charge is split by Paystack itself: each vendor's `vendor_payout` share goes to their subaccount, and the platform keeps commission plus processing fee.
+- Orders with vendors who have not connected a payout account fall back to platform-collected funds, tracked in the existing vendor ledger and paid through the existing withdrawal request flow.
 
-File: `src/hooks/useLocale.ts`
+## Currency
 
-- `formatPrice(amountInCAD)` converts to `country.currency` using the new `convertFromCAD`.
-- If the visitor is already in Canada → render as `CA$` directly, no conversion.
-- If FX isn't loaded or the target rate is missing → render the value as CAD (`CA$ 1,500.00`) instead of a garbage number.
-- Keep the `CURRENCIES_NO_DECIMALS` list (KES, UGX, JPY, …) for clean output.
-- Add `CA` (Canada / CAD) to the country map if it isn't already the right default — it is already in the map.
+Product prices stay stored in CAD. Paystack does not settle CAD, so at checkout the total is converted to a Paystack-supported currency using the existing FX helper:
 
-### 3. Vendor & admin price inputs — label as CAD
+- Buyer in Nigeria, Ghana, South Africa, or Kenya -> charged in NGN, GHS, ZAR, or KES.
+- Everyone else -> charged in USD.
+- The converted amount and its currency are shown on the checkout button before redirect, and stored on the order so confirmation emails and admin views match what was charged.
 
-Files:
-- `src/pages/vendor/AddProductPage.tsx` (Step 2, Pricing) — add helper text under the Price field: "Enter price in Canadian Dollars (CAD)". Same for Compare-at price, Bulk price, and per-variant Price / Compare-at price.
-- `src/pages/vendor/EditProductPage.tsx` — same helper text.
-- `src/pages/admin/AdminCommissions.tsx` and anywhere admin sees price — clarify CAD.
-- `src/pages/vendor/VendorProducts.tsx` — the hardcoded `$...` becomes `CA$...` (or use `formatPrice` so the vendor also sees their own country's converted value if they prefer; we'll use `CA$` literal in the vendor dashboard so vendors always see exactly what they entered).
+## Technical details
 
-No database change needed — column stays numeric, just understood as CAD.
+**Database migration**
+- New table `vendor_paystack_accounts` (vendor_id unique, subaccount_code, bank_code, account_number_last4, account_name, currency, percentage_charge, active, timestamps) with GRANTs, RLS: vendor reads/writes own row, admins read all, service_role full.
+- `orders`: add `paystack_reference`, `charged_currency`, `charged_amount`.
+- `order_items`: add `paystack_split_code` (nullable) for settlement traceability.
+- Keep the Stripe columns and `vendor_stripe_accounts` in place but unused, so historical orders stay readable.
 
-### 4. Storefront — no caller changes required
+**Edge functions**
+- `paystack-initialize` (verify_jwt = true): validates the caller owns the order, recomputes the total server-side from `order_items` (never trusts the client), converts CAD to the target currency, builds a `split` payload from each vendor's subaccount and `vendor_payout`, calls `POST /transaction/initialize`, stores the reference, returns `authorization_url`.
+- `paystack-webhook` (verify_jwt = false): verifies the `x-paystack-signature` HMAC-SHA512 against `PAYSTACK_SECRET_KEY`, handles `charge.success` (mark order paid + processing, stamp reference), `charge.failed`, and `transfer.*` for payout status. Idempotent on reference.
+- `paystack-verify` (verify_jwt = true): called by the confirmation page on return, re-verifies the transaction directly with Paystack so the buyer sees the right state even if the webhook is delayed.
+- `paystack-subaccount` (verify_jwt = true): resolves the bank account name via `/bank/resolve`, creates or updates the vendor subaccount, saves the row.
+- `paystack-banks` (verify_jwt = true): proxies `/bank?country=` for the dropdown.
+- Delete `create-stripe-checkout`, `stripe-webhook`, `stripe-connect-onboard`, `stripe-connect-status` and their `config.toml` entries.
 
-Every component that currently calls `formatPrice(price)` already passes the raw numeric DB price. After Step 2's swap, those same calls auto-convert from CAD → buyer's currency. So `ProductCard`, `ProductDetailPage`, `CartPage`, `CheckoutPage`, `WishlistPage`, `VendorStorePage`, `SearchPage`, `Index`, `FlashSaleSection`, `BestDealsSection`, `OrderConfirmationPage`, `AdminOrders`, `VendorOrders`, `VendorEarnings` all work without edits.
+**Frontend**
+- `src/pages/CheckoutPage.tsx`: swap the `create-stripe-checkout` invoke for `paystack-initialize`; replace the `vendor_stripe_accounts` readiness query with `vendor_paystack_accounts`; show the converted charge amount on the pay button.
+- `src/pages/vendor/VendorPayments.tsx`: rewritten as the Paystack bank-details form with connected/not-connected states and the same payout explainer copy, updated for Paystack's T+1 settlement.
+- `src/pages/OrderConfirmationPage.tsx`: call `paystack-verify` with the returned reference instead of reading a Stripe session id.
+- Admin order views show the Paystack reference and charged currency.
 
-### 5. Country picker — make the conversion obvious
-
-File: `src/components/layout/Navbar.tsx` (and mobile equivalent if separate)
-
-- Below the country selector, add tiny helper text: "Prices auto-converted from CAD to {currency_code}". For Canadian visitors it just says "Prices in CAD".
-
-## What stays the same
-
-- Stripe Connect onboarding work from prior turns — untouched.
-- Cart math, commission, vendor payout, order totals — all still numeric (in CAD); the conversion happens only at display.
-- Existing product rows — no migration, no backfill. They're already interpreted as CAD going forward.
+**Secrets**
+- `PAYSTACK_SECRET_KEY` requested through the secure form.
+- Public key kept in code (it is publishable).
+- Old `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` left in place, unused, until you confirm the switch works.
 
 ## Verification
 
-1. Set country picker to **Canada** → a product priced 1500 shows `CA$1,500.00`.
-2. Set picker to **United States** → same product shows roughly `$1,098` (whatever the CAD→USD rate is).
-3. Set picker to **Kenya** → shows roughly `KSh 142,000`.
-4. Disable network, reload → falls back to `CA$1,500.00` instead of a wrong number.
-5. Vendor dashboard still shows the price the vendor entered (`CA$1,500.00`).
+- Test-mode card payment on a two-vendor order: order flips to paid, both vendor shares appear in the Paystack split, ledger balances update.
+- Webhook replay with a bad signature is rejected with 400.
+- A vendor without a payout account still checks out, with funds held at platform level.
+- M-Pesa, bank transfer, and cash on delivery remain untouched.
 
-## Files touched
+## Out of scope
 
-- `src/lib/fx.ts`
-- `src/hooks/useLocale.ts`
-- `src/pages/vendor/AddProductPage.tsx`
-- `src/pages/vendor/EditProductPage.tsx`
-- `src/pages/vendor/VendorProducts.tsx`
-- `src/components/layout/Navbar.tsx` (small helper text)
-
-## Out of scope (ask if you want next)
-
-- Storing each order's FX rate at checkout time so historical orders display the exact converted amount the buyer saw.
-- Letting individual vendors price in their own currency.
+- Automatic conversion of existing Stripe-connected vendors — they re-enter bank details once.
+- Refunds through the admin UI (Paystack dashboard refunds still work).
+- Going live: needs Paystack business verification, which you complete in their dashboard.
