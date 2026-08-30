@@ -510,35 +510,38 @@ const CheckoutPage = () => {
                     <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-primary bg-primary/5">
                       <RadioGroupItem value="card" id="card" checked />
                       <Label htmlFor="card" className="cursor-pointer flex-1">
-                        <span className="font-medium text-sm">Pay securely online (Card)</span>
-                        <p className="text-xs text-muted-foreground">Visa, Mastercard, Amex — processed by Stripe</p>
+                        <span className="font-medium text-sm">Pay securely online</span>
+                        <p className="text-xs text-muted-foreground">
+                          Card, bank transfer, USSD or mobile money — processed by Paystack
+                        </p>
                       </Label>
                     </div>
                   </RadioGroup>
 
                   <p className="mt-3 text-xs text-muted-foreground">
-                    You'll be redirected to a secure Stripe checkout. Your payment is split
-                    automatically — each seller is paid directly into their Stripe account, and
-                    Barakaz keeps only its commission.
+                    You'll be redirected to a secure Paystack checkout. Prices are shown in
+                    Canadian Dollars and charged in your local currency at today's rate. Each
+                    seller's share is settled automatically and Barakaz keeps only its commission.
                   </p>
 
-                  {!cardPaymentReady && (
+                  {!directSettlement && (
                     <div className="mt-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-xs text-warning-foreground">
-                      Card payment isn't available for this order yet — one or more sellers in
-                      your cart haven't finished setting up their Stripe account. Please contact
-                      them directly to pay via M-Pesa, bank transfer or cash on delivery.
+                      One or more sellers in your cart haven't added payout details yet. You can
+                      still pay now — Barakaz holds their share securely and releases it once they
+                      complete setup.
                     </div>
                   )}
 
                   <Button
                     className="w-full mt-4 font-semibold h-12 text-base"
                     size="lg"
-                    disabled={loading || !cardPaymentReady}
+                    disabled={loading}
                     onClick={handlePlaceOrder}
                   >
                     {loading ? "Redirecting to payment..." : "Continue to payment"}
                   </Button>
                 </div>
+
               )}
             </div>
           </div>
