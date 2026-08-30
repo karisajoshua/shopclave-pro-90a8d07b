@@ -116,14 +116,15 @@ const CheckoutPage = () => {
     enabled: vendorIds.length > 0,
   });
 
-  // Stripe Connect readiness per vendor in the cart — card payment requires every
-  // vendor to have an active Connect account so funds route directly to them.
-  const { data: vendorStripeStatuses } = useQuery({
-    queryKey: ["vendor-stripe-statuses", vendorIds],
+  // Paystack payout readiness per vendor in the cart. Vendors without a connected
+  // subaccount are still sellable — their share is held by Barakaz and released
+  // through the normal withdrawal flow.
+  const { data: vendorPaystackStatuses } = useQuery({
+    queryKey: ["vendor-paystack-statuses", vendorIds],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vendor_stripe_accounts")
-        .select("vendor_id, charges_enabled, payouts_enabled")
+        .from("vendor_paystack_accounts")
+        .select("vendor_id, active")
         .in("vendor_id", vendorIds);
       return data || [];
     },
@@ -131,10 +132,11 @@ const CheckoutPage = () => {
   });
 
   const unreadyVendors = vendorIds.filter((vid) => {
-    const row = vendorStripeStatuses?.find((r) => r.vendor_id === vid);
-    return !row?.charges_enabled;
+    const row = vendorPaystackStatuses?.find((r) => r.vendor_id === vid);
+    return !row?.active;
   });
-  const cardPaymentReady = unreadyVendors.length === 0;
+  const directSettlement = unreadyVendors.length === 0;
+
 
   // Live shipping rates from Shippo (keyed by vendor_id)
   const [shippingRates, setShippingRates] = useState<Record<string, any[]>>({});
@@ -258,19 +260,20 @@ const CheckoutPage = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // For card payments, create Stripe Checkout session and redirect
+      // For card payments, initialize a Paystack transaction and redirect
       if (paymentMethod === "card") {
-        const { data: stripeData, error: stripeErr } = await supabase.functions.invoke(
-          "create-stripe-checkout",
+        const { data: paystackData, error: paystackErr } = await supabase.functions.invoke(
+          "paystack-initialize",
           { body: { order_id: data.order_id } }
         );
-        if (stripeErr) throw stripeErr;
-        if (stripeData?.error) throw new Error(stripeData.error);
-        if (!stripeData?.url) throw new Error("Failed to start Stripe checkout");
+        if (paystackErr) throw paystackErr;
+        if (paystackData?.error) throw new Error(paystackData.error);
+        if (!paystackData?.url) throw new Error("Failed to start Paystack checkout");
         clearCart();
-        window.location.href = stripeData.url;
+        window.location.href = paystackData.url;
         return;
       }
+
 
       clearCart();
       toast.success("Order placed successfully!");
@@ -508,35 +511,38 @@ const CheckoutPage = () => {
                     <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-primary bg-primary/5">
                       <RadioGroupItem value="card" id="card" checked />
                       <Label htmlFor="card" className="cursor-pointer flex-1">
-                        <span className="font-medium text-sm">Pay securely online (Card)</span>
-                        <p className="text-xs text-muted-foreground">Visa, Mastercard, Amex — processed by Stripe</p>
+                        <span className="font-medium text-sm">Pay securely online</span>
+                        <p className="text-xs text-muted-foreground">
+                          Card, bank transfer, USSD or mobile money — processed by Paystack
+                        </p>
                       </Label>
                     </div>
                   </RadioGroup>
 
                   <p className="mt-3 text-xs text-muted-foreground">
-                    You'll be redirected to a secure Stripe checkout. Your payment is split
-                    automatically — each seller is paid directly into their Stripe account, and
-                    Barakaz keeps only its commission.
+                    You'll be redirected to a secure Paystack checkout. Prices are shown in
+                    Canadian Dollars and charged in your local currency at today's rate. Each
+                    seller's share is settled automatically and Barakaz keeps only its commission.
                   </p>
 
-                  {!cardPaymentReady && (
+                  {!directSettlement && (
                     <div className="mt-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-xs text-warning-foreground">
-                      Card payment isn't available for this order yet — one or more sellers in
-                      your cart haven't finished setting up their Stripe account. Please contact
-                      them directly to pay via M-Pesa, bank transfer or cash on delivery.
+                      One or more sellers in your cart haven't added payout details yet. You can
+                      still pay now — Barakaz holds their share securely and releases it once they
+                      complete setup.
                     </div>
                   )}
 
                   <Button
                     className="w-full mt-4 font-semibold h-12 text-base"
                     size="lg"
-                    disabled={loading || !cardPaymentReady}
+                    disabled={loading}
                     onClick={handlePlaceOrder}
                   >
                     {loading ? "Redirecting to payment..." : "Continue to payment"}
                   </Button>
                 </div>
+
               )}
             </div>
           </div>

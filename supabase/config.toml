@@ -15,7 +15,14 @@ project_id = "fyfeyolecqnpriwjgzyo"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
-  [functions.stripe-webhook]
+  [functions.paystack-webhook]
     verify_jwt = false
-  [functions.create-stripe-checkout]
+  [functions.paystack-initialize]
     verify_jwt = true
+  [functions.paystack-verify]
+    verify_jwt = true
+  [functions.paystack-subaccount]
+    verify_jwt = true
+  [functions.paystack-banks]
+    verify_jwt = true
+
