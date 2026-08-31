@@ -74,14 +74,54 @@ Deno.serve(async (req) => {
       else console.log("Order marked paid:", orderId ?? reference);
 
       // Record which subaccount each vendor's share went to (Paystack settles the split itself).
-      if (orderId && Array.isArray(data?.split?.subaccounts ?? data?.subaccount)) {
-        // no-op: shape varies; handled below via split_code
-      }
       if (orderId && data?.split?.split_code) {
         await admin
           .from("order_items")
           .update({ paystack_split_code: data.split.split_code })
           .eq("order_id", orderId);
+      }
+
+      // For vendors without a Paystack subaccount, the platform collected the funds.
+      // Credit their ledger so balances and withdrawals reflect what Barakaz owes them.
+      if (orderId) {
+        const { data: items } = await admin
+          .from("order_items")
+          .select("id, vendor_id, vendor_payout, shipping_amount, paystack_split_code")
+          .eq("order_id", orderId);
+
+        if (items && items.length > 0) {
+          const vendorIds = [...new Set(items.map((i) => i.vendor_id))];
+          const { data: accounts } = await admin
+            .from("vendor_paystack_accounts")
+            .select("vendor_id, subaccount_code, active")
+            .in("vendor_id", vendorIds);
+
+          for (const item of items) {
+            const hasSubaccount = accounts?.some(
+              (a) => a.vendor_id === item.vendor_id && a.active && a.subaccount_code,
+            );
+            if (hasSubaccount) continue; // Paystack settled this share directly.
+
+            const payout = Number(item.vendor_payout || 0) + Number(item.shipping_amount || 0);
+            if (payout <= 0) continue;
+
+            const { error: ledgerErr } = await admin.from("vendor_ledger").insert({
+              vendor_id: item.vendor_id,
+              order_item_id: item.id,
+              entry_type: "sale",
+              amount: payout,
+              currency: "CAD",
+              status: "available",
+              stripe_reference: reference ?? null,
+              notes: "Platform-collected via Paystack",
+            });
+            if (ledgerErr) {
+              console.error("Vendor ledger insert failed:", ledgerErr);
+            } else {
+              console.log("Credited vendor ledger:", item.vendor_id, payout);
+            }
+          }
+        }
       }
     } else if (event?.event === "charge.failed") {
       if (orderId || reference) {
