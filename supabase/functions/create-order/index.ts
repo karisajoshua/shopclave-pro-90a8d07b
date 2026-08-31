@@ -201,6 +201,7 @@ Deno.serve(async (req) => {
         shipping_total: shippingTotal,
         shipping_address,
         payment_method,
+        currency: "CAD",
         status: "pending",
         payment_status: "pending",
       })
