@@ -63,7 +63,7 @@ paths:
                   type: object
                   description: User metadata (full_name, role)
       responses:
-        '200': { description: User created, confirmation email sent }
+        '200': { description: "User created; confirmation email sent" }
         '422': { description: Validation error }
 
   /auth/v1/token?grant_type=password:
@@ -626,7 +626,7 @@ components:
         shipping_total: { type: number }
         shipping_address: { type: object }
         paystack_reference: { type: string, nullable: true }
-        charged_currency: { type: string, nullable: true, description: e.g. NGN, KES }
+        charged_currency: { type: string, nullable: true, description: "e.g. NGN, KES" }
         charged_amount: { type: number, nullable: true }
         created_at: { type: string, format: date-time }
 
