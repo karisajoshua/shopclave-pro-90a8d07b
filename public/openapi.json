@@ -1,0 +1,1798 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Barakaz API",
+    "description": "OpenAPI specification for the Barakaz multivendor marketplace.\n\nBarakaz is a Canadian-based global marketplace connecting buyers directly\nwith independent vendors. The backend is powered by Lovable Cloud\n(PostgreSQL + Edge Functions + Auth + Storage).\n\n## Architecture\n- **REST Data API** — auto-generated PostgREST endpoints for all tables\n  (row-level security enforced per role: Admin, Vendor, Customer).\n- **Edge Functions** — custom business logic (orders, payments, emails,\n  geolocation, sitemap, analytics, social).\n- **Auth** — email/password and Google OAuth via the Auth API.\n\n## Conventions\n- All product prices are stored in **CAD** and converted at display/charge\n  time based on the buyer's country.\n- Payments are processed via Paystack with per-vendor split settlements.\n",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Barakaz",
+      "url": "https://www.barakaz.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://fyfeyolecqnpriwjgzyo.supabase.co",
+      "description": "Production (Lovable Cloud)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Authentication and user sessions"
+    },
+    {
+      "name": "REST Data API",
+      "description": "PostgREST table endpoints (RLS enforced)"
+    },
+    {
+      "name": "Orders",
+      "description": "Order creation and lifecycle"
+    },
+    {
+      "name": "Payments",
+      "description": "Paystack payment processing and vendor payouts"
+    },
+    {
+      "name": "Emails",
+      "description": "Transactional email pipeline"
+    },
+    {
+      "name": "Utilities",
+      "description": "Geolocation, sitemap, analytics, social"
+    }
+  ],
+  "paths": {
+    "/auth/v1/signup": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register a new user (email + password)",
+        "description": "Email confirmation is required before sign-in.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "User metadata (full_name, role)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User created",
+            "confirmation email sent": null
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/auth/v1/token?grant_type=password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign in with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/auth/v1/authorize?provider=google": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Start Google OAuth flow",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "google"
+              ]
+            }
+          },
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to Google consent screen"
+          }
+        }
+      }
+    },
+    "/auth/v1/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign out (revoke refresh token)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Signed out"
+          }
+        }
+      }
+    },
+    "/rest/v1/products": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "List/search products",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Select"
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "vendor_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "draft",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "e.g. created_at.desc"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product rows (prices in CAD)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Create a product (vendor)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/rest/v1/products/{id}": {
+      "patch": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Update a product (owner vendor or admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Delete a product",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/rest/v1/categories": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Browse the 5-level category taxonomy",
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "nullable": true
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/v1/vendors": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Public vendor/store directory",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "suspended"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendor rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Vendor"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/v1/orders": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Order history for the signed-in customer (or vendor/admin views)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Order"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/v1/order_items": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Line items with vendor payout and commission snapshots",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/v1/wishlists": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Customer wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wishlist rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WishlistItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Add product to wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Added"
+          }
+        }
+      }
+    },
+    "/rest/v1/product_reviews": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Product reviews (verified-purchase flagged)",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Review"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Submit a review (verified purchasers only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/rest/v1/addresses": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Saved customer addresses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address list"
+          }
+        }
+      }
+    },
+    "/rest/v1/cart_items": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Server-side cart for signed-in users",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart items"
+          }
+        }
+      }
+    },
+    "/rest/v1/chat_threads": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Buyer-vendor chat threads",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Threads"
+          }
+        }
+      }
+    },
+    "/rest/v1/chat_messages": {
+      "post": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Send a message (Realtime-delivered)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Message sent"
+          }
+        }
+      }
+    },
+    "/rest/v1/notifications": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Realtime notifications (orders, messages)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications"
+          }
+        }
+      }
+    },
+    "/rest/v1/vendor_ledger": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Vendor earnings ledger (platform-collected funds)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ledger entries in CAD",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LedgerEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/v1/vendor_paystack_accounts": {
+      "get": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Vendor Paystack payout account status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paystack account rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaystackAccount"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/v1/rpc/get_product_ratings": {
+      "post": {
+        "tags": [
+          "REST Data API"
+        ],
+        "summary": "Aggregated product rating averages",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rating aggregates"
+          }
+        }
+      }
+    },
+    "/functions/v1/create-order": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Create an order",
+        "description": "Creates the order and order_items, computes per-vendor commission\nand payout snapshots, stores currency as CAD, and sends order\nconfirmation emails to the buyer and every affected vendor.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/functions/v1/get-shipping-rates": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Get shipping rates for a delivery address",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "country"
+                ],
+                "properties": {
+                  "country": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Available shipping options"
+          }
+        }
+      }
+    },
+    "/functions/v1/paystack-initialize": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Initialize a Paystack transaction for an order",
+        "description": "Recomputes the order total server-side from order_items, converts\nCAD → buyer's local currency (NGN/GHS/ZAR/KES/EGP/XOF, USD elsewhere),\nand builds a per-vendor flat split for connected Paystack subaccounts.\nReturns the Paystack authorization URL to redirect the buyer to.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "order_id"
+                ],
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "return_path": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transaction initialized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaystackInitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order already paid / invalid"
+          },
+          "403": {
+            "description": "Not the order owner"
+          }
+        }
+      }
+    },
+    "/functions/v1/paystack-verify": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Verify a transaction by reference (order confirmation page)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction status from Paystack"
+          }
+        }
+      }
+    },
+    "/functions/v1/paystack-webhook": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Paystack webhook receiver (server-to-server)",
+        "description": "HMAC-SHA512 signature verified via `x-paystack-signature`.\nHandles `charge.success` (marks order paid, records split codes,\ncredits vendor ledger for platform-collected shares) and\n`charge.failed`.\n",
+        "parameters": [
+          {
+            "name": "x-paystack-signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaystackEvent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Event received"
+          },
+          "400": {
+            "description": "Missing/invalid signature"
+          }
+        }
+      }
+    },
+    "/functions/v1/paystack-banks": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "List banks for a country (vendor payout setup)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "country",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "nigeria",
+                "ghana",
+                "south africa",
+                "kenya",
+                "egypt",
+                "cote d'ivoire"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank list from Paystack"
+          }
+        }
+      }
+    },
+    "/functions/v1/paystack-subaccount": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create/update a vendor Paystack subaccount",
+        "description": "Resolves the bank account holder name via Paystack, then creates or\nupdates the vendor's subaccount so order payments split directly to\ntheir bank.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubaccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subaccount connected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaystackAccount"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vendor profile not found"
+          }
+        }
+      }
+    },
+    "/functions/v1/send-transactional-email": {
+      "post": {
+        "tags": [
+          "Emails"
+        ],
+        "summary": "Send a transactional email (order confirmation, vendor new order)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "template",
+                  "to",
+                  "data"
+                ],
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "enum": [
+                      "order-confirmation",
+                      "vendor-new-order"
+                    ]
+                  },
+                  "to": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email queued/sent"
+          }
+        }
+      }
+    },
+    "/functions/v1/process-email-queue": {
+      "post": {
+        "tags": [
+          "Emails"
+        ],
+        "summary": "Process the queued email backlog (scheduled/invoked)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue processed"
+          }
+        }
+      }
+    },
+    "/functions/v1/auth-email-hook": {
+      "post": {
+        "tags": [
+          "Emails"
+        ],
+        "summary": "Auth hook — renders branded signup/recovery/magic-link emails",
+        "description": "Internal hook called by the auth system (not for public use).",
+        "responses": {
+          "200": {
+            "description": "Rendered email returned"
+          }
+        }
+      }
+    },
+    "/functions/v1/handle-email-unsubscribe": {
+      "get": {
+        "tags": [
+          "Emails"
+        ],
+        "summary": "One-click unsubscribe endpoint",
+        "responses": {
+          "200": {
+            "description": "Unsubscribed"
+          }
+        }
+      }
+    },
+    "/functions/v1/handle-email-suppression": {
+      "post": {
+        "tags": [
+          "Emails"
+        ],
+        "summary": "Record bounce/complaint suppressions",
+        "responses": {
+          "200": {
+            "description": "Suppression recorded"
+          }
+        }
+      }
+    },
+    "/functions/v1/preview-transactional-email": {
+      "get": {
+        "tags": [
+          "Emails"
+        ],
+        "summary": "Render all email templates for preview (internal, API-key gated)",
+        "responses": {
+          "200": {
+            "description": "Rendered template HTML"
+          }
+        }
+      }
+    },
+    "/functions/v1/natively-geolocation": {
+      "get": {
+        "tags": [
+          "Utilities"
+        ],
+        "summary": "Detect visitor country from IP (drives currency + delivery defaults)",
+        "responses": {
+          "200": {
+            "description": "Detected location",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "country": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/generate-sitemap": {
+      "get": {
+        "tags": [
+          "Utilities"
+        ],
+        "summary": "Regenerate the XML sitemap for SEO",
+        "responses": {
+          "200": {
+            "description": "Sitemap XML"
+          }
+        }
+      }
+    },
+    "/functions/v1/refresh-site-analytics": {
+      "post": {
+        "tags": [
+          "Utilities"
+        ],
+        "summary": "Refresh the cached site analytics tables",
+        "responses": {
+          "200": {
+            "description": "Analytics refreshed"
+          }
+        }
+      }
+    },
+    "/functions/v1/ocoya-proxy": {
+      "post": {
+        "tags": [
+          "Utilities"
+        ],
+        "summary": "Proxy for the social media scheduling integration (Ocoya)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proxied response"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "User access token from the Auth API"
+      }
+    },
+    "parameters": {
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "Select": {
+        "name": "select",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        },
+        "description": "PostgREST column/embedding selector, e.g. `*,vendor:vendors(store_name)`"
+      }
+    },
+    "schemas": {
+      "Session": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer"
+          },
+          "token_type": {
+            "type": "string",
+            "example": "bearer"
+          },
+          "user": {
+            "type": "object"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vendor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "description": "Stored in CAD"
+          },
+          "compare_at_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "stock_quantity": {
+            "type": "integer"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "videos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "specifications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "draft",
+              "archived"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProductInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "price",
+          "category_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "description": "CAD"
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string"
+          },
+          "stock_quantity": {
+            "type": "integer"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "level": {
+            "type": "integer"
+          },
+          "commission_rate": {
+            "type": "number",
+            "description": "Percent"
+          }
+        }
+      },
+      "Vendor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "store_name": {
+            "type": "string"
+          },
+          "store_slug": {
+            "type": "string"
+          },
+          "logo_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "suspended"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "shipped",
+              "delivered",
+              "cancelled"
+            ]
+          },
+          "payment_status": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "paid",
+              "failed",
+              "refunded"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "example": "CAD"
+          },
+          "shipping_total": {
+            "type": "number"
+          },
+          "shipping_address": {
+            "type": "object"
+          },
+          "paystack_reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "charged_currency": {
+            "type": "string",
+            "nullable": true,
+            "description": "e.g. NGN",
+            "KES": null
+          },
+          "charged_amount": {
+            "type": "number",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vendor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "price": {
+            "type": "number",
+            "description": "CAD unit price snapshot"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "commission_amount": {
+            "type": "number"
+          },
+          "vendor_payout": {
+            "type": "number"
+          },
+          "shipping_amount": {
+            "type": "number"
+          },
+          "paystack_split_code": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "WishlistItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string"
+          },
+          "verified_purchase": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LedgerEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vendor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order_item_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entry_type": {
+            "type": "string",
+            "enum": [
+              "sale",
+              "withdrawal",
+              "adjustment"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "description": "CAD"
+          },
+          "currency": {
+            "type": "string",
+            "example": "CAD"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "pending",
+              "paid_out"
+            ]
+          }
+        }
+      },
+      "PaystackAccount": {
+        "type": "object",
+        "properties": {
+          "vendor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subaccount_code": {
+            "type": "string"
+          },
+          "business_name": {
+            "type": "string"
+          },
+          "bank_code": {
+            "type": "string"
+          },
+          "bank_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "account_number_last4": {
+            "type": "string"
+          },
+          "account_name": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "NGN",
+              "GHS",
+              "ZAR",
+              "KES",
+              "EGP",
+              "XOF"
+            ]
+          },
+          "country": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateOrderRequest": {
+        "type": "object",
+        "required": [
+          "items",
+          "shipping_address"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "product_id",
+                "quantity"
+              ],
+              "properties": {
+                "product_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "variation": {
+                  "type": "object",
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "shipping_address": {
+            "type": "object",
+            "properties": {
+              "full_name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "address_line1": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "CreateOrderResponse": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "total": {
+            "type": "number",
+            "description": "CAD"
+          }
+        }
+      },
+      "PaystackInitResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Paystack checkout URL"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      },
+      "SubaccountRequest": {
+        "type": "object",
+        "required": [
+          "bank_code",
+          "account_number",
+          "country"
+        ],
+        "properties": {
+          "bank_code": {
+            "type": "string"
+          },
+          "account_number": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string",
+            "enum": [
+              "nigeria",
+              "ghana",
+              "south africa",
+              "kenya",
+              "egypt",
+              "cote d'ivoire"
+            ]
+          },
+          "business_name": {
+            "type": "string"
+          }
+        }
+      },
+      "PaystackEvent": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "example": "charge.success"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "integer",
+                "description": "Subunit"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
