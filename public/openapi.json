@@ -79,8 +79,7 @@
         },
         "responses": {
           "200": {
-            "description": "User created",
-            "confirmation email sent": null
+            "description": "User created; confirmation email sent"
           },
           "422": {
             "description": "Validation error"
@@ -1452,8 +1451,7 @@
           "charged_currency": {
             "type": "string",
             "nullable": true,
-            "description": "e.g. NGN",
-            "KES": null
+            "description": "e.g. NGN, KES"
           },
           "charged_amount": {
             "type": "number",
