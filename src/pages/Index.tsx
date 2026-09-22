@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import { useProductRatings } from "@/hooks/useProductRatings";
+import { readBarakaz } from "@/lib/barakazBridge";
 
 const DEFAULT_CATEGORIES = [
   { name: "Electronics", slug: "electronics", image: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80" },
@@ -77,13 +78,22 @@ const Index = () => {
     queryKey: ["featured-products"],
     queryFn: async () => {
       // Featured products marked by admin
-      const featuredQ = await supabase
+      let featuredQ = await supabase
         .from("products")
         .select("*, vendors(store_name), product_images(url)")
         .eq("status", "active")
         .eq("featured", true)
         .order("created_at", { ascending: false })
         .limit(60);
+      if (!featuredQ.data?.length) {
+        try {
+          const remote = await readBarakaz<any>("products", [
+            { column: "status", op: "eq", value: "active" },
+            { column: "featured", op: "eq", value: true },
+          ]);
+          featuredQ = { ...featuredQ, data: remote.slice(0, 60), error: null } as any;
+        } catch (e) { console.warn("Barakaz catalogue fallback unavailable", e); }
+      }
 
       // Determine if any active products exist at all (for first-run demo logic)
       const anyActiveQ = await supabase
@@ -109,7 +119,8 @@ const Index = () => {
         .select("*")
         .is("parent_id", null)
         .order("name");
-      return data;
+      if (data?.length) return data;
+      try { return await readBarakaz<any>("categories"); } catch { return data; }
     },
   });
 
