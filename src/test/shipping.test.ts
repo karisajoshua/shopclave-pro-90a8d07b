@@ -9,6 +9,7 @@ import {
   addressFingerprint,
   itemsFingerprint,
   canTransitionReturn,
+  NO_DEFAULT_PACKAGE_POLICY,
   VENDOR_SETTABLE_STATUSES,
   QUOTE_TTL_MINUTES,
 } from "../../supabase/functions/_shared/shipping.ts";
@@ -83,47 +84,47 @@ describe("vendor warehouse validation", () => {
   it("rejects a missing phone", () => {
     const r = validateWarehouse({ ...WAREHOUSE, phone: "" });
     expect(r.valid).toBe(false);
-    expect(r.missing).toContain("phone");
+    expect(r.valid === false && r.missing).toContain("phone number");
   });
 
   it("requires a postal code where the country uses one", () => {
     const r = validateWarehouse({ ...WAREHOUSE, zip: "" });
     expect(r.valid).toBe(false);
-    expect(r.missing).toContain("postal code");
+    expect(r.valid === false && r.missing).toContain("postal code");
   });
 });
 
 describe("parcel building", () => {
   const line = (over: Record<string, any> = {}) => ({
-    weight_g: 800,
-    length_cm: 20,
-    width_cm: 15,
-    height_cm: 10,
-    quantity: 2,
-    ...over,
+    product: { weight_g: 800, length_cm: 20, width_cm: 15, height_cm: 10, name: "Kettle", ...over },
+    quantity: (over.quantity as number) ?? 2,
   });
 
   it("combines weights and takes the largest dimensions", () => {
-    const r = buildParcel([line(), line({ length_cm: 40, quantity: 1 })], { enabled: false });
-    expect(r.parcel?.weight).toBe(2400);
-    expect(r.parcel?.length).toBe(40);
+    const r = buildParcel([line(), line({ length_cm: 40, quantity: 1 })], NO_DEFAULT_PACKAGE_POLICY);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.parcel.weight_g).toBe(2400);
+      expect(r.parcel.length_cm).toBe(40);
+    }
   });
 
   it("never invents dimensions without an admin default policy", () => {
-    const r = buildParcel([line({ weight_g: null, length_cm: null })], { enabled: false });
-    expect(r.parcel).toBeNull();
-    expect(r.missing.length).toBeGreaterThan(0);
+    const r = buildParcel([line({ weight_g: null, length_cm: null })], NO_DEFAULT_PACKAGE_POLICY);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.missingFor.length).toBeGreaterThan(0);
   });
 
   it("uses the configured default package when an admin enabled one", () => {
-    const r = buildParcel([line({ weight_g: null, length_cm: null, width_cm: null, height_cm: null })], {
-      enabled: true,
-      weight_g: 500,
-      length_cm: 20,
-      width_cm: 15,
-      height_cm: 10,
-    });
-    expect(r.parcel?.weight).toBe(1000);
+    const r = buildParcel(
+      [line({ weight_g: null, length_cm: null, width_cm: null, height_cm: null, quantity: 2 })],
+      { enabled: true, weight_g: 500, length_cm: 20, width_cm: 15, height_cm: 10 }
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.parcel.weight_g).toBe(1000);
+      expect(r.usedDefaults).toBe(true);
+    }
   });
 });
 
@@ -136,7 +137,7 @@ describe("shipping quote validation", () => {
   it("rejects a quote belonging to another shopper", () => {
     const r = validateQuotes([baseQuote({ user_id: "someone-else" })], ctx());
     expect(r.ok).toBe(false);
-    expect(r.reason).toBe("not_owner");
+    expect(r.ok === false && r.reason).toBe("not_owner");
   });
 
   it("rejects an expired quote", () => {
@@ -144,12 +145,12 @@ describe("shipping quote validation", () => {
       [baseQuote({ expires_at: new Date(Date.now() - 60_000).toISOString() })],
       ctx()
     );
-    expect(r.reason).toBe("expired");
+    expect(r.ok === false && r.reason).toBe("expired");
   });
 
   it("rejects a quote already used by another order", () => {
     const r = validateQuotes([baseQuote({ consumed_order_id: "order-9" })], ctx());
-    expect(r.reason).toBe("already_used");
+    expect(r.ok === false && r.reason).toBe("already_used");
   });
 
   it("rejects a tampered price by ignoring client amounts entirely", () => {
@@ -165,7 +166,7 @@ describe("shipping quote validation", () => {
       [baseQuote({ address_fingerprint: addressFingerprint({ ...ADDR, city: "Ottawa" }) })],
       ctx()
     );
-    expect(r.reason).toBe("address_changed");
+    expect(r.ok === false && r.reason).toBe("address_changed");
   });
 
   it("rejects a quote raised for a different basket", () => {
@@ -173,13 +174,13 @@ describe("shipping quote validation", () => {
       [baseQuote({ items_fingerprint: itemsFingerprint([{ product_id: "p2", quantity: 5 }]) })],
       ctx()
     );
-    expect(r.reason).toBe("items_changed");
+    expect(r.ok === false && r.reason).toBe("items_changed");
   });
 
   it("requires one quote per physical vendor in a multi-vendor order", () => {
     const r = validateQuotes([baseQuote()], ctx({ requiredVendorIds: ["vendor-1", "vendor-2"] }));
     expect(r.ok).toBe(false);
-    expect(r.reason).toBe("missing_vendor");
+    expect(r.ok === false && r.reason).toBe("missing_vendor");
   });
 
   it("accepts one quote per vendor across a multi-vendor order", () => {
@@ -193,7 +194,7 @@ describe("shipping quote validation", () => {
 
   it("rejects a quote for a vendor not in the basket", () => {
     const r = validateQuotes([baseQuote({ vendor_id: "vendor-x" })], ctx());
-    expect(r.reason).toBe("vendor_mismatch");
+    expect(r.ok === false && r.reason).toBe("vendor_mismatch");
   });
 
   it("keeps quotes short-lived", () => {
@@ -222,8 +223,8 @@ describe("carrier status mapping", () => {
 describe("return workflow", () => {
   it("follows the approved path", () => {
     expect(canTransitionReturn("requested", "approved")).toBe(true);
-    expect(canTransitionReturn("approved", "in_transit")).toBe(true);
-    expect(canTransitionReturn("in_transit", "received")).toBe(true);
+    expect(canTransitionReturn("approved", "label_issued")).toBe(true);
+    expect(canTransitionReturn("in_transit_back", "received")).toBe(true);
     expect(canTransitionReturn("received", "inspected")).toBe(true);
     expect(canTransitionReturn("inspected", "refund_approved")).toBe(true);
   });
