@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
               status: "available",
               stripe_reference: reference ?? null,
               notes: "Platform-collected via Paystack",
-            }, { onConflict: "order_item_id", ignoreDuplicates: true });
+            }, { onConflict: "order_item_id,entry_type", ignoreDuplicates: true });
             if (ledgerErr) {
               console.error("Vendor ledger insert failed:", ledgerErr);
             } else {
@@ -159,6 +159,67 @@ Deno.serve(async (req) => {
         let q = admin.from("orders").update({ payment_status: "failed" });
         q = orderId ? q.eq("id", orderId) : q.eq("paystack_reference", reference!);
         await q;
+      }
+    } else if (typeof event?.event === "string" && event.event.startsWith("refund.")) {
+      // Settlement confirmation: only here does a refund become final.
+      const refundId = data?.id ? String(data.id) : null;
+      const txnRef: string | undefined = data?.transaction_reference ?? reference;
+      let q = admin.from("payment_refunds").select("*").limit(1);
+      q = refundId ? q.eq("provider_refund_id", refundId) : q.eq("paystack_reference", txnRef!);
+      const { data: refundRows } = await q;
+      const refundRow = refundRows?.[0];
+
+      if (!refundRow) {
+        console.warn("Refund event with no matching refund record:", refundId, txnRef);
+      } else if (event.event === "refund.processed" || event.event === "refund.pending") {
+        const settled = event.event === "refund.processed";
+        await admin.from("payment_refunds").update({
+          status: settled ? "processed" : "pending",
+          provider_refund_id: refundId ?? refundRow.provider_refund_id,
+          provider_payload: event,
+        }).eq("id", refundRow.id);
+
+        if (settled) {
+          await admin.from("return_requests")
+            .update({ status: "refunded" }).eq("id", refundRow.return_request_id);
+
+          const { data: li } = await admin
+            .from("order_items").select("vendor_id").eq("id", refundRow.order_item_id).maybeSingle();
+          if (li?.vendor_id) {
+            await admin.from("vendor_ledger").upsert({
+              vendor_id: li.vendor_id,
+              order_item_id: refundRow.order_item_id,
+              entry_type: "refund",
+              amount: -Number(refundRow.amount),
+              currency: "CAD",
+              status: "available",
+              stripe_reference: refundId ?? refundRow.paystack_reference,
+              notes: `Refund for return ${refundRow.return_request_id}`,
+            }, { onConflict: "order_item_id,entry_type", ignoreDuplicates: true });
+          }
+        }
+      } else if (event.event === "refund.failed") {
+        await admin.from("payment_refunds").update({
+          status: "failed",
+          failure_reason: data?.status ?? "Provider reported refund failure",
+          provider_payload: event,
+        }).eq("id", refundRow.id);
+
+        // Release the reservation so an admin can retry.
+        const { data: li } = await admin
+          .from("order_items")
+          .select("id, refunded_amount, refunded_amount_provider")
+          .eq("id", refundRow.order_item_id).maybeSingle();
+        if (li) {
+          await admin.from("order_items").update({
+            refunded_amount: Math.max(0, Number(li.refunded_amount || 0) - Number(refundRow.amount || 0)),
+            refunded_amount_provider: Math.max(
+              0, Number(li.refunded_amount_provider || 0) - Number(refundRow.provider_amount || 0),
+            ),
+          }).eq("id", li.id);
+        }
+        await admin.from("return_requests")
+          .update({ status: "approved" }).eq("id", refundRow.return_request_id);
       }
     } else if (typeof event?.event === "string" && event.event.startsWith("transfer.")) {
       console.log("Transfer event:", event.event, data?.reference, data?.status);
