@@ -427,48 +427,46 @@ const CheckoutPage = () => {
 
                         {err && !ratesLoading && (
                           <div className="text-xs text-warning bg-warning/10 rounded p-2">
-                            {err}. An estimated fee will apply.
+                            {err}
                           </div>
-                        )}
-                        {fallbackOrigin[vendorId] && !err && (
-                          <p className="text-[11px] text-muted-foreground italic">
-                            Estimated from Nairobi (vendor origin not set)
-                          </p>
                         )}
 
                         {rates.length > 0 && (
                           <RadioGroup
-                            value={selected?.rate_id || ""}
-                            onValueChange={(rid) => {
-                              const r = rates.find((x) => x.rate_id === rid);
+                            value={selected?.quote_id || ""}
+                            onValueChange={(qid) => {
+                              const r = rates.find((x) => x.quote_id === qid);
                               if (r) setSelectedRates((s) => ({ ...s, [vendorId]: r }));
                             }}
                             className="space-y-1.5"
                           >
                             {rates.map((r) => (
                               <label
-                                key={r.rate_id}
-                                htmlFor={`${vendorId}-${r.rate_id}`}
+                                key={r.quote_id}
+                                htmlFor={`${vendorId}-${r.quote_id}`}
                                 className={`flex items-center gap-3 p-2 rounded-md border cursor-pointer text-sm ${
-                                  selected?.rate_id === r.rate_id ? "border-primary bg-primary/5" : "border-border"
+                                  selected?.quote_id === r.quote_id ? "border-primary bg-primary/5" : "border-border"
                                 }`}
                               >
-                                <RadioGroupItem value={r.rate_id} id={`${vendorId}-${r.rate_id}`} />
+                                <RadioGroupItem value={r.quote_id} id={`${vendorId}-${r.quote_id}`} />
                                 <Truck className="h-4 w-4 text-primary shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{r.provider} — {r.service}</p>
+                                  <p className="font-medium truncate">
+                                    {r.is_estimate ? r.service : `${r.provider} — ${r.service}`}
+                                  </p>
                                   <p className="text-[11px] text-muted-foreground">
                                     {r.estimated_days ? `${r.estimated_days} day${r.estimated_days > 1 ? "s" : ""}` : r.duration_terms || "Standard"}
                                   </p>
                                 </div>
-                                <p className="font-semibold">{formatPrice(r.amount)}</p>
+                                <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
                               </label>
                             ))}
                           </RadioGroup>
                         )}
                         {rates.length > 0 && selected?.is_estimate && (
                           <p className="text-[11px] text-muted-foreground italic">
-                            Estimated rate based on destination — final cost confirmed by carrier.
+                            Barakaz estimate — the carrier is assigned after payment and the price you
+                            pay does not change.
                           </p>
                         )}
                       </div>
