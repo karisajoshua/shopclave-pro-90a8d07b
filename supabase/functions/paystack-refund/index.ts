@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     if (!reclaimed) return json({ refund: existing, duplicate: true }, 200);
     refund = reclaimed;
   }
-  if (claimErr || !refundRow) {
+  if (claimErr || !refund) {
     console.error("Refund claim failed:", claimErr);
     return json({ error: "Could not start refund" }, 500);
   }
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
       provider_amount: confirmedAmount,
       provider_currency: provider?.currency ?? providerCurrency,
       provider_payload: result,
-    }).eq("id", refundRow.id);
+    }).eq("id", refund.id);
 
     // Reserve the amount against the line immediately so a second request cannot
     // refund the same money while the first is still in flight.
@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      refund_id: refundRow.id,
+      refund_id: refund.id,
       status: settled ? "processed" : "pending",
       amount_cad: amountCad,
       provider_amount: confirmedAmount,
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     await admin.from("payment_refunds").update({
       status: "failed", failure_reason: e instanceof Error ? e.message : String(e),
-    }).eq("id", refundRow.id);
+    }).eq("id", refund.id);
     console.error("Paystack refund failed:", e);
     return json({ error: "Refund provider request failed" }, 502);
   }
