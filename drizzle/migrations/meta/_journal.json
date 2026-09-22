@@ -8,6 +8,13 @@
       "when": 1788133684738,
       "tag": "0000_paystack_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790115723324,
+      "tag": "0001_logistics_fulfilment_model",
+      "breakpoints": true
     }
   ]
 }
