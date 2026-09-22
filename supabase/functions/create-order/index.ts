@@ -29,7 +29,7 @@ const OrderSchema = z.object({
     email: z.string().email().max(255).optional().or(z.literal("")),
   }),
   payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
-  shipping_selections: z.array(ShippingSelectionSchema).optional().default([]),
+  shipping_quote_ids: z.array(z.string().uuid()).max(50).optional().default([]),
 });
 
 Deno.serve(async (req) => {
