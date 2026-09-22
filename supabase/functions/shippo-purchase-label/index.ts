@@ -97,7 +97,19 @@ Deno.serve(async (req) => {
     };
 
     if (s.is_estimate || !s.rate_id) {
-      await fail("No live carrier rate was attached to this shipment — arrange collection manually.");
+      await admin.from("shipments").update({
+        fulfilment_mode: "manual",
+        status: "manual_booking_required",
+        label_error: null,
+        label_purchased_at: null,
+      }).eq("id", s.id);
+      await admin.from("tracking_events").upsert({
+        shipment_id: s.id,
+        status: "manual_booking_required",
+        description: "No live carrier label is available. The vendor must arrange this parcel with a carrier manually.",
+        provider_event_key: `manual-required-${s.id}`,
+      }, { onConflict: "shipment_id,provider_event_key", ignoreDuplicates: true });
+      results.push({ shipment_id: s.id, skipped: "manual_booking_required" });
       continue;
     }
 
