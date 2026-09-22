@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Truck, FileText, ExternalLink } from "lucide-react";
+import { Truck, FileText, ExternalLink, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
@@ -89,6 +89,13 @@ const VendorShipments = () => {
                   </span>
                 </div>
 
+                {s.fulfilment_mode === "manual" && (
+                  <div className="text-xs bg-warning/10 text-warning rounded p-3 flex gap-2 items-start">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div><strong>Manual carrier booking required.</strong><br />Arrange collection directly with a carrier, then record the carrier and tracking/reference details before marking the parcel collected.</div>
+                  </div>
+                )}
+
                 {s.label_error && (
                   <p className="text-xs text-destructive bg-destructive/10 rounded p-2">
                     Label problem: {s.label_error}
@@ -96,7 +103,7 @@ const VendorShipments = () => {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {next && (
+                  {next && s.fulfilment_mode !== "manual" && (
                     <Button
                       size="sm"
                       variant="outline"
