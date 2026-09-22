@@ -13,7 +13,7 @@ set fulfilment_mode = 'manual',
 where is_estimate = true or rate_id is null;
 
 create or replace function public.protect_shipment_financials()
-returns trigger language plpgsql security definer set search_path=public as $$
+returns trigger language plpgsql security invoker set search_path=public as $$
 declare is_service boolean := coalesce(auth.role(),'')='service_role';
 begin
   if is_service then return new; end if;
@@ -36,7 +36,7 @@ for each row execute function public.protect_shipment_financials();
 -- Manual carrier details may be supplied by the owning vendor, but only for
 -- shipments explicitly placed into manual mode. Prevent spoofing on integrated parcels.
 create or replace function public.validate_manual_fulfilment_update()
-returns trigger language plpgsql security definer set search_path=public as $$
+returns trigger language plpgsql security invoker set search_path=public as $$
 begin
   if coalesce(auth.role(),'') = 'service_role' then return new; end if;
   if new.fulfilment_mode is distinct from old.fulfilment_mode then
