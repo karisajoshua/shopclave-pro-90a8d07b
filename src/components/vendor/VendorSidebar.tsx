@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle, Images, GraduationCap, CreditCard } from "lucide-react";
+import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle, Images, GraduationCap, CreditCard, Truck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
