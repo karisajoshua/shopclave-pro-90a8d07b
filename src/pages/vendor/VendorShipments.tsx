@@ -39,7 +39,7 @@ const VendorShipments = () => {
 
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("shipments").update({ status }).eq("id", id);
+      const { error } = await supabase.from("shipments").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
       if (error) throw error;
     },
     onSuccess: () => {
