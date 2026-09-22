@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Store, Package, ShoppingBag, Users, Upload, Bell, FolderTree,
   Settings, Wallet, BarChart3, CreditCard, MessageCircle, Images, Shield, UserCog,
-  Megaphone, GraduationCap, BookOpen, Share2, Percent,
+  Megaphone, GraduationCap, BookOpen, Share2, Percent, RotateCcw,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -33,6 +33,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Operations",
     items: [
       { title: "Orders", url: "/admin/orders", icon: ShoppingBag, permission: PERMISSIONS.ORDERS_VIEW },
+      { title: "Returns & Refunds", url: "/admin/returns", icon: RotateCcw, permission: PERMISSIONS.ORDERS_UPDATE },
       { title: "Evidence Vault", url: "/admin/evidence", icon: Shield, permission: PERMISSIONS.EVIDENCE_VIEW },
       { title: "Messages", url: "/admin/messages", icon: MessageCircle, permission: PERMISSIONS.MESSAGES_VIEW },
       { title: "Notifications", url: "/admin/notifications", icon: Bell, permission: PERMISSIONS.NOTIFICATIONS_SEND },
