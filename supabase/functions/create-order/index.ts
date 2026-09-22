@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     const productIds = items.map((i) => i.product_id);
     const { data: products, error: prodError } = await adminClient
       .from("products")
-      .select("id, price, vendor_id, stock, status, name")
+      .select("id, price, vendor_id, stock, status, name, is_physical")
       .in("id", productIds);
 
     if (prodError || !products) {
@@ -378,7 +378,7 @@ Deno.serve(async (req) => {
       });
 
       const subtotal = total;
-      const deliveryFee = shippingTotal > 0 ? shippingTotal : 200;
+      const deliveryFee = shippingTotal;
       const grandTotal = subtotal + deliveryFee;
 
       const paymentLabelMap: Record<string, string> = {
