@@ -52,6 +52,18 @@ Deno.serve(async (req) => {
     const reference: string | undefined = data?.reference;
     const orderId: string | undefined = data?.metadata?.order_id;
 
+    // Whole-event idempotency: a replayed delivery is acknowledged, never reprocessed.
+    const eventKey = String(
+      data?.id ?? `${event?.event}-${reference ?? "unknown"}-${data?.status ?? ""}`,
+    );
+    const { error: seenErr } = await admin
+      .from("webhook_events")
+      .insert({ provider: "paystack", event_key: `${event?.event}:${eventKey}`, payload: event });
+    if (seenErr?.code === "23505") {
+      console.log("Duplicate Paystack event ignored:", event?.event, reference);
+      return json({ received: true, duplicate: true });
+    }
+
     if (event?.event === "charge.success") {
       const currency = data?.currency ?? null;
       const amount = data?.amount != null && currency ? fromSubunit(data.amount, currency) : null;

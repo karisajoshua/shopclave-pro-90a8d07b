@@ -57,6 +57,7 @@ export const VENDOR_SETTABLE_STATUSES: ShipmentStatus[] = [
 
 export const RETURN_STATUSES = [
   "requested",
+  "reviewed",
   "approved",
   "rejected",
   "label_issued",
@@ -65,21 +66,25 @@ export const RETURN_STATUSES = [
   "inspected",
   "refund_approved",
   "refund_rejected",
+  "refund_processing",
   "refunded",
 ] as const;
 export type ReturnStatus = (typeof RETURN_STATUSES)[number];
 
 /** Allowed return-workflow transitions. */
 export const RETURN_TRANSITIONS: Record<ReturnStatus, ReturnStatus[]> = {
-  requested: ["approved", "rejected"],
-  approved: ["label_issued", "in_transit_back", "rejected"],
+  requested: ["reviewed", "approved", "rejected"],
+  reviewed: ["approved", "rejected"],
+  approved: ["label_issued", "in_transit_back", "rejected", "refund_processing"],
   rejected: [],
   label_issued: ["in_transit_back"],
   in_transit_back: ["received"],
-  received: ["inspected"],
-  inspected: ["refund_approved", "refund_rejected"],
-  refund_approved: ["refunded"],
+  received: ["inspected", "refund_processing"],
+  inspected: ["refund_approved", "refund_rejected", "refund_processing"],
+  refund_approved: ["refund_processing", "refunded"],
   refund_rejected: [],
+  // Settlement is confirmed by the provider webhook, never by the request alone.
+  refund_processing: ["refunded", "refund_rejected"],
   refunded: [],
 };
 
