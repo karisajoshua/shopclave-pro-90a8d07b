@@ -10,6 +10,7 @@ export type TrackingEvent = {
 
 export const SHIPMENT_STATUS_LABELS: Record<string, string> = {
   preparing: "Preparing",
+  manual_booking_required: "Manual carrier booking required",
   ready_for_pickup: "Ready for pickup",
   collected: "Collected",
   in_transit: "In transit",
