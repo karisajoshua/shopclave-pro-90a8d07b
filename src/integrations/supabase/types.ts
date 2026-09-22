@@ -907,11 +907,16 @@ export type Database = {
           compare_at_price: number | null
           condition: string
           created_at: string
+          customs_value_cad: number | null
           deal_ends_at: string | null
           description: string | null
           featured: boolean
+          handling_time_days: number
           height_cm: number | null
+          hs_code: string | null
           id: string
+          international_shipping_enabled: boolean
+          is_physical: boolean
           key_features: string[] | null
           length_cm: number | null
           name: string
@@ -934,11 +939,16 @@ export type Database = {
           compare_at_price?: number | null
           condition?: string
           created_at?: string
+          customs_value_cad?: number | null
           deal_ends_at?: string | null
           description?: string | null
           featured?: boolean
+          handling_time_days?: number
           height_cm?: number | null
+          hs_code?: string | null
           id?: string
+          international_shipping_enabled?: boolean
+          is_physical?: boolean
           key_features?: string[] | null
           length_cm?: number | null
           name: string
@@ -961,11 +971,16 @@ export type Database = {
           compare_at_price?: number | null
           condition?: string
           created_at?: string
+          customs_value_cad?: number | null
           deal_ends_at?: string | null
           description?: string | null
           featured?: boolean
+          handling_time_days?: number
           height_cm?: number | null
+          hs_code?: string | null
           id?: string
+          international_shipping_enabled?: boolean
+          is_physical?: boolean
           key_features?: string[] | null
           length_cm?: number | null
           name?: string
@@ -1300,6 +1315,105 @@ export type Database = {
           },
         ]
       }
+      return_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          order_id: string
+          order_item_id: string | null
+          quantity: number
+          reason: string
+          refund_amount_cad: number | null
+          refund_reference: string | null
+          return_carrier: string | null
+          return_label_url: string | null
+          return_tracking_number: string | null
+          shipment_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vendor_id: string
+          vendor_notes: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          order_item_id?: string | null
+          quantity?: number
+          reason: string
+          refund_amount_cad?: number | null
+          refund_reference?: string | null
+          return_carrier?: string | null
+          return_label_url?: string | null
+          return_tracking_number?: string | null
+          shipment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vendor_id: string
+          vendor_notes?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          order_item_id?: string | null
+          quantity?: number
+          reason?: string
+          refund_amount_cad?: number | null
+          refund_reference?: string | null
+          return_carrier?: string | null
+          return_label_url?: string | null
+          return_tracking_number?: string | null
+          shipment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string
+          vendor_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -1331,6 +1445,249 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_item_id: string
+          quantity: number
+          shipment_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_item_id: string
+          quantity?: number
+          shipment_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          quantity?: number
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          carrier: string | null
+          commercial_invoice_url: string | null
+          created_at: string
+          delivered_at: string | null
+          estimated_delivery: string | null
+          fx_rate_to_cad: number
+          id: string
+          is_estimate: boolean
+          label_error: string | null
+          label_purchased_at: string | null
+          label_url: string | null
+          order_id: string
+          quote_id: string | null
+          rate_id: string | null
+          service: string | null
+          shipping_amount_cad: number
+          shipping_amount_original: number
+          shipping_currency_original: string
+          shippo_shipment_id: string | null
+          shippo_transaction_id: string | null
+          status: string
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          carrier?: string | null
+          commercial_invoice_url?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          estimated_delivery?: string | null
+          fx_rate_to_cad?: number
+          id?: string
+          is_estimate?: boolean
+          label_error?: string | null
+          label_purchased_at?: string | null
+          label_url?: string | null
+          order_id: string
+          quote_id?: string | null
+          rate_id?: string | null
+          service?: string | null
+          shipping_amount_cad?: number
+          shipping_amount_original?: number
+          shipping_currency_original?: string
+          shippo_shipment_id?: string | null
+          shippo_transaction_id?: string | null
+          status?: string
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          carrier?: string | null
+          commercial_invoice_url?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          estimated_delivery?: string | null
+          fx_rate_to_cad?: number
+          id?: string
+          is_estimate?: boolean
+          label_error?: string | null
+          label_purchased_at?: string | null
+          label_url?: string | null
+          order_id?: string
+          quote_id?: string | null
+          rate_id?: string | null
+          service?: string | null
+          shipping_amount_cad?: number
+          shipping_amount_original?: number
+          shipping_currency_original?: string
+          shippo_shipment_id?: string | null
+          shippo_transaction_id?: string | null
+          status?: string
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_quotes: {
+        Row: {
+          address_fingerprint: string
+          amount_cad: number
+          amount_original: number
+          consumed_order_id: string | null
+          created_at: string
+          currency_original: string
+          duration_terms: string | null
+          estimated_days: number | null
+          expires_at: string
+          fx_rate_to_cad: number
+          id: string
+          is_estimate: boolean
+          items_fingerprint: string
+          parcel: Json
+          provider: string
+          rate_id: string | null
+          service: string
+          source: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          address_fingerprint: string
+          amount_cad: number
+          amount_original: number
+          consumed_order_id?: string | null
+          created_at?: string
+          currency_original: string
+          duration_terms?: string | null
+          estimated_days?: number | null
+          expires_at: string
+          fx_rate_to_cad?: number
+          id?: string
+          is_estimate?: boolean
+          items_fingerprint: string
+          parcel?: Json
+          provider: string
+          rate_id?: string | null
+          service: string
+          source?: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          address_fingerprint?: string
+          amount_cad?: number
+          amount_original?: number
+          consumed_order_id?: string | null
+          created_at?: string
+          currency_original?: string
+          duration_terms?: string | null
+          estimated_days?: number | null
+          expires_at?: string
+          fx_rate_to_cad?: number
+          id?: string
+          is_estimate?: boolean
+          items_fingerprint?: string
+          parcel?: Json
+          provider?: string
+          rate_id?: string | null
+          service?: string
+          source?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_quotes_consumed_order_id_fkey"
+            columns: ["consumed_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_quotes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_quotes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1522,6 +1879,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      tracking_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          occurred_at: string
+          provider_event_key: string | null
+          provider_status: string | null
+          raw: Json
+          shipment_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          occurred_at?: string
+          provider_event_key?: string | null
+          provider_status?: string | null
+          raw?: Json
+          shipment_id: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          occurred_at?: string
+          provider_event_key?: string | null
+          provider_status?: string | null
+          raw?: Json
+          shipment_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_locations: {
         Row: {
@@ -2065,6 +2469,30 @@ export type Database = {
           warehouse_address?: Json | null
           website?: string | null
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      webhook_events: {
+        Row: {
+          event_key: string
+          id: string
+          payload: Json
+          processed_at: string
+          provider: string
+        }
+        Insert: {
+          event_key: string
+          id?: string
+          payload?: Json
+          processed_at?: string
+          provider: string
+        }
+        Update: {
+          event_key?: string
+          id?: string
+          payload?: Json
+          processed_at?: string
+          provider?: string
         }
         Relationships: []
       }

@@ -1,5 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import {
+  addressFingerprint,
+  itemsFingerprint,
+  validateQuotes,
+  round2,
+} from "../_shared/shipping.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,13 +20,7 @@ const OrderItemSchema = z.object({
   variant_label: z.string().max(255).nullable().optional(),
 });
 
-const ShippingSelectionSchema = z.object({
-  vendor_id: z.string().uuid(),
-  rate_id: z.string().min(1).max(255),
-  amount: z.number().min(0).max(100000),
-  carrier: z.string().max(100).optional(),
-  service: z.string().max(255).optional(),
-});
+// The client may only reference server-issued quotes — never prices.
 
 const OrderSchema = z.object({
   items: z.array(OrderItemSchema).min(1).max(50),
@@ -35,7 +35,7 @@ const OrderSchema = z.object({
     email: z.string().email().max(255).optional().or(z.literal("")),
   }),
   payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
-  shipping_selections: z.array(ShippingSelectionSchema).optional().default([]),
+  shipping_quote_ids: z.array(z.string().uuid()).max(50).optional().default([]),
 });
 
 Deno.serve(async (req) => {
@@ -78,10 +78,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { items, shipping_address, payment_method, shipping_selections } = parsed.data;
-    const shippingByVendor = new Map(
-      (shipping_selections || []).map((s) => [s.vendor_id, s])
-    );
+    const { items, shipping_address, payment_method, shipping_quote_ids } = parsed.data;
+
 
     // Use service role client for trusted operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -90,7 +88,7 @@ Deno.serve(async (req) => {
     const productIds = items.map((i) => i.product_id);
     const { data: products, error: prodError } = await adminClient
       .from("products")
-      .select("id, price, vendor_id, stock, status, name")
+      .select("id, price, vendor_id, stock, status, name, is_physical")
       .in("id", productIds);
 
     if (prodError || !products) {
@@ -189,15 +187,73 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Compute shipping total from selections
-    const shippingTotal = (shipping_selections || []).reduce((s, x) => s + Number(x.amount || 0), 0);
+    // ---- Shipping: validate server-issued quotes, never client prices ----
+    const physicalVendorIds = [
+      ...new Set(
+        orderItems
+          .filter((oi) => (productMap.get(oi.product_id) as any)?.is_physical !== false)
+          .map((oi) => oi.vendor_id),
+      ),
+    ];
+
+    let quotes: any[] = [];
+    let shippingTotal = 0;
+
+    if (physicalVendorIds.length > 0) {
+      if (!shipping_quote_ids || shipping_quote_ids.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "A shipping option must be selected before checkout." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const { data: quoteRows, error: quoteErr } = await adminClient
+        .from("shipping_quotes")
+        .select("*")
+        .in("id", shipping_quote_ids);
+
+      if (quoteErr || !quoteRows || quoteRows.length !== shipping_quote_ids.length) {
+        return new Response(JSON.stringify({ error: "Shipping quote not found. Please re-select delivery." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const check = validateQuotes(quoteRows as any, {
+        userId: user.id,
+        requiredVendorIds: physicalVendorIds,
+        addressFingerprint: addressFingerprint(shipping_address),
+        itemsFingerprint: itemsFingerprint(items),
+      });
+
+      if (!check.ok) {
+        const messages: Record<string, string> = {
+          not_owner: "This shipping quote does not belong to you.",
+          expired: "Your shipping quote expired. Please re-select a delivery option.",
+          already_used: "This shipping quote has already been used.",
+          address_changed: "Your delivery address changed. Please re-select a delivery option.",
+          items_changed: "Your cart changed. Please re-select a delivery option.",
+          vendor_mismatch: "Invalid shipping selection.",
+          missing_vendor: "A delivery option is missing for one of the sellers.",
+          not_found: "Shipping quote not found.",
+        };
+        console.error(`create-order shipping rejected: ${check.reason} ${check.detail ?? ""}`);
+        return new Response(JSON.stringify({ error: messages[check.reason] ?? "Invalid shipping selection." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      quotes = quoteRows;
+      shippingTotal = check.totalCad;
+    }
 
     // Insert order
     const { data: order, error: orderError } = await adminClient
       .from("orders")
       .insert({
         user_id: user.id,
-        total: total + shippingTotal,
+        total: round2(total + shippingTotal),
         shipping_total: shippingTotal,
         shipping_address,
         payment_method,
@@ -215,26 +271,85 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Insert order items (attach shipping selection per vendor — applied to first item per vendor)
+    // Insert order items. Shipping cost is recorded once per vendor (on the
+    // first line) so payment totals stay correct; the shipment lifecycle lives
+    // in public.shipments.
+    const quoteByVendor = new Map(quotes.map((q) => [q.vendor_id, q]));
     const usedVendor = new Set<string>();
     const itemsToInsert = orderItems.map((oi) => {
-      const sel = shippingByVendor.get(oi.vendor_id);
+      const q = quoteByVendor.get(oi.vendor_id);
       const base: any = { ...oi, order_id: order.id };
-      if (sel && !usedVendor.has(oi.vendor_id)) {
-        base.shipping_rate_id = sel.rate_id;
-        base.shipping_amount = sel.amount;
-        base.carrier = sel.carrier ?? null;
+      if (q && !usedVendor.has(oi.vendor_id)) {
+        base.shipping_rate_id = q.rate_id;
+        base.shipping_amount = Number(q.amount_cad);
+        base.carrier = q.provider ?? null;
         usedVendor.add(oi.vendor_id);
       }
       return base;
     });
-    const { error: itemsError } = await adminClient.from("order_items").insert(itemsToInsert);
+    const { data: insertedItems, error: itemsError } = await adminClient
+      .from("order_items")
+      .insert(itemsToInsert)
+      .select("id, vendor_id, quantity");
 
-    if (itemsError) {
+    if (itemsError || !insertedItems) {
       return new Response(JSON.stringify({ error: "Failed to create order items" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // One fulfilment/shipment per vendor, with its own items.
+    if (quotes.length > 0) {
+      const { data: shipments, error: shipErr } = await adminClient
+        .from("shipments")
+        .insert(
+          quotes.map((q) => ({
+            order_id: order.id,
+            vendor_id: q.vendor_id,
+            quote_id: q.id,
+            status: "preparing",
+            carrier: q.provider,
+            service: q.service,
+            rate_id: q.rate_id,
+            is_estimate: q.is_estimate,
+            shippo_shipment_id: (q.parcel as any)?.shippo_shipment_id ?? null,
+            shipping_amount_original: q.amount_original,
+            shipping_currency_original: q.currency_original,
+            fx_rate_to_cad: q.fx_rate_to_cad,
+            shipping_amount_cad: q.amount_cad,
+          })),
+        )
+        .select("id, vendor_id");
+
+      if (shipErr) {
+        console.error(`[order ${order.id}] shipment creation failed:`, shipErr);
+      } else if (shipments) {
+        const shipmentItems = insertedItems
+          .map((oi) => {
+            const s = shipments.find((sh) => sh.vendor_id === oi.vendor_id);
+            return s ? { shipment_id: s.id, order_item_id: oi.id, quantity: oi.quantity } : null;
+          })
+          .filter(Boolean) as Array<Record<string, unknown>>;
+        if (shipmentItems.length > 0) {
+          const { error: siErr } = await adminClient.from("shipment_items").insert(shipmentItems);
+          if (siErr) console.error(`[order ${order.id}] shipment_items failed:`, siErr);
+        }
+        for (const s of shipments) {
+          await adminClient.from("tracking_events").insert({
+            shipment_id: s.id,
+            status: "preparing",
+            description: "Order received — vendor is preparing your parcel.",
+            provider_event_key: `created-${s.id}`,
+          });
+        }
+      }
+
+      // Burn the quotes so they cannot be replayed on another order.
+      await adminClient
+        .from("shipping_quotes")
+        .update({ consumed_order_id: order.id })
+        .in("id", quotes.map((q) => q.id));
     }
 
     // Send order confirmation email (best-effort — never fail the order)
@@ -263,7 +378,7 @@ Deno.serve(async (req) => {
       });
 
       const subtotal = total;
-      const deliveryFee = shippingTotal > 0 ? shippingTotal : 200;
+      const deliveryFee = shippingTotal;
       const grandTotal = subtotal + deliveryFee;
 
       const paymentLabelMap: Record<string, string> = {

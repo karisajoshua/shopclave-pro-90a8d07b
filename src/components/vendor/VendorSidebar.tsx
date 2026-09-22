@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle, Images, GraduationCap, CreditCard } from "lucide-react";
+import { LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Upload, Settings, Home, MessageCircle, Images, GraduationCap, CreditCard, Truck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -36,6 +36,7 @@ const groups: { label: string; items: { title: string; url: string; icon: any }[
     label: "Sales",
     items: [
       { title: "Orders", url: "/vendor/orders", icon: ShoppingBag },
+      { title: "Fulfilment", url: "/vendor/shipments", icon: Truck },
       { title: "Earnings", url: "/vendor/earnings", icon: DollarSign },
       { title: "Payments", url: "/vendor/payments", icon: CreditCard },
     ],

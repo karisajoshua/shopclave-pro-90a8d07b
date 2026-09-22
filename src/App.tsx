@@ -71,6 +71,7 @@ import VendorDashboard from "./pages/vendor/VendorDashboard";
 import VendorProducts from "./pages/vendor/VendorProducts";
 import AddProductPage from "./pages/vendor/AddProductPage";
 import VendorOrders from "./pages/vendor/VendorOrders";
+import VendorShipments from "./pages/vendor/VendorShipments";
 import VendorEarnings from "./pages/vendor/VendorEarnings";
 import VendorPayments from "./pages/vendor/VendorPayments";
 import VendorNotifications from "./pages/vendor/VendorNotifications";
@@ -87,6 +88,7 @@ import VendorResourceCategory from "./pages/vendor/VendorResourceCategory";
 import VendorResourceDetail from "./pages/vendor/VendorResourceDetail";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 import OrderChatPage from "./pages/OrderChatPage";
+import OrderTrackingPage from "./pages/OrderTrackingPage";
 import EmailUnsubscribePage from "./pages/EmailUnsubscribePage";
 
 const queryClient = new QueryClient();
@@ -112,6 +114,7 @@ const App = () => (
                 <Route path="/wishlist" element={<WishlistPage />} />
                 <Route path="/account/wishlist" element={<WishlistPage />} />
                 <Route path="/orders/:orderId/chat" element={<OrderChatPage />} />
+                <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
                 <Route path="/product/:slug" element={<ProductDetailPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/category/:slug" element={<SearchPage />} />
@@ -176,6 +179,7 @@ const App = () => (
                   <Route path="products/new" element={<AddProductPage />} />
                   <Route path="products/edit/:id" element={<EditProductPage />} />
                   <Route path="orders" element={<VendorOrders />} />
+                  <Route path="shipments" element={<VendorShipments />} />
                   <Route path="earnings" element={<VendorEarnings />} />
                   <Route path="payments" element={<VendorPayments />} />
                   <Route path="notifications" element={<VendorNotifications />} />
