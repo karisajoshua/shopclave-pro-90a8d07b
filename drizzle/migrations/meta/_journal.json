@@ -22,6 +22,13 @@
       "when": 1790117409229,
       "tag": "0002_shipments_manual_fulfilment_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790118538504,
+      "tag": "0003_refund_ledger_and_financial_guards",
+      "breakpoints": true
     }
   ]
 }
