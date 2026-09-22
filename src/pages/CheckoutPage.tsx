@@ -478,9 +478,7 @@ const CheckoutPage = () => {
                     onClick={handleConfirmDelivery}
                     disabled={
                       ratesLoading ||
-                      Object.keys(vendorGroups).some(
-                        (vid) => (shippingRates[vid]?.length || 0) > 0 && !selectedRates[vid]
-                      )
+                      Object.keys(vendorGroups).some((vid) => !selectedRates[vid])
                     }
                   >
                     Confirm Delivery Details
