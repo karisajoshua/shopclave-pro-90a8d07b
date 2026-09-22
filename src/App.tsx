@@ -87,6 +87,7 @@ import VendorResourceCategory from "./pages/vendor/VendorResourceCategory";
 import VendorResourceDetail from "./pages/vendor/VendorResourceDetail";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 import OrderChatPage from "./pages/OrderChatPage";
+import OrderTrackingPage from "./pages/OrderTrackingPage";
 import EmailUnsubscribePage from "./pages/EmailUnsubscribePage";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
                 <Route path="/wishlist" element={<WishlistPage />} />
                 <Route path="/account/wishlist" element={<WishlistPage />} />
                 <Route path="/orders/:orderId/chat" element={<OrderChatPage />} />
+                <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
                 <Route path="/product/:slug" element={<ProductDetailPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/category/:slug" element={<SearchPage />} />
