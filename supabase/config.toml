@@ -35,3 +35,5 @@ project_id = "fyfeyolecqnpriwjgzyo"
 
   [functions.paystack-refund]
     verify_jwt = true
+  [functions.external-bridge]
+    verify_jwt = false
