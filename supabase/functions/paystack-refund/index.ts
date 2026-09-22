@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     if (!reclaimed) return json({ refund: existing, duplicate: true }, 200);
     refund = reclaimed;
   }
-  if (claimErr || !refund) {
+  if (!refund) {
     console.error("Refund claim failed:", claimErr);
     return json({ error: "Could not start refund" }, 500);
   }
