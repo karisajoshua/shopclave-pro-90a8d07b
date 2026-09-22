@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
-import { corsHeaders, json, paystackFetch, toSubunit } from "../_shared/paystack.ts";
+import { corsHeaders, json, paystackFetch, toSubunit, fromSubunit } from "../_shared/paystack.ts";
 
 const Schema = z.object({ return_request_id: z.string().uuid() });
 
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
   if (!role) return json({ error: "Admin access required" }, 403);
 
-  const parsed = Schema.safeParse(await req.json());
+  const parsed = Schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return json({ error: "Invalid return request" }, 400);
   const returnId = parsed.data.return_request_id;
 
@@ -33,34 +33,70 @@ Deno.serve(async (req) => {
     .select("id, order_id, order_item_id, status")
     .eq("id", returnId).single();
   if (rrErr || !rr) return json({ error: "Return request not found" }, 404);
-  if (rr.status !== "approved") return json({ error: "Return must be approved before refund" }, 409);
+  if (!["approved", "received", "inspected"].includes(rr.status))
+    return json({ error: "Return must be approved before refund" }, 409);
 
   const { data: order } = await admin
     .from("orders")
-    .select("id, paystack_reference, charged_currency, charged_amount, payment_status")
+    .select("id, total, paystack_reference, charged_currency, charged_amount, payment_status")
     .eq("id", rr.order_id).single();
   if (!order?.paystack_reference || order.payment_status !== "paid")
     return json({ error: "Order has no refundable verified Paystack payment" }, 409);
 
   const { data: item } = await admin
     .from("order_items")
-    .select("id, price, quantity, shipping_amount, refunded_amount")
+    .select("id, vendor_id, price, quantity, refunded_amount, refunded_amount_provider")
     .eq("id", rr.order_item_id).eq("order_id", rr.order_id).single();
   if (!item) return json({ error: "Return item not found" }, 404);
 
   // Conservative default: refund merchandise value only. Shipping stays non-refundable
   // unless a later admin policy explicitly changes this server-side.
-  const amount = Math.max(0, Number(item.price) * Number(item.quantity) - Number(item.refunded_amount || 0));
-  if (amount <= 0) return json({ error: "Nothing remains to refund" }, 409);
-  const currency = order.charged_currency || "CAD";
+  const amountCad = Math.max(
+    0,
+    Number(item.price) * Number(item.quantity) - Number(item.refunded_amount || 0),
+  );
+  if (amountCad <= 0) return json({ error: "Nothing remains to refund" }, 409);
+
+  // Orders are accounted in CAD but the customer was charged in the provider currency.
+  // Convert using the conversion actually used at charge time - never send a CAD number
+  // as if it were the charged currency.
+  const orderTotalCad = Number(order.total || 0);
+  const chargedAmount = Number(order.charged_amount || 0);
+  const providerCurrency = order.charged_currency || "CAD";
+  if (orderTotalCad <= 0 || chargedAmount <= 0)
+    return json({ error: "Original charge amount is unknown; cannot refund safely" }, 409);
+
+  const fxRate = chargedAmount / orderTotalCad;
+  let providerAmount = Math.round(amountCad * fxRate * 100) / 100;
+
+  // Never refund more than the customer actually paid, across all refunds on this order.
+  const { data: priorRefunds } = await admin
+    .from("payment_refunds")
+    .select("provider_amount, status")
+    .eq("order_id", order.id)
+    .in("status", ["processing", "pending", "processed"]);
+  const alreadyRefunded = (priorRefunds ?? []).reduce(
+    (sum, r) => sum + Number(r.provider_amount || 0), 0,
+  );
+  const remaining = Math.round((chargedAmount - alreadyRefunded) * 100) / 100;
+  if (remaining <= 0) return json({ error: "Order is already fully refunded" }, 409);
+  if (providerAmount > remaining) providerAmount = remaining;
 
   // Claim idempotency before contacting Paystack.
   const { data: refundRow, error: claimErr } = await admin
     .from("payment_refunds")
     .insert({
-      return_request_id: returnId, order_id: rr.order_id,
-      paystack_reference: order.paystack_reference, amount, currency,
-      status: "processing", requested_by: user.id,
+      return_request_id: returnId,
+      order_id: rr.order_id,
+      order_item_id: item.id,
+      paystack_reference: order.paystack_reference,
+      amount: amountCad,
+      currency: "CAD",
+      provider_amount: providerAmount,
+      provider_currency: providerCurrency,
+      fx_rate_used: fxRate,
+      status: "processing",
+      requested_by: user.id,
     })
     .select().single();
 
@@ -69,52 +105,76 @@ Deno.serve(async (req) => {
       .from("payment_refunds").select("*").eq("return_request_id", returnId).single();
     return json({ refund: existing, duplicate: true }, 200);
   }
-  if (claimErr || !refundRow) return json({ error: "Could not start refund" }, 500);
+  if (claimErr || !refundRow) {
+    console.error("Refund claim failed:", claimErr);
+    return json({ error: "Could not start refund" }, 500);
+  }
 
   try {
     const result = await paystackFetch("/refund", {
       method: "POST",
       body: JSON.stringify({
         transaction: order.paystack_reference,
-        amount: toSubunit(amount, currency),
-        currency,
-        merchant_note: `ShopClave return ${returnId}`,
+        amount: toSubunit(providerAmount, providerCurrency),
+        currency: providerCurrency,
+        merchant_note: `Barakaz return ${returnId}`,
         customer_note: "Refund for approved return",
       }),
     });
 
     const provider = result?.data ?? {};
+    // Paystack acknowledges the request; settlement is confirmed later by the
+    // refund.processed webhook. Treat anything else as still in flight.
+    const providerStatus = String(provider?.status ?? "pending").toLowerCase();
+    const settled = providerStatus === "processed" || providerStatus === "success";
+    const confirmedAmount = provider?.amount != null
+      ? fromSubunit(provider.amount, provider?.currency ?? providerCurrency)
+      : providerAmount;
+
     await admin.from("payment_refunds").update({
-      status: "processed",
+      status: settled ? "processed" : "pending",
       provider_refund_id: provider?.id ? String(provider.id) : null,
+      provider_amount: confirmedAmount,
+      provider_currency: provider?.currency ?? providerCurrency,
       provider_payload: result,
-      updated_at: new Date().toISOString(),
     }).eq("id", refundRow.id);
 
+    // Reserve the amount against the line immediately so a second request cannot
+    // refund the same money while the first is still in flight.
     await admin.from("order_items").update({
-      refunded_amount: Number(item.refunded_amount || 0) + amount,
+      refunded_amount: Number(item.refunded_amount || 0) + amountCad,
+      refunded_amount_provider: Number(item.refunded_amount_provider || 0) + confirmedAmount,
     }).eq("id", item.id);
 
-    await admin.from("return_requests").update({ status: "refunded" }).eq("id", returnId);
+    await admin.from("return_requests").update({
+      status: settled ? "refunded" : "refund_processing",
+      refund_amount_cad: amountCad,
+      refund_reference: provider?.id ? String(provider.id) : order.paystack_reference,
+    }).eq("id", returnId);
 
-    // Reverse platform-held vendor credit where applicable. Unique refund record above
-    // makes this path execute once per return.
-    await admin.from("vendor_ledger").insert({
-      vendor_id: (await admin.from("order_items").select("vendor_id").eq("id", item.id).single()).data?.vendor_id,
-      order_item_id: item.id,
-      entry_type: "refund",
-      amount: -amount,
-      currency: "CAD",
-      stripe_reference: provider?.id ? String(provider.id) : order.paystack_reference,
-      status: "available",
-      notes: `Refund for return ${returnId}`,
+    if (settled) {
+      await admin.from("vendor_ledger").upsert({
+        vendor_id: item.vendor_id,
+        order_item_id: item.id,
+        entry_type: "refund",
+        amount: -amountCad,
+        currency: "CAD",
+        stripe_reference: provider?.id ? String(provider.id) : order.paystack_reference,
+        status: "available",
+        notes: `Refund for return ${returnId}`,
+      }, { onConflict: "order_item_id,entry_type", ignoreDuplicates: true });
+    }
+
+    return json({
+      refund_id: refundRow.id,
+      status: settled ? "processed" : "pending",
+      amount_cad: amountCad,
+      provider_amount: confirmedAmount,
+      provider_currency: provider?.currency ?? providerCurrency,
     });
-
-    return json({ refund_id: refundRow.id, status: "processed" });
   } catch (e) {
     await admin.from("payment_refunds").update({
       status: "failed", failure_reason: e instanceof Error ? e.message : String(e),
-      updated_at: new Date().toISOString(),
     }).eq("id", refundRow.id);
     console.error("Paystack refund failed:", e);
     return json({ error: "Refund provider request failed" }, 502);
