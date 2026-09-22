@@ -38,6 +38,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVendors from "./pages/admin/AdminVendors";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminReturns from "./pages/admin/AdminReturns";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminBulkImport from "./pages/admin/AdminBulkImport";
@@ -140,6 +141,7 @@ const App = () => (
                   <Route path="vendors" element={<RequirePermission perm={PERMISSIONS.VENDORS_VIEW}><AdminVendors /></RequirePermission>} />
                   <Route path="products" element={<RequirePermission perm={PERMISSIONS.PRODUCTS_VIEW}><AdminProducts /></RequirePermission>} />
                   <Route path="orders" element={<RequirePermission perm={PERMISSIONS.ORDERS_VIEW}><AdminOrders /></RequirePermission>} />
+                  <Route path="returns" element={<RequirePermission perm={PERMISSIONS.ORDERS_UPDATE}><AdminReturns /></RequirePermission>} />
                   <Route path="users" element={<RequirePermission perm={PERMISSIONS.USERS_VIEW}><AdminUsers /></RequirePermission>} />
                   <Route path="categories" element={<RequirePermission perm={PERMISSIONS.CATEGORIES_MANAGE}><AdminCategories /></RequirePermission>} />
                   <Route path="bulk-import" element={<RequirePermission perm={PERMISSIONS.BULK_IMPORT_USE}><AdminBulkImport /></RequirePermission>} />
