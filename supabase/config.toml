@@ -37,3 +37,6 @@ project_id = "fyfeyolecqnpriwjgzyo"
     verify_jwt = true
   [functions.external-bridge]
     verify_jwt = false
+
+[functions.barakaz-catalog]
+verify_jwt = true
