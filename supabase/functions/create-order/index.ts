@@ -14,13 +14,7 @@ const OrderItemSchema = z.object({
   variant_label: z.string().max(255).nullable().optional(),
 });
 
-const ShippingSelectionSchema = z.object({
-  vendor_id: z.string().uuid(),
-  rate_id: z.string().min(1).max(255),
-  amount: z.number().min(0).max(100000),
-  carrier: z.string().max(100).optional(),
-  service: z.string().max(255).optional(),
-});
+// The client may only reference server-issued quotes — never prices.
 
 const OrderSchema = z.object({
   items: z.array(OrderItemSchema).min(1).max(50),
