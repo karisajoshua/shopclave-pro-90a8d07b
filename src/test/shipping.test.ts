@@ -55,12 +55,12 @@ const ctx = (over: Record<string, any> = {}) => ({
 
 describe("currency normalisation", () => {
   it("converts a carrier currency into CAD", () => {
-    expect(normalizeToCad(95.5, "KES", RATES)).toBeCloseTo(1, 5);
-    expect(normalizeToCad(7.4, "USD", RATES)).toBeCloseTo(10, 5);
+    expect(normalizeToCad(95.5, "KES", RATES)?.amount_cad).toBeCloseTo(1, 5);
+    expect(normalizeToCad(7.4, "USD", RATES)?.amount_cad).toBeCloseTo(10, 5);
   });
 
   it("passes CAD through untouched", () => {
-    expect(normalizeToCad(12.34, "CAD", RATES)).toBeCloseTo(12.34, 5);
+    expect(normalizeToCad(12.34, "CAD", RATES)?.amount_cad).toBeCloseTo(12.34, 5);
   });
 
   it("refuses to guess unknown currencies", () => {
