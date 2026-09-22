@@ -146,7 +146,7 @@ const CheckoutPage = () => {
   const [ratesLoading, setRatesLoading] = useState(false);
 
   const shippingTotal = Object.values(selectedRates).reduce(
-    (s: number, r: any) => s + Number(r?.amount || 0),
+    (s: number, r: any) => s + Number(r?.amount_cad || 0),
     0
   );
   const grandTotal = totalPrice + shippingTotal;
@@ -185,8 +185,7 @@ const CheckoutPage = () => {
         const fbMap: Record<string, boolean> = {};
         const autoSelect: Record<string, any> = {};
         (data?.vendors || []).forEach((v: any) => {
-          if (v.error) errMap[v.vendor_id] = v.error;
-          if (v.usedFallbackOrigin) fbMap[v.vendor_id] = true;
+          if (v.blocked) errMap[v.vendor_id] = v.message;
           rateMap[v.vendor_id] = v.rates || [];
           if (v.rates?.length) autoSelect[v.vendor_id] = v.rates[0];
         });
@@ -244,13 +243,8 @@ const CheckoutPage = () => {
         })),
         shipping_address: address,
         payment_method: paymentMethod,
-        shipping_selections: Object.entries(selectedRates).map(([vendor_id, r]: [string, any]) => ({
-          vendor_id,
-          rate_id: r.rate_id,
-          amount: Number(r.amount),
-          carrier: r.provider,
-          service: r.service,
-        })),
+        // Only opaque quote ids — the server owns every shipping price.
+        shipping_quote_ids: Object.values(selectedRates).map((r: any) => r.quote_id),
       };
 
       const { data, error } = await supabase.functions.invoke("create-order", {
