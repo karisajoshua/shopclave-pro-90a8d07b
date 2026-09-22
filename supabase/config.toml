@@ -40,3 +40,6 @@ project_id = "fyfeyolecqnpriwjgzyo"
 
 [functions.barakaz-catalog]
 verify_jwt = true
+
+[functions.barakaz-sync]
+verify_jwt = true
