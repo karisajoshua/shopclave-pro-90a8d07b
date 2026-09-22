@@ -32,3 +32,6 @@ project_id = "fyfeyolecqnpriwjgzyo"
   [functions.get-shipping-rates]
     verify_jwt = true
 
+
+  [functions.paystack-refund]
+    verify_jwt = true
