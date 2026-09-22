@@ -36,6 +36,13 @@
       "when": 1790118684249,
       "tag": "0004_shipment_guard_manual_fulfilment",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790118848278,
+      "tag": "0005_lock_down_internal_security_definer_functions",
+      "breakpoints": true
     }
   ]
 }
