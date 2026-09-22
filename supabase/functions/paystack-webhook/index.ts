@@ -123,6 +123,25 @@ Deno.serve(async (req) => {
           }
         }
       }
+
+      // Payment is verified server-side — only now may labels be purchased.
+      if (orderId) {
+        const { error: dupErr } = await admin
+          .from("webhook_events")
+          .insert({ provider: "paystack-label", event_key: orderId, payload: { reference } });
+        if (dupErr?.code === "23505") {
+          console.log("Label purchase already triggered for order", orderId);
+        } else {
+          try {
+            const { error: labelErr } = await admin.functions.invoke("shippo-purchase-label", {
+              body: { order_id: orderId },
+            });
+            if (labelErr) console.error("shippo-purchase-label invoke failed:", labelErr);
+          } catch (e) {
+            console.error("shippo-purchase-label error:", e);
+          }
+        }
+      }
     } else if (event?.event === "charge.failed") {
       if (orderId || reference) {
         let q = admin.from("orders").update({ payment_status: "failed" });
