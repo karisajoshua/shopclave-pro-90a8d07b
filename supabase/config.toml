@@ -25,4 +25,10 @@ project_id = "fyfeyolecqnpriwjgzyo"
     verify_jwt = true
   [functions.paystack-banks]
     verify_jwt = true
+  [functions.shippo-webhook]
+    verify_jwt = false
+  [functions.shippo-purchase-label]
+    verify_jwt = false
+  [functions.get-shipping-rates]
+    verify_jwt = true
 
