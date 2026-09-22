@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useOutletContext, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Truck, FileText, ExternalLink, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -14,6 +16,7 @@ const VENDOR_FLOW = ["preparing", "ready_for_pickup", "collected"];
 const VendorShipments = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
   const queryClient = useQueryClient();
+  const [manual, setManual] = useState<Record<string, { carrier: string; tracking: string; reference: string }>>({});
 
   const { data } = useQuery({
     queryKey: ["vendor-shipments", vendor?.id],
@@ -44,6 +47,25 @@ const VendorShipments = () => {
       toast.success("Shipment updated");
     },
     onError: (e: any) => toast.error(e.message || "Could not update shipment"),
+  });
+
+  const saveManual = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const v = manual[id] || { carrier: "", tracking: "", reference: "" };
+      if (!v.carrier.trim() || (!v.tracking.trim() && !v.reference.trim())) throw new Error("Enter a carrier and a tracking or booking reference.");
+      const { error } = await supabase.from("shipments").update({
+        manual_carrier: v.carrier.trim(),
+        manual_tracking_number: v.tracking.trim() || null,
+        manual_booking_reference: v.reference.trim() || null,
+        manual_booked_at: new Date().toISOString(),
+        carrier: v.carrier.trim(),
+        tracking_number: v.tracking.trim() || null,
+        status: "collected",
+      }).eq("id", id).eq("vendor_id", vendor.id).eq("fulfilment_mode", "manual");
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["vendor-shipments"] }); toast.success("Manual carrier booking recorded"); },
+    onError: (e: any) => toast.error(e.message || "Could not record carrier booking"),
   });
 
   const shipments = data?.shipments || [];
@@ -93,6 +115,15 @@ const VendorShipments = () => {
                   <div className="text-xs bg-warning/10 text-warning rounded p-3 flex gap-2 items-start">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <div><strong>Manual carrier booking required.</strong><br />Arrange collection directly with a carrier, then record the carrier and tracking/reference details before marking the parcel collected.</div>
+                  </div>
+                )}
+
+                {s.fulfilment_mode === "manual" && s.status === "manual_booking_required" && (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <Input placeholder="Carrier *" value={manual[s.id]?.carrier || ""} onChange={(e) => setManual((m) => ({ ...m, [s.id]: { carrier: e.target.value, tracking: m[s.id]?.tracking || "", reference: m[s.id]?.reference || "" } }))} />
+                    <Input placeholder="Tracking number" value={manual[s.id]?.tracking || ""} onChange={(e) => setManual((m) => ({ ...m, [s.id]: { carrier: m[s.id]?.carrier || "", tracking: e.target.value, reference: m[s.id]?.reference || "" } }))} />
+                    <Input placeholder="Booking reference" value={manual[s.id]?.reference || ""} onChange={(e) => setManual((m) => ({ ...m, [s.id]: { carrier: m[s.id]?.carrier || "", tracking: m[s.id]?.tracking || "", reference: e.target.value } }))} />
+                    <div className="sm:col-span-3"><Button size="sm" onClick={() => saveManual.mutate({ id: s.id })} disabled={saveManual.isPending}>Confirm carrier booking & collection</Button></div>
                   </div>
                 )}
 
