@@ -36,6 +36,7 @@ const groups: { label: string; items: { title: string; url: string; icon: any }[
     label: "Sales",
     items: [
       { title: "Orders", url: "/vendor/orders", icon: ShoppingBag },
+      { title: "Fulfilment", url: "/vendor/shipments", icon: Truck },
       { title: "Earnings", url: "/vendor/earnings", icon: DollarSign },
       { title: "Payments", url: "/vendor/payments", icon: CreditCard },
     ],
