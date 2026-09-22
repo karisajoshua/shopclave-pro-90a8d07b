@@ -51,36 +51,32 @@ Deno.serve(async (req) => {
 
   // Conservative default: refund merchandise value only. Shipping stays non-refundable
   // unless a later admin policy explicitly changes this server-side.
-  const amountCad = Math.max(
-    0,
-    Number(item.price) * Number(item.quantity) - Number(item.refunded_amount || 0),
-  );
-  if (amountCad <= 0) return json({ error: "Nothing remains to refund" }, 409);
-
-  // Orders are accounted in CAD but the customer was charged in the provider currency.
-  // Convert using the conversion actually used at charge time - never send a CAD number
-  // as if it were the charged currency.
-  const orderTotalCad = Number(order.total || 0);
-  const chargedAmount = Number(order.charged_amount || 0);
-  const providerCurrency = order.charged_currency || "CAD";
-  if (orderTotalCad <= 0 || chargedAmount <= 0)
-    return json({ error: "Original charge amount is unknown; cannot refund safely" }, 409);
-
-  const fxRate = chargedAmount / orderTotalCad;
-  let providerAmount = Math.round(amountCad * fxRate * 100) / 100;
-
-  // Never refund more than the customer actually paid, across all refunds on this order.
   const { data: priorRefunds } = await admin
     .from("payment_refunds")
     .select("provider_amount, status")
     .eq("order_id", order.id)
     .in("status", ["processing", "pending", "processed"]);
-  const alreadyRefunded = (priorRefunds ?? []).reduce(
+  const alreadyRefundedProvider = (priorRefunds ?? []).reduce(
     (sum, r) => sum + Number(r.provider_amount || 0), 0,
   );
-  const remaining = Math.round((chargedAmount - alreadyRefunded) * 100) / 100;
-  if (remaining <= 0) return json({ error: "Order is already fully refunded" }, 409);
-  if (providerAmount > remaining) providerAmount = remaining;
+
+  const plan = planRefund({
+    lineTotalCad: Number(item.price) * Number(item.quantity),
+    alreadyRefundedCad: Number(item.refunded_amount || 0),
+    orderTotalCad: Number(order.total || 0),
+    chargedAmount: Number(order.charged_amount || 0),
+    chargedCurrency: order.charged_currency || "CAD",
+    alreadyRefundedProvider,
+  });
+  if (!plan.ok) {
+    const messages: Record<string, string> = {
+      nothing_to_refund: "Nothing remains to refund",
+      unknown_charge: "Original charge amount is unknown; cannot refund safely",
+      already_fully_refunded: "Order is already fully refunded",
+    };
+    return json({ error: messages[plan.reason] }, 409);
+  }
+  const { amount_cad: amountCad, provider_amount: providerAmount, provider_currency: providerCurrency, fx_rate: fxRate } = plan;
 
   // Claim idempotency before contacting Paystack.
   const { data: refundRow, error: claimErr } = await admin
