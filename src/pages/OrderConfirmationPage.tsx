@@ -98,8 +98,8 @@ const OrderConfirmationPage = () => {
           <Link to="/">
             <Button variant="outline">Continue Shopping</Button>
           </Link>
-          <Link to="/account">
-            <Button>View My Orders</Button>
+          <Link to={`/orders/${orderId}/tracking`}>
+            <Button>Track Order</Button>
           </Link>
         </div>
       </div>
