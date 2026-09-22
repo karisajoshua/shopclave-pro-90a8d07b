@@ -100,10 +100,27 @@ Deno.serve(async (req) => {
     })
     .select().single();
 
+  let refund = refundRow;
   if (claimErr?.code === "23505") {
     const { data: existing } = await admin
       .from("payment_refunds").select("*").eq("return_request_id", returnId).single();
-    return json({ refund: existing, duplicate: true }, 200);
+    // Only a previously failed attempt may be retried; in-flight or settled
+    // refunds are reported back untouched so retries stay safe.
+    if (!existing || existing.status !== "failed") {
+      return json({ refund: existing, duplicate: true }, 200);
+    }
+    const { data: reclaimed } = await admin
+      .from("payment_refunds")
+      .update({
+        status: "processing", failure_reason: null,
+        amount: amountCad, provider_amount: providerAmount,
+        provider_currency: providerCurrency, fx_rate_used: fxRate,
+        requested_by: user.id,
+      })
+      .eq("id", existing.id).eq("status", "failed")
+      .select().single();
+    if (!reclaimed) return json({ refund: existing, duplicate: true }, 200);
+    refund = reclaimed;
   }
   if (claimErr || !refundRow) {
     console.error("Refund claim failed:", claimErr);
