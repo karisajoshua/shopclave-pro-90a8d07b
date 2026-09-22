@@ -1495,12 +1495,17 @@ export type Database = {
           created_at: string
           delivered_at: string | null
           estimated_delivery: string | null
+          fulfilment_mode: string
           fx_rate_to_cad: number
           id: string
           is_estimate: boolean
           label_error: string | null
           label_purchased_at: string | null
           label_url: string | null
+          manual_booked_at: string | null
+          manual_booking_reference: string | null
+          manual_carrier: string | null
+          manual_tracking_number: string | null
           order_id: string
           quote_id: string | null
           rate_id: string | null
@@ -1522,12 +1527,17 @@ export type Database = {
           created_at?: string
           delivered_at?: string | null
           estimated_delivery?: string | null
+          fulfilment_mode?: string
           fx_rate_to_cad?: number
           id?: string
           is_estimate?: boolean
           label_error?: string | null
           label_purchased_at?: string | null
           label_url?: string | null
+          manual_booked_at?: string | null
+          manual_booking_reference?: string | null
+          manual_carrier?: string | null
+          manual_tracking_number?: string | null
           order_id: string
           quote_id?: string | null
           rate_id?: string | null
@@ -1549,12 +1559,17 @@ export type Database = {
           created_at?: string
           delivered_at?: string | null
           estimated_delivery?: string | null
+          fulfilment_mode?: string
           fx_rate_to_cad?: number
           id?: string
           is_estimate?: boolean
           label_error?: string | null
           label_purchased_at?: string | null
           label_url?: string | null
+          manual_booked_at?: string | null
+          manual_booking_reference?: string | null
+          manual_carrier?: string | null
+          manual_tracking_number?: string | null
           order_id?: string
           quote_id?: string | null
           rate_id?: string | null
