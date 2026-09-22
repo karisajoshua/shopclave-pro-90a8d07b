@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
             const payout = Number(item.vendor_payout || 0) + Number(item.shipping_amount || 0);
             if (payout <= 0) continue;
 
-            const { error: ledgerErr } = await admin.from("vendor_ledger").insert({
+            const { error: ledgerErr } = await admin.from("vendor_ledger").upsert({
               vendor_id: item.vendor_id,
               order_item_id: item.id,
               entry_type: "sale",
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
               status: "available",
               stripe_reference: reference ?? null,
               notes: "Platform-collected via Paystack",
-            });
+            }, { onConflict: "order_item_id", ignoreDuplicates: true });
             if (ledgerErr) {
               console.error("Vendor ledger insert failed:", ledgerErr);
             } else {
