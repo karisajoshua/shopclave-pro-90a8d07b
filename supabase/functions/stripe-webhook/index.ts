@@ -29,8 +29,12 @@ Deno.serve(async(req)=>{
    for(const item of items||[]){const payout=Number(item.vendor_payout||0)+Number(item.shipping_amount||0);if(payout>0){const {error:ledgerError}=await admin.from("vendor_ledger").upsert({vendor_id:item.vendor_id,order_item_id:item.id,entry_type:"sale",amount:payout,currency:"CAD",status:"available",stripe_reference:s.payment_intent||s.id,notes:"Platform-collected via Stripe"},{onConflict:"order_item_id,entry_type",ignoreDuplicates:true});if(ledgerError)throw ledgerError;}}
    // Shipment fulfilment needs its own durable retry/outbox; do not mark an
    // event processed when downstream processing fails.
-   const {data:labelMarker}=await admin.from("webhook_events").select("event_key").eq("provider","stripe-label").eq("event_key",orderId).maybeSingle();
-   if(!labelMarker){
+    // Sandbox guard: never buy real Shippo labels for Stripe test-mode events
+    // or when explicitly disabled. Fails safe: anything other than livemode===true skips.
+    const labelsDisabled=Deno.env.get("STRIPE_TEST_DISABLE_SHIPPO_LABELS")==="true"||event.livemode!==true;
+    if(labelsDisabled)console.log("Shippo label purchase skipped (Stripe test mode or disabled)",{orderId});
+    const {data:labelMarker}=labelsDisabled?{data:true}:await admin.from("webhook_events").select("event_key").eq("provider","stripe-label").eq("event_key",orderId).maybeSingle();
+    if(!labelMarker){
     const {data:labelResult,error:labelError}=await admin.functions.invoke("shippo-purchase-label",{body:{order_id:orderId}});
     if(labelError)throw labelError;
     if(labelResult?.results?.some((result:{error?:string})=>Boolean(result.error)))throw new Error("One or more shipping labels failed; retry required");
