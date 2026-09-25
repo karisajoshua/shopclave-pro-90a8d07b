@@ -23,6 +23,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [cardProvider, setCardProvider] = useState<"paystack" | "stripe">("paystack");
   const [activeStep, setActiveStep] = useState<Step>("address");
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
@@ -254,17 +255,18 @@ const CheckoutPage = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // For card payments, initialize a Paystack transaction and redirect
+      // Card payments can use Paystack or Stripe. Both are server-authoritative hosted checkouts.
       if (paymentMethod === "card") {
-        const { data: paystackData, error: paystackErr } = await supabase.functions.invoke(
-          "paystack-initialize",
+        const functionName = cardProvider === "stripe" ? "stripe-initialize" : "paystack-initialize";
+        const { data: paymentData, error: paymentErr } = await supabase.functions.invoke(
+          functionName,
           { body: { order_id: data.order_id } }
         );
-        if (paystackErr) throw paystackErr;
-        if (paystackData?.error) throw new Error(paystackData.error);
-        if (!paystackData?.url) throw new Error("Failed to start Paystack checkout");
+        if (paymentErr) throw paymentErr;
+        if (paymentData?.error) throw new Error(paymentData.error);
+        if (!paymentData?.url) throw new Error(`Failed to start ${cardProvider === "stripe" ? "Stripe" : "Paystack"} checkout`);
         clearCart();
-        window.location.href = paystackData.url;
+        window.location.href = paymentData.url;
         return;
       }
 
@@ -509,10 +511,23 @@ const CheckoutPage = () => {
                     </div>
                   </RadioGroup>
 
+                  <div className="mt-3 space-y-2">
+                    <Label className="text-xs font-medium">Card payment provider</Label>
+                    <RadioGroup value={cardProvider} onValueChange={(v) => setCardProvider(v as "paystack" | "stripe")} className="grid grid-cols-2 gap-2">
+                      <label htmlFor="provider-paystack" className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer ${cardProvider === "paystack" ? "border-primary bg-primary/5" : "border-border"}`}>
+                        <RadioGroupItem value="paystack" id="provider-paystack" />
+                        <span className="text-sm font-medium">Paystack</span>
+                      </label>
+                      <label htmlFor="provider-stripe" className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer ${cardProvider === "stripe" ? "border-primary bg-primary/5" : "border-border"}`}>
+                        <RadioGroupItem value="stripe" id="provider-stripe" />
+                        <span className="text-sm font-medium">Stripe</span>
+                      </label>
+                    </RadioGroup>
+                  </div>
+
                   <p className="mt-3 text-xs text-muted-foreground">
-                    You'll be redirected to a secure Paystack checkout. Prices are shown in
-                    Canadian Dollars and charged in your local currency at today's rate. Each
-                    seller's share is settled automatically and Barakaz keeps only its commission.
+                    You'll be redirected to a secure {cardProvider === "stripe" ? "Stripe" : "Paystack"} checkout.
+                    Stripe charges this Barakaz order in CAD; Paystack uses its supported settlement currency.
                   </p>
 
                   {!directSettlement && (
