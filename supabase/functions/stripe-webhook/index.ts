@@ -10,7 +10,8 @@ Deno.serve(async(req)=>{
  let event:any;try{event=JSON.parse(body)}catch{return json({error:"Invalid payload"},400)}
  const admin=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
  // Only acknowledge completed processing. Failed attempts must be retried by Stripe.
- const {data:processed}=await admin.from("webhook_events").select("event_key").eq("provider","stripe").eq("event_key",event.id).maybeSingle();
+ const {data:processed,error:lookupError}=await admin.from("webhook_events").select("event_key").eq("provider","stripe").eq("event_key",event.id).maybeSingle();
+ if(lookupError)return json({error:"Event lookup failed; retry"},500);
  if(processed)return json({received:true,duplicate:true});
  try {
  if(event.type==="checkout.session.completed"||event.type==="checkout.session.async_payment_succeeded"){
@@ -23,14 +24,16 @@ Deno.serve(async(req)=>{
    if(Math.abs(Number(order.charged_amount)-amount)>0.01 || String(order.charged_currency).toUpperCase()!==currency)throw new Error("Amount or currency mismatch");
    const {error:paidError}=await admin.from("orders").update({payment_provider:"stripe",payment_status:"paid",status:"processing",stripe_checkout_session_id:s.id,stripe_payment_intent_id:typeof s.payment_intent==="string"?s.payment_intent:null,updated_at:new Date().toISOString()}).eq("id",orderId).neq("payment_status","paid");
    if(paidError)throw paidError;
-   const {data:items}=await admin.from("order_items").select("id,vendor_id,vendor_payout,shipping_amount").eq("order_id",orderId);
-   for(const item of items||[]){const payout=Number(item.vendor_payout||0)+Number(item.shipping_amount||0);if(payout>0){const {error:ledgerError}=await admin.from("vendor_ledger").upsert({vendor_id:item.vendor_id,order_item_id:item.id,entry_type:"sale",amount:payout,currency:"CAD",status:"available",stripe_reference:s.payment_intent||s.id,notes:"Platform-collected via Stripe"},{onConflict:"order_item_id,entry_type",ignoreDuplicates:true});if(ledgerError)throw ledgerError;}
+   const {data:items,error:itemsError}=await admin.from("order_items").select("id,vendor_id,vendor_payout,shipping_amount").eq("order_id",orderId);
+   if(itemsError||!items?.length)throw new Error("Order items unavailable");
+   for(const item of items||[]){const payout=Number(item.vendor_payout||0)+Number(item.shipping_amount||0);if(payout>0){const {error:ledgerError}=await admin.from("vendor_ledger").upsert({vendor_id:item.vendor_id,order_item_id:item.id,entry_type:"sale",amount:payout,currency:"CAD",status:"available",stripe_reference:s.payment_intent||s.id,notes:"Platform-collected via Stripe"},{onConflict:"order_item_id,entry_type",ignoreDuplicates:true});if(ledgerError)throw ledgerError;}}
    // Shipment fulfilment needs its own durable retry/outbox; do not mark an
    // event processed when downstream processing fails.
    const {data:labelMarker}=await admin.from("webhook_events").select("event_key").eq("provider","stripe-label").eq("event_key",orderId).maybeSingle();
    if(!labelMarker){
-    const {error:labelError}=await admin.functions.invoke("shippo-purchase-label",{body:{order_id:orderId}});
+    const {data:labelResult,error:labelError}=await admin.functions.invoke("shippo-purchase-label",{body:{order_id:orderId}});
     if(labelError)throw labelError;
+    if(labelResult?.results?.some((result:{error?:string})=>Boolean(result.error)))throw new Error("One or more shipping labels failed; retry required");
     const {error:markerError}=await admin.from("webhook_events").upsert({provider:"stripe-label",event_key:orderId,payload:{session_id:s.id}},{onConflict:"provider,event_key",ignoreDuplicates:true});
     if(markerError)throw markerError;
    }
