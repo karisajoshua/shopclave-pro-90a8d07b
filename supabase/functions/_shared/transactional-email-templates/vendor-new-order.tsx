@@ -129,7 +129,7 @@ const VendorNewOrderEmail = ({
 
           <Section style={totalsBox}>
             <Hr style={hr} />
-            <SumRow style={grandTotalRow} label={<>Your subtotal</>} value={{money(vendorSubtotal)}} />
+            <SumRow style={grandTotalRow} label={<>Your subtotal</>} value={money(vendorSubtotal)} />
           </Section>
 
           {shippingAddress && (

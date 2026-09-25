@@ -131,10 +131,10 @@ const OrderConfirmationEmail = ({
 
           {/* Totals */}
           <Section style={totalsBox}>
-            <SumRow style={totalRow} label={<>Subtotal</>} value={{money(subtotal)}} />
-            <SumRow style={totalRow} label={<>Delivery</>} value={{money(deliveryFee)}} />
+            <SumRow style={totalRow} label={<>Subtotal</>} value={money(subtotal)} />
+            <SumRow style={totalRow} label={<>Delivery</>} value={money(deliveryFee)} />
             <Hr style={hr} />
-            <SumRow style={grandTotalRow} label={<>Total</>} value={{money(total)}} />
+            <SumRow style={grandTotalRow} label={<>Total</>} value={money(total)} />
           </Section>
 
           {/* Delivery */}
