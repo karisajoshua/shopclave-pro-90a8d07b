@@ -80,7 +80,7 @@ const VendorNewOrderEmail = ({
       <Container style={container}>
         <Section style={header}>
           <Img
-            src="https://barakaz.com/email-logo.png?v=2"
+            src="https://fyfeyolecqnpriwjgzyo.supabase.co/storage/v1/object/public/email-assets/barakaz-website-logo.png"
             width="140"
             height="auto"
             alt={SITE_NAME}
