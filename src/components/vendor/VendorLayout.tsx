@@ -20,9 +20,10 @@ const VendorLayout = () => {
       if (!data) return null;
       // payment_details and warehouse_address are restricted at the column level;
       // fetch them via the owner-scoped SECURITY DEFINER RPC.
-      const { data: priv } = await supabase.rpc("get_vendor_private_fields", {
+      const { data: priv, error: privateFieldsError } = await supabase.rpc("get_vendor_private_fields_v2", {
         _vendor_id: data.id,
       });
+      if (privateFieldsError) throw privateFieldsError;
       const privRow = Array.isArray(priv) ? priv[0] : null;
       return {
         ...data,
