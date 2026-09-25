@@ -43,6 +43,8 @@ interface VendorNewOrderProps {
   buyerName?: string
   shippingAddress?: ShippingAddress
   paymentMethodLabel?: string
+  paymentStatusLabel?: string
+  currency?: string
   manageUrl?: string
 }
 
@@ -66,7 +68,9 @@ const VendorNewOrderEmail = ({
   shippingAddress,
   paymentMethodLabel = 'Pay on Delivery',
   manageUrl = 'https://barakaz.com/vendor/orders',
-}: VendorNewOrderProps) => (
+  paymentStatusLabel,
+  currency = 'CAD',
+}: VendorNewOrderProps) => { CURRENT.currency = currency; return (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
@@ -105,6 +109,11 @@ const VendorNewOrderEmail = ({
             <Text style={metaLine}>
               <strong>Payment:</strong> {paymentMethodLabel}
             </Text>
+            {paymentStatusLabel && (
+              <Text style={metaLine}>
+                <strong>Payment status:</strong> {paymentStatusLabel}
+              </Text>
+            )}
           </Section>
 
           <Heading as="h2" style={h2}>
@@ -168,7 +177,7 @@ const VendorNewOrderEmail = ({
       </Container>
     </Body>
   </Html>
-)
+) }
 
 export const template = {
   component: VendorNewOrderEmail,
@@ -198,6 +207,18 @@ export const template = {
   },
 } satisfies TemplateEntry
 
+function SumRow({ label, value, style }: { label: React.ReactNode; value: React.ReactNode; style: React.CSSProperties }) {
+  return (
+    <table width="100%" cellPadding={0} cellSpacing={0} role="presentation" style={{ ...style, display: 'table' }}>
+      <tbody><tr>
+        <td style={{ textAlign: 'left' }}>{label}</td>
+        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '12px' }}>{value}</td>
+      </tr></tbody>
+    </table>
+  )
+}
+
+// Styles
 const main: React.CSSProperties = {
   backgroundColor: '#ffffff',
   fontFamily: 'Inter, Arial, sans-serif',

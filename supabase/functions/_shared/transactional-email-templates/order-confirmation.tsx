@@ -43,6 +43,10 @@ interface OrderConfirmationProps {
   total?: number
   shippingAddress?: ShippingAddress
   paymentMethodLabel?: string
+  paymentStatusLabel?: string
+  stage?: 'received' | 'paid'
+  currency?: string
+  chargedNote?: { amount: number; currency: string } | null
   trackUrl?: string
 }
 
@@ -61,16 +65,20 @@ const OrderConfirmationEmail = ({
   orderDate,
   items = [],
   subtotal = 0,
-  deliveryFee = 200,
+  deliveryFee = 0,
   total = 0,
   shippingAddress,
   paymentMethodLabel = 'Pay on Delivery',
   trackUrl = 'https://barakaz.com/account',
-}: OrderConfirmationProps) => (
+  paymentStatusLabel,
+  stage = 'received',
+  currency = 'CAD',
+  chargedNote = null,
+}: OrderConfirmationProps) => { CURRENT.currency = currency; const paid = stage === 'paid'; return (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Your {SITE_NAME} order #{orderShortId} is confirmed
+      {paid ? `Your ${SITE_NAME} order #${orderShortId} is confirmed` : `We received your ${SITE_NAME} order #${orderShortId}`}
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -90,8 +98,9 @@ const OrderConfirmationEmail = ({
             {customerName ? `Thanks for your order, ${customerName}!` : 'Thanks for your order!'}
           </Heading>
           <Text style={text}>
-            We've received your order and the seller has been notified. You'll
-            get another update as soon as it ships.
+            {paid
+              ? "Your payment has been confirmed and the seller has been notified. You'll get another update as soon as it ships."
+              : "We've received your order. Payment has not been confirmed yet — if you haven't completed payment, your order will not be processed. We'll email you again once payment is confirmed."}
           </Text>
 
           <Section style={metaBox}>
@@ -106,6 +115,14 @@ const OrderConfirmationEmail = ({
             <Text style={metaLine}>
               <strong>Payment:</strong> {paymentMethodLabel}
             </Text>
+            <Text style={metaLine}>
+              <strong>Payment status:</strong> {paymentStatusLabel ?? (paid ? 'Paid' : 'Awaiting payment')}
+            </Text>
+            {chargedNote && (
+              <Text style={metaLine}>
+                <strong>Charged:</strong> {money(chargedNote.amount, chargedNote.currency)}
+              </Text>
+            )}
           </Section>
 
           {/* Items */}
@@ -169,12 +186,14 @@ const OrderConfirmationEmail = ({
       </Container>
     </Body>
   </Html>
-)
+) }
 
 export const template = {
   component: OrderConfirmationEmail,
   subject: (data: Record<string, any>) =>
-    `Your ${SITE_NAME} order #${data?.orderShortId ?? ''} is confirmed`,
+    data?.stage === 'paid'
+      ? `Your ${SITE_NAME} order #${data?.orderShortId ?? ''} is confirmed`
+      : `We received your ${SITE_NAME} order #${data?.orderShortId ?? ''} — payment pending`,
   displayName: 'Order confirmation',
   previewData: {
     customerName: 'Jane Doe',
