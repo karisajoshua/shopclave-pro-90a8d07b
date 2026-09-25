@@ -11,6 +11,8 @@ const OrderConfirmationPage = () => {
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const reference = searchParams.get("reference") || searchParams.get("trxref");
+  const provider = searchParams.get("provider");
+  const stripeSessionId = searchParams.get("session_id");
 
   const [state, setState] = useState<PayState>("idle");
   const [charged, setCharged] = useState<{ amount: number; currency: string } | null>(null);
@@ -22,9 +24,14 @@ const OrderConfirmationPage = () => {
     const verify = async () => {
       setState("checking");
       try {
-        const { data, error } = await supabase.functions.invoke("paystack-verify", {
-          body: { order_id: orderId, ...(reference ? { reference } : {}) },
-        });
+        const isStripe = provider === "stripe" || !!stripeSessionId;
+        const { data, error } = await supabase.functions.invoke(
+          isStripe ? "stripe-verify" : "paystack-verify",
+          { body: isStripe
+              ? { order_id: orderId, ...(stripeSessionId ? { session_id: stripeSessionId } : {}) }
+              : { order_id: orderId, ...(reference ? { reference } : {}) }
+          }
+        );
         if (cancelled) return;
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -47,7 +54,7 @@ const OrderConfirmationPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [orderId, reference]);
+  }, [orderId, reference, provider, stripeSessionId]);
 
   const fmt = charged
     ? new Intl.NumberFormat("en-US", { style: "currency", currency: charged.currency }).format(
@@ -62,12 +69,14 @@ const OrderConfirmationPage = () => {
           <Loader2 className="h-20 w-20 text-muted-foreground mx-auto mb-6 animate-spin" />
         ) : state === "failed" ? (
           <AlertCircle className="h-20 w-20 text-destructive mx-auto mb-6" />
-        ) : (
+        ) : state === "paid" ? (
           <CheckCircle className="h-20 w-20 text-success mx-auto mb-6" />
+        ) : (
+          <Loader2 className="h-20 w-20 text-muted-foreground mx-auto mb-6 animate-spin" />
         )}
 
         <h1 className="font-display text-3xl font-bold mb-3">
-          {state === "failed" ? "Payment not completed" : "Order Placed!"}
+          {state === "failed" ? "Payment not confirmed" : state === "paid" ? "Payment confirmed!" : "Payment confirmation pending"}
         </h1>
 
         {state === "checking" && (
@@ -80,14 +89,12 @@ const OrderConfirmationPage = () => {
         )}
         {state === "pending" && (
           <p className="text-muted-foreground mb-2">
-            Thank you for your order. If you paid online, confirmation can take a moment — your
-            order page will update automatically.
+            Thank you for your order. If you paid online, confirmation can take a moment — please check your orders page for the latest status.
           </p>
         )}
         {state === "failed" && (
           <p className="text-muted-foreground mb-2">
-            We couldn't confirm your payment. No money has been taken — you can retry from your
-            orders page.
+            We couldn't confirm your payment. Please check your payment provider before retrying to avoid a duplicate charge.
           </p>
         )}
 

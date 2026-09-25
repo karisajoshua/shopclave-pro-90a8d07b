@@ -19,10 +19,11 @@ type Step = "address" | "delivery" | "payment";
 const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
-  const { formatPrice } = useLocale();
+  const { formatPrice, country } = useLocale();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [cardProvider, setCardProvider] = useState<"paystack" | "stripe">("paystack");
   const [activeStep, setActiveStep] = useState<Step>("address");
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
@@ -33,10 +34,17 @@ const CheckoutPage = () => {
     phone: "",
     addressLine: "",
     city: "",
-    country: "Kenya",
+    country: "",
+    state: "",
+    zip: "",
     email: "",
   });
 
+  useEffect(() => {
+    if (country.name && country.name !== "Detecting…") {
+      setAddress((prev) => prev.country ? prev : { ...prev, country: country.name });
+    }
+  }, [country.name]);
   // Prefill email from auth user
   useEffect(() => {
     if (user?.email) {
@@ -83,6 +91,8 @@ const CheckoutPage = () => {
         addressLine: savedAddress.address_line,
         city: savedAddress.city,
         country: savedAddress.country,
+        state: (savedAddress as any).state || "",
+        zip: (savedAddress as any).postal_code || (savedAddress as any).zip || "",
         email: prev.email || user?.email || "",
       }));
       setAddressConfirmed(true);
@@ -151,6 +161,11 @@ const CheckoutPage = () => {
   );
   const grandTotal = totalPrice + shippingTotal;
 
+  const etaLabel = (days: number | null | undefined) => {
+    if (!days || days <= 0) return "Carrier ETA unavailable";
+    const arrival = new Date(); arrival.setDate(arrival.getDate() + days);
+    return "Estimated " + arrival.toLocaleDateString("en-CA", { day: "2-digit", month: "short" });
+  };
   // Delivery dates
   const deliveryStart = new Date();
   deliveryStart.setDate(deliveryStart.getDate() + 3);
@@ -209,6 +224,12 @@ const CheckoutPage = () => {
       toast.error("Please fill in all address fields");
       return;
     }
+    if (address.country.trim().toLowerCase() === "canada") {
+      if (!address.state) { toast.error("Please select your province or territory"); return; }
+      if (!/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(address.zip.trim())) {
+        toast.error("Enter a valid Canadian postal code, e.g. K1A 0B1"); return;
+      }
+    }
     // Reset rates so they re-fetch for the (possibly updated) address
     setShippingRates({});
     setSelectedRates({});
@@ -254,17 +275,18 @@ const CheckoutPage = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // For card payments, initialize a Paystack transaction and redirect
+      // Card payments can use Paystack or Stripe. Both are server-authoritative hosted checkouts.
       if (paymentMethod === "card") {
-        const { data: paystackData, error: paystackErr } = await supabase.functions.invoke(
-          "paystack-initialize",
+        const functionName = cardProvider === "stripe" ? "stripe-initialize" : "paystack-initialize";
+        const { data: paymentData, error: paymentErr } = await supabase.functions.invoke(
+          functionName,
           { body: { order_id: data.order_id } }
         );
-        if (paystackErr) throw paystackErr;
-        if (paystackData?.error) throw new Error(paystackData.error);
-        if (!paystackData?.url) throw new Error("Failed to start Paystack checkout");
+        if (paymentErr) throw paymentErr;
+        if (paymentData?.error) throw new Error(paymentData.error);
+        if (!paymentData?.url) throw new Error(`Failed to start ${cardProvider === "stripe" ? "Stripe" : "Paystack"} checkout`);
         clearCart();
-        window.location.href = paystackData.url;
+        window.location.href = paymentData.url;
         return;
       }
 
@@ -366,6 +388,23 @@ const CheckoutPage = () => {
                       <Input value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
                     </div>
                   </div>
+                  {address.country.trim().toLowerCase() === "canada" ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Province / Territory</Label>
+                        <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })}>
+                          <option value="">Select province</option>
+                          {["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"].map((p) => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <div><Label className="text-xs">Postal Code</Label><Input value={address.zip} maxLength={7} placeholder="K1A 0B1" onChange={(e) => setAddress({ ...address, zip: e.target.value.toUpperCase() })} /></div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label className="text-xs">State / Region</Label><Input value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} /></div>
+                      <div><Label className="text-xs">Postal / ZIP Code</Label><Input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} /></div>
+                    </div>
+                  )}
                   <div>
                     <Label className="text-xs">Email for order updates</Label>
                     <Input
@@ -386,7 +425,7 @@ const CheckoutPage = () => {
               {addressConfirmed && activeStep !== "address" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{address.fullName}</p>
-                  <p>{address.addressLine} | {address.city} - {address.country} | {address.phone}</p>
+                  <p>{address.addressLine} | {address.city}, {address.state} {address.zip} - {address.country} | {address.phone}</p>
                 </div>
               )}
             </div>
@@ -455,7 +494,7 @@ const CheckoutPage = () => {
                                     {r.is_estimate ? r.service : `${r.provider} — ${r.service}`}
                                   </p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    {r.estimated_days ? `${r.estimated_days} day${r.estimated_days > 1 ? "s" : ""}` : r.duration_terms || "Standard"}
+                                    {r.estimated_days ? etaLabel(r.estimated_days) : r.duration_terms || "Carrier ETA unavailable"}
                                   </p>
                                 </div>
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
@@ -487,7 +526,8 @@ const CheckoutPage = () => {
               )}
               {deliveryConfirmed && activeStep !== "delivery" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
-                  <p>Door Delivery • {fmtDate(deliveryStart)} - {fmtDate(deliveryEnd)} • {items.length} item(s)</p>
+                  <p>Door delivery • {items.length} item(s)</p>
+                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.provider} — {rate.service}: {formatPrice(rate.amount_cad)} · {etaLabel(rate.estimated_days)}</p>)}
                 </div>
               )}
             </div>
@@ -509,10 +549,23 @@ const CheckoutPage = () => {
                     </div>
                   </RadioGroup>
 
+                  <div className="mt-3 space-y-2">
+                    <Label className="text-xs font-medium">Card payment provider</Label>
+                    <RadioGroup value={cardProvider} onValueChange={(v) => setCardProvider(v as "paystack" | "stripe")} className="grid grid-cols-2 gap-2">
+                      <label htmlFor="provider-paystack" className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer ${cardProvider === "paystack" ? "border-primary bg-primary/5" : "border-border"}`}>
+                        <RadioGroupItem value="paystack" id="provider-paystack" />
+                        <span className="text-sm font-medium">Paystack</span>
+                      </label>
+                      <label htmlFor="provider-stripe" className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer ${cardProvider === "stripe" ? "border-primary bg-primary/5" : "border-border"}`}>
+                        <RadioGroupItem value="stripe" id="provider-stripe" />
+                        <span className="text-sm font-medium">Stripe</span>
+                      </label>
+                    </RadioGroup>
+                  </div>
+
                   <p className="mt-3 text-xs text-muted-foreground">
-                    You'll be redirected to a secure Paystack checkout. Prices are shown in
-                    Canadian Dollars and charged in your local currency at today's rate. Each
-                    seller's share is settled automatically and Barakaz keeps only its commission.
+                    You'll be redirected to a secure {cardProvider === "stripe" ? "Stripe" : "Paystack"} checkout.
+                    Stripe charges this Barakaz order in CAD; Paystack uses its supported settlement currency.
                   </p>
 
                   {!directSettlement && (
@@ -562,8 +615,9 @@ const CheckoutPage = () => {
 
               <Separator />
 
+              <p className="text-xs text-muted-foreground">Applicable taxes are not yet calculated. Canadian GST/HST must be verified before this checkout can accept live payments.</p>
               <div className="flex justify-between items-center">
-                <span className="font-semibold">Total</span>
+                <span className="font-semibold">Total before applicable taxes</span>
                 <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
               </div>
 
@@ -582,6 +636,15 @@ const CheckoutPage = () => {
                 </p>
               )}
 
+              <div className="text-xs space-y-2 rounded-md border p-3">
+                <p className="font-semibold">Review your order</p>
+                <p>{address.fullName} · {address.city}, {address.state} · {address.country}</p>
+                <button type="button" className="text-primary underline" onClick={() => setActiveStep("address")}>Edit address</button>
+                <span className="mx-2">·</span>
+                <button type="button" className="text-primary underline" onClick={() => setActiveStep("delivery")}>Edit delivery</button>
+                <span className="mx-2">·</span>
+                <Link className="text-primary underline" to="/cart">Edit items</Link>
+              </div>
               <p className="text-[10px] text-center text-muted-foreground">
                 By proceeding, you are automatically accepting the{" "}
                 <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link>
