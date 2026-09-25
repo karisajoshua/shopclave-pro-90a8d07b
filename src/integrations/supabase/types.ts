@@ -727,6 +727,7 @@ export type Database = {
           currency: string
           id: string
           payment_method: string | null
+          payment_provider: string | null
           payment_status: string
           paystack_reference: string | null
           shipping_address: Json | null
@@ -746,6 +747,7 @@ export type Database = {
           currency?: string
           id?: string
           payment_method?: string | null
+          payment_provider?: string | null
           payment_status?: string
           paystack_reference?: string | null
           shipping_address?: Json | null
@@ -765,6 +767,7 @@ export type Database = {
           currency?: string
           id?: string
           payment_method?: string | null
+          payment_provider?: string | null
           payment_status?: string
           paystack_reference?: string | null
           shipping_address?: Json | null
