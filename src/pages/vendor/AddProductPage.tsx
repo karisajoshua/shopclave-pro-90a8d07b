@@ -159,6 +159,8 @@ const AddProductPage = () => {
 
   // Submit
   const handleSubmit = async () => {
+    const pkgErr = validatePackageDims(pkg);
+    if (pkgErr) { toast.error(pkgErr); setStep(2); return; }
     if (!vendor) { toast.error("Vendor account not found"); return; }
     setLoading(true);
     try {

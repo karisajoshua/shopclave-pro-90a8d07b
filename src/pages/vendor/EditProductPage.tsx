@@ -254,6 +254,8 @@ const EditProductPage = () => {
 
   // Submit
   const handleSubmit = async () => {
+    const pkgErr = validatePackageDims(pkg);
+    if (pkgErr) { toast.error(pkgErr); setStep(2); return; }
     if (!vendor || !productId) return;
     setLoading(true);
     try {
