@@ -1,3 +1,4 @@
+import { PackageMeasurementsFields, emptyPackageDims, validatePackageDims, packageDimsToColumns, packageDimsFromProduct, type PackageDims } from "@/components/vendor/PackageMeasurementsFields";
 import { useState, useRef, useMemo } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +62,7 @@ const AddProductPage = () => {
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
     dealEndsAt: "",
   });
+  const [pkg, setPkg] = useState<PackageDims>(emptyPackageDims);
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
   const [showBulkPrice, setShowBulkPrice] = useState(false);
@@ -145,7 +147,7 @@ const AddProductPage = () => {
     switch (step) {
       case 0: if (!selectedCategoryId) { toast.error("Please select a category"); return false; } return true;
       case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } return true;
-      case 2: if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } return true;
+      case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
       case 3: return true;
       case 4: if (hasVariants && variantRows.length === 0) { toast.error("Add at least one variant option with values"); return false; } return true;
       default: return true;
@@ -200,6 +202,7 @@ const AddProductPage = () => {
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
+        ...packageDimsToColumns(pkg),
       } as any).select().single();
       if (error) throw error;
 
@@ -390,6 +393,8 @@ const AddProductPage = () => {
                 <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Optional" />
               </div>
             </div>
+
+            <PackageMeasurementsFields value={pkg} onChange={setPkg} />
 
             <div>
               <Label>Delivery Options</Label>
