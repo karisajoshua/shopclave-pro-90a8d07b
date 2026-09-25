@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useLocale } from "@/hooks/useLocale";
+import { useLocale } from "@/hooks/useLocale";\nimport CheckoutLoader from "@/components/checkout/CheckoutLoader";
 
 type Step = "address" | "delivery" | "payment";
 
@@ -402,6 +402,7 @@ const CheckoutPage = () => {
 
   return (
     <MarketplaceLayout>
+      <CheckoutLoader stage={checkoutStage} provider={paymentMethod === "card" ? cardProvider : null} />
       <div className="container py-6 max-w-5xl">
         <div className="flex items-center gap-2 mb-6">
           <Link to="/cart" className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -635,8 +636,15 @@ const CheckoutPage = () => {
                     disabled={loading}
                     onClick={handlePlaceOrder}
                   >
-                    {loading ? "Redirecting to payment..." : "Continue to payment"}
+                    {loading ? "Preparing secure checkout…" : checkoutError ? "Try again" : "Continue to payment"}
                   </Button>
+                  {checkoutError && (
+                    <div role="alert" className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                      <p className="font-medium">Payment didn't start — you have not been charged.</p>
+                      <p className="mt-1 text-xs">{checkoutError}</p>
+                      <p className="mt-1 text-xs">Tap "Try again" to retry. We'll reuse the same order, so you won't get a duplicate.</p>
+                    </div>
+                  )}
                 </div>
 
               )}
@@ -680,7 +688,7 @@ const CheckoutPage = () => {
                 disabled={loading || !deliveryConfirmed || activeStep !== "payment"}
                 onClick={handlePlaceOrder}
               >
-                {loading ? "Placing Order..." : "Confirm Order"}
+                {loading ? "Preparing secure checkout…" : "Confirm Order"}
               </Button>
 
               {(!deliveryConfirmed || activeStep !== "payment") && (
