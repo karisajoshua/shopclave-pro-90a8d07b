@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Bearer ${secret}`,
         "Content-Type": "application/x-www-form-urlencoded",
-        "Idempotency-Key": `barakaz-checkout-${order.id}`,
+        "Idempotency-Key": `barakaz-checkout-${order.id}-${Math.floor(Date.now() / 600000)}`,
       },
       body: params.toString(),
     });
