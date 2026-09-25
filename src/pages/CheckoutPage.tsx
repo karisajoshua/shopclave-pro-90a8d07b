@@ -29,6 +29,17 @@ const CheckoutPage = () => {
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
   const location = useLocation();
   const hasCheckedRef = useRef(false);
+  const pendingOrderRef = useRef<{ signature: string; orderId: string } | null>(null);
+  const [checkoutStage, setCheckoutStage] = useState<"order" | "payment" | "redirect" | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("payment_cancelled")) {
+      toast.info("Payment was cancelled. Your cart is saved — you can try again.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [address, setAddress] = useState({
     fullName: "",
     phone: "",
@@ -245,7 +256,11 @@ const CheckoutPage = () => {
   };
 
   const handlePlaceOrder = async () => {
+    if (loading) return;
     setLoading(true);
+    setCheckoutError(null);
+    setCheckoutStage("order");
+    let redirecting = false;
     try {
       // Check session validity before placing order
       const { data: sessionData } = await supabase.auth.getSession();
@@ -267,42 +282,80 @@ const CheckoutPage = () => {
         // Only opaque quote ids — the server owns every shipping price.
         shipping_quote_ids: Object.values(selectedRates).map((r: any) => r.quote_id),
       };
+      const signature = JSON.stringify({ ...orderPayload, cardProvider });
 
-      const { data, error } = await supabase.functions.invoke("create-order", {
-        body: orderPayload,
-      });
+      // Retry safety: reuse the unpaid order created for this exact cart instead of creating a duplicate.
+      let orderId: string | null =
+        pendingOrderRef.current?.signature === signature ? pendingOrderRef.current.orderId : null;
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (!orderId) {
+        const { data, error } = await supabase.functions.invoke("create-order", { body: orderPayload });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        orderId = data.order_id as string;
+        if (paymentMethod === "card") pendingOrderRef.current = { signature, orderId };
+      }
 
       // Card payments can use Paystack or Stripe. Both are server-authoritative hosted checkouts.
       if (paymentMethod === "card") {
-        const functionName = cardProvider === "stripe" ? "stripe-initialize" : "paystack-initialize";
+        setCheckoutStage("payment");
+        const isStripe = cardProvider === "stripe";
+        const functionName = isStripe ? "stripe-initialize" : "paystack-initialize";
         const { data: paymentData, error: paymentErr } = await supabase.functions.invoke(
           functionName,
-          { body: { order_id: data.order_id } }
+          { body: { order_id: orderId } }
         );
         if (paymentErr) throw paymentErr;
         if (paymentData?.error) throw new Error(paymentData.error);
-        if (!paymentData?.url) throw new Error(`Failed to start ${cardProvider === "stripe" ? "Stripe" : "Paystack"} checkout`);
-        clearCart();
-        window.location.href = paymentData.url;
+        const payUrl: string | undefined = paymentData?.url;
+        const allowedHost = isStripe ? /(^|\.)stripe\.com$/ : /(^|\.)paystack\.(com|co)$/;
+        if (!payUrl || !allowedHost.test(new URL(payUrl).hostname)) {
+          throw new Error(`We couldn't open the secure ${isStripe ? "Stripe" : "Paystack"} payment page.`);
+        }
+        if (isStripe && typeof paymentData.amount === "number" && Math.abs(paymentData.amount - grandTotal) > 0.01) {
+          throw new Error(
+            `Your total changed to CA$${paymentData.amount.toFixed(2)}. Please review your order before paying.`
+          );
+        }
+        setCheckoutStage("redirect");
+        redirecting = true;
+        // Keep the cart until payment is confirmed; clearing it here triggered an in-app
+        // redirect to /cart that raced (and cancelled) the navigation to the payment page.
+        // Hosted checkout pages refuse to load inside frames, so navigate the top window.
+        try {
+          if (window.top && window.top !== window.self) {
+            window.top.location.href = payUrl;
+            return;
+          }
+        } catch {
+          window.open(payUrl, "_blank", "noopener");
+          return;
+        }
+        window.location.assign(payUrl);
         return;
       }
 
-
       clearCart();
       toast.success("Order placed successfully!");
-      navigate(`/order-confirmation/${data.order_id}`);
+      navigate(`/order-confirmation/${orderId}`);
     } catch (err: any) {
       if (err.message?.includes("Refresh Token") || err.message?.includes("Unauthorized")) {
         toast.error("Your session has expired. Please sign in again.");
         navigate("/auth", { replace: true });
       } else {
-        toast.error(err.message || "Failed to place order");
+        let message = err.message || "Failed to place order";
+        try {
+          const body = await err?.context?.json?.();
+          if (body?.error) message = body.error;
+        } catch { /* keep message */ }
+        setCheckoutError(message);
+        toast.error(message);
       }
     } finally {
-      setLoading(false);
+      if (!redirecting) {
+        setLoading(false);
+        setCheckoutStage(null);
+      }
     }
   };
 
