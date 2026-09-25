@@ -57,6 +57,13 @@
       "when": 1790374646284,
       "tag": "0007_full_unique_indexes_for_upserts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790376824436,
+      "tag": "0008_vendor_private_fields_json_contract",
+      "breakpoints": true
     }
   ]
 }
