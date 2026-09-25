@@ -11,6 +11,8 @@ const OrderConfirmationPage = () => {
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const reference = searchParams.get("reference") || searchParams.get("trxref");
+  const provider = searchParams.get("provider");
+  const stripeSessionId = searchParams.get("session_id");
 
   const [state, setState] = useState<PayState>("idle");
   const [charged, setCharged] = useState<{ amount: number; currency: string } | null>(null);
@@ -22,9 +24,14 @@ const OrderConfirmationPage = () => {
     const verify = async () => {
       setState("checking");
       try {
-        const { data, error } = await supabase.functions.invoke("paystack-verify", {
-          body: { order_id: orderId, ...(reference ? { reference } : {}) },
-        });
+        const isStripe = provider === "stripe" || !!stripeSessionId;
+        const { data, error } = await supabase.functions.invoke(
+          isStripe ? "stripe-verify" : "paystack-verify",
+          { body: isStripe
+              ? { order_id: orderId, ...(stripeSessionId ? { session_id: stripeSessionId } : {}) }
+              : { order_id: orderId, ...(reference ? { reference } : {}) }
+          }
+        );
         if (cancelled) return;
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -47,7 +54,7 @@ const OrderConfirmationPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [orderId, reference]);
+  }, [orderId, reference, provider, stripeSessionId]);
 
   const fmt = charged
     ? new Intl.NumberFormat("en-US", { style: "currency", currency: charged.currency }).format(
