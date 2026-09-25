@@ -50,7 +50,21 @@ Deno.serve(async (req) => {
     const email = (shipping?.email && String(shipping.email).trim()) || user.email;
     if (!email) return json({ error: "Customer email is required" }, 400);
 
-    const origin = (req.headers.get("origin") || "https://barakaz.com").replace(/\/$/, "");
+    // Never trust a caller-controlled Origin for payment redirects.
+    // Preview environments must be explicitly allowlisted server-side.
+    const allowedOrigins = new Set(["https://barakaz.com", "https://www.barakaz.com"]);
+    const configuredOrigins = (Deno.env.get("STRIPE_ALLOWED_RETURN_ORIGINS") || "")
+      .split(",").map((value) => value.trim()).filter(Boolean);
+    for (const configured of configuredOrigins) {
+      try {
+        const parsed = new URL(configured);
+        if (parsed.protocol === "https:" && parsed.origin === configured.replace(/\/$/, "")) {
+          allowedOrigins.add(parsed.origin);
+        }
+      } catch { /* Ignore malformed configuration */ }
+    }
+    const requestedOrigin = req.headers.get("origin") || "";
+    const origin = allowedOrigins.has(requestedOrigin) ? requestedOrigin : "https://barakaz.com";
     const params = new URLSearchParams();
     params.set("mode", "payment");
     params.set("success_url", `${origin}/order-confirmation/${order.id}?provider=stripe&session_id={CHECKOUT_SESSION_ID}`);
