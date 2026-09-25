@@ -145,9 +145,27 @@ const VendorSettings = () => {
   const warehouse = form.warehouse_address as any;
   const [saving, setSaving] = useState(false);
 
+  // Mirrors the server-side check used at checkout (validateWarehouse).
+  const originIso = (() => {
+    const c = String(warehouse.country || "").trim();
+    if (c.length === 2) return c.toUpperCase();
+    const map: Record<string, string> = { kenya: "KE", canada: "CA", "united states": "US", usa: "US", "united kingdom": "GB", uk: "GB", india: "IN", australia: "AU" };
+    return map[c.toLowerCase()] ?? c.slice(0, 2).toUpperCase();
+  })();
+  const missingOrigin: string[] = [];
+  if (!warehouse.street1?.trim()) missingOrigin.push("street address");
+  if (!warehouse.city?.trim()) missingOrigin.push("city");
+  if (!warehouse.country?.trim()) missingOrigin.push("country");
+  if (!warehouse.phone?.trim()) missingOrigin.push("pickup phone number");
+  if (["US", "CA", "AU", "IN"].includes(originIso) && !warehouse.state?.trim()) missingOrigin.push("state/province");
+  if (["US", "CA", "GB", "DE", "FR", "AU", "IN", "CN", "NL", "ES", "IT"].includes(originIso) && !warehouse.zip?.trim()) missingOrigin.push("postal code");
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (missingOrigin.length > 0) {
+        toast.warning(`Saved, but shipping is not ready yet — still missing: ${missingOrigin.join(", ")}.`);
+      }
       const { error } = await supabase.from("vendors").update(form).eq("id", vendor.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["vendor"] });
@@ -231,11 +249,20 @@ const VendorSettings = () => {
         <h3 className="font-semibold pt-2 border-t border-border">Shipping Origin Address</h3>
         <p className="text-xs text-muted-foreground">Used to calculate live shipping rates for buyers at checkout. Required for your products to be shippable.</p>
 
-        {(!warehouse.street1 || !warehouse.city || !warehouse.country) && (
+        {missingOrigin.length > 0 && (
           <div className="rounded-md border border-warning/40 bg-warning/10 text-warning p-3 text-xs">
-            ⚠️ Shipping origin is incomplete. Buyers won't see live shipping rates for your products until you fill in street, city and country.
+            Shipping origin is incomplete — buyers cannot check out your products until you add: {missingOrigin.join(", ")}.
           </div>
         )}
+
+        <div>
+          <Label>Pickup Phone Number *</Label>
+          <Input
+            value={warehouse.phone || ""}
+            onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, phone: e.target.value } })}
+            placeholder="Phone the courier can call at pickup, with country code"
+          />
+        </div>
 
         <div>
           <Label>Street Address</Label>
