@@ -4,6 +4,7 @@ import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/contexts/CartContext";
 
 type PayState = "idle" | "checking" | "paid" | "pending" | "failed";
 
@@ -14,6 +15,7 @@ const OrderConfirmationPage = () => {
   const provider = searchParams.get("provider");
   const stripeSessionId = searchParams.get("session_id");
 
+  const { clearCart } = useCart();
   const [state, setState] = useState<PayState>("idle");
   const [charged, setCharged] = useState<{ amount: number; currency: string } | null>(null);
 
@@ -37,6 +39,7 @@ const OrderConfirmationPage = () => {
         if (data?.error) throw new Error(data.error);
         if (data?.paid) {
           setState("paid");
+          clearCart();
           if (data.amount && data.currency) {
             setCharged({ amount: data.amount, currency: data.currency });
           }

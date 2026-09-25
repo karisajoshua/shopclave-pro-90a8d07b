@@ -27,11 +27,23 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: order } = await admin.from("orders")
-      .select("id,user_id,payment_status,shipping_address")
+      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id")
       .eq("id", parsed.data.order_id).maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
     if (order.user_id !== user.id) return json({ error: "Forbidden" }, 403);
     if (order.payment_status === "paid") return json({ error: "Order already paid" }, 400);
+
+    // Retry: reuse a still-open Stripe session rather than creating a new one.
+    const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (secretKey && order.stripe_checkout_session_id) {
+      const existing = await fetch(
+        `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(order.stripe_checkout_session_id)}`,
+        { headers: { Authorization: `Bearer ${secretKey}` } },
+      ).then((r) => r.ok ? r.json() : null).catch(() => null);
+      if (existing?.status === "open" && existing?.url) {
+        return json({ url: existing.url, session_id: existing.id, currency: "CAD", amount: Number(existing.amount_total) / 100 });
+      }
+    }
 
     const { data: items, error: itemsErr } = await admin.from("order_items")
       .select("price,quantity,shipping_amount").eq("order_id", order.id);
