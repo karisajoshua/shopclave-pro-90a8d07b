@@ -12,7 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useLocale } from "@/hooks/useLocale";\nimport CheckoutLoader from "@/components/checkout/CheckoutLoader";
+import { useLocale } from "@/hooks/useLocale";
+import CheckoutLoader from "@/components/checkout/CheckoutLoader";
 
 type Step = "address" | "delivery" | "payment";
 
