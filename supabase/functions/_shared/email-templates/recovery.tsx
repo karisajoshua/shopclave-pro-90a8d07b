@@ -19,7 +19,7 @@ interface RecoveryEmailProps {
   confirmationUrl: string
 }
 
-const LOGO_URL = 'https://fyfeyolecqnpriwjgzyo.supabase.co/storage/v1/object/public/email-assets/barakaz-website-logo.webp'
+const LOGO_URL = 'https://fyfeyolecqnpriwjgzyo.supabase.co/storage/v1/object/public/email-assets/barakaz-website-logo.png'
 
 export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
