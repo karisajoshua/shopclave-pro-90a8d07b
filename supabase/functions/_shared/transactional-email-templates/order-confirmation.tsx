@@ -85,7 +85,7 @@ const OrderConfirmationEmail = ({
         {/* Header */}
         <Section style={header}>
           <Img
-            src="https://barakaz.com/email-logo.png?v=3"
+            src="https://fyfeyolecqnpriwjgzyo.supabase.co/storage/v1/object/public/email-assets/barakaz-website-logo.webp"
             width="140"
             height="auto"
             alt={SITE_NAME}

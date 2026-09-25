@@ -19,7 +19,7 @@ interface MagicLinkEmailProps {
   confirmationUrl: string
 }
 
-const LOGO_URL = 'https://barakaz.com/email-logo.png?v=3'
+const LOGO_URL = 'https://fyfeyolecqnpriwjgzyo.supabase.co/storage/v1/object/public/email-assets/barakaz-website-logo.webp'
 
 export const MagicLinkEmail = ({ siteName, confirmationUrl }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
