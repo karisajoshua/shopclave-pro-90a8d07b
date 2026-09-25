@@ -43,6 +43,13 @@
       "when": 1790118848278,
       "tag": "0005_lock_down_internal_security_definer_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790374103969,
+      "tag": "0006_stripe_payment_provider",
+      "breakpoints": true
     }
   ]
 }
