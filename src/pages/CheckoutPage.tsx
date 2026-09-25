@@ -19,7 +19,7 @@ type Step = "address" | "delivery" | "payment";
 const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
-  const { formatPrice } = useLocale();
+  const { formatPrice, country } = useLocale();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
@@ -34,12 +34,17 @@ const CheckoutPage = () => {
     phone: "",
     addressLine: "",
     city: "",
-    country: "Canada",
+    country: "",
     state: "",
     zip: "",
     email: "",
   });
 
+  useEffect(() => {
+    if (country.name && country.name !== "Detecting…") {
+      setAddress((prev) => prev.country ? prev : { ...prev, country: country.name });
+    }
+  }, [country.name]);
   // Prefill email from auth user
   useEffect(() => {
     if (user?.email) {
