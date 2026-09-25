@@ -34,7 +34,9 @@ const CheckoutPage = () => {
     phone: "",
     addressLine: "",
     city: "",
-    country: "Kenya",
+    country: "Canada",
+    state: "",
+    zip: "",
     email: "",
   });
 
@@ -84,6 +86,8 @@ const CheckoutPage = () => {
         addressLine: savedAddress.address_line,
         city: savedAddress.city,
         country: savedAddress.country,
+        state: (savedAddress as any).state || "",
+        zip: (savedAddress as any).postal_code || (savedAddress as any).zip || "",
         email: prev.email || user?.email || "",
       }));
       setAddressConfirmed(true);
@@ -152,6 +156,11 @@ const CheckoutPage = () => {
   );
   const grandTotal = totalPrice + shippingTotal;
 
+  const etaLabel = (days: number | null | undefined) => {
+    if (!days || days <= 0) return "Carrier ETA unavailable";
+    const arrival = new Date(); arrival.setDate(arrival.getDate() + days);
+    return "Estimated " + arrival.toLocaleDateString("en-CA", { day: "2-digit", month: "short" });
+  };
   // Delivery dates
   const deliveryStart = new Date();
   deliveryStart.setDate(deliveryStart.getDate() + 3);
@@ -209,6 +218,12 @@ const CheckoutPage = () => {
     if (!address.fullName || !address.phone || !address.addressLine || !address.city) {
       toast.error("Please fill in all address fields");
       return;
+    }
+    if (address.country.trim().toLowerCase() === "canada") {
+      if (!address.state) { toast.error("Please select your province or territory"); return; }
+      if (!/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(address.zip.trim())) {
+        toast.error("Enter a valid Canadian postal code, e.g. K1A 0B1"); return;
+      }
     }
     // Reset rates so they re-fetch for the (possibly updated) address
     setShippingRates({});
@@ -368,6 +383,23 @@ const CheckoutPage = () => {
                       <Input value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
                     </div>
                   </div>
+                  {address.country.trim().toLowerCase() === "canada" ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Province / Territory</Label>
+                        <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })}>
+                          <option value="">Select province</option>
+                          {["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"].map((p) => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <div><Label className="text-xs">Postal Code</Label><Input value={address.zip} maxLength={7} placeholder="K1A 0B1" onChange={(e) => setAddress({ ...address, zip: e.target.value.toUpperCase() })} /></div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label className="text-xs">State / Region</Label><Input value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} /></div>
+                      <div><Label className="text-xs">Postal / ZIP Code</Label><Input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} /></div>
+                    </div>
+                  )}
                   <div>
                     <Label className="text-xs">Email for order updates</Label>
                     <Input
@@ -388,7 +420,7 @@ const CheckoutPage = () => {
               {addressConfirmed && activeStep !== "address" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{address.fullName}</p>
-                  <p>{address.addressLine} | {address.city} - {address.country} | {address.phone}</p>
+                  <p>{address.addressLine} | {address.city}, {address.state} {address.zip} - {address.country} | {address.phone}</p>
                 </div>
               )}
             </div>
@@ -457,7 +489,7 @@ const CheckoutPage = () => {
                                     {r.is_estimate ? r.service : `${r.provider} — ${r.service}`}
                                   </p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    {r.estimated_days ? `${r.estimated_days} day${r.estimated_days > 1 ? "s" : ""}` : r.duration_terms || "Standard"}
+                                    {r.estimated_days ? etaLabel(r.estimated_days) : r.duration_terms || "Carrier ETA unavailable"}
                                   </p>
                                 </div>
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
@@ -489,7 +521,8 @@ const CheckoutPage = () => {
               )}
               {deliveryConfirmed && activeStep !== "delivery" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
-                  <p>Door Delivery • {fmtDate(deliveryStart)} - {fmtDate(deliveryEnd)} • {items.length} item(s)</p>
+                  <p>Door delivery • {items.length} item(s)</p>
+                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.provider} — {rate.service}: {formatPrice(rate.amount_cad)} · {etaLabel(rate.estimated_days)}</p>)}
                 </div>
               )}
             </div>
@@ -577,8 +610,9 @@ const CheckoutPage = () => {
 
               <Separator />
 
+              <p className="text-xs text-muted-foreground">Applicable taxes are not yet calculated. Canadian GST/HST must be verified before this checkout can accept live payments.</p>
               <div className="flex justify-between items-center">
-                <span className="font-semibold">Total</span>
+                <span className="font-semibold">Total before applicable taxes</span>
                 <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
               </div>
 
@@ -597,6 +631,15 @@ const CheckoutPage = () => {
                 </p>
               )}
 
+              <div className="text-xs space-y-2 rounded-md border p-3">
+                <p className="font-semibold">Review your order</p>
+                <p>{address.fullName} · {address.city}, {address.state} · {address.country}</p>
+                <button type="button" className="text-primary underline" onClick={() => setActiveStep("address")}>Edit address</button>
+                <span className="mx-2">·</span>
+                <button type="button" className="text-primary underline" onClick={() => setActiveStep("delivery")}>Edit delivery</button>
+                <span className="mx-2">·</span>
+                <Link className="text-primary underline" to="/cart">Edit items</Link>
+              </div>
               <p className="text-[10px] text-center text-muted-foreground">
                 By proceeding, you are automatically accepting the{" "}
                 <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link>
