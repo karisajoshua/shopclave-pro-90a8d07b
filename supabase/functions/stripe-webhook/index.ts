@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendOrderEmails } from "../_shared/order-emails.ts";
 const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{"Content-Type":"application/json"}});
 const enc=new TextEncoder();
 function timingSafe(a:string,b:string){if(a.length!==b.length)return false;let x=0;for(let i=0;i<a.length;i++)x|=a.charCodeAt(i)^b.charCodeAt(i);return x===0;}
@@ -41,6 +42,8 @@ Deno.serve(async(req)=>{
     const {error:markerError}=await admin.from("webhook_events").upsert({provider:"stripe-label",event_key:orderId,payload:{session_id:s.id}},{onConflict:"provider,event_key",ignoreDuplicates:true});
     if(markerError)throw markerError;
    }
+    // Verified, signed, amount-reconciled payment: send paid confirmation + seller emails (stable idempotency keys).
+    try{await sendOrderEmails(admin,orderId,"paid",{notifyVendors:true});}catch(e){console.error("paid emails failed",e);}
   }
  }
  if(event.type==="checkout.session.async_payment_failed"){const s=event.data?.object,orderId=s?.metadata?.order_id||s?.client_reference_id;if(orderId){const {error:failedError}=await admin.from("orders").update({payment_status:"failed"}).eq("id",orderId).eq("payment_provider","stripe").neq("payment_status","paid");if(failedError)throw failedError;}}

@@ -46,8 +46,13 @@ interface OrderConfirmationProps {
   trackUrl?: string
 }
 
-const fmt = (n: number) =>
-  'KSh ' + (n || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })
+const money = (n: number, currency = 'CAD') => {
+  try {
+    return new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format(n || 0)
+  } catch {
+    return `${currency} ${(n || 0).toFixed(2)}`
+  }
+}
 
 const OrderConfirmationEmail = ({
   customerName,
@@ -71,7 +76,7 @@ const OrderConfirmationEmail = ({
         {/* Header */}
         <Section style={header}>
           <Img
-            src="https://barakaz.com/email-logo.png"
+            src="https://barakaz.com/email-logo.png?v=2"
             width="140"
             height="auto"
             alt={SITE_NAME}

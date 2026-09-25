@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { sendOrderEmails, ONLINE_METHODS } from "../_shared/order-emails.ts";
 import {
   addressFingerprint,
   itemsFingerprint,
