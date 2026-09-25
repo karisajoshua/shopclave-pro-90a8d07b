@@ -17,6 +17,12 @@ project_id = "fyfeyolecqnpriwjgzyo"
     verify_jwt = false
   [functions.paystack-webhook]
     verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.stripe-initialize]
+    verify_jwt = true
+  [functions.stripe-verify]
+    verify_jwt = true
   [functions.paystack-initialize]
     verify_jwt = true
   [functions.paystack-verify]
