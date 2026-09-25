@@ -1,3 +1,4 @@
+import { PackageMeasurementsFields, emptyPackageDims, validatePackageDims, packageDimsToColumns, packageDimsFromProduct, type PackageDims } from "@/components/vendor/PackageMeasurementsFields";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +62,7 @@ const EditProductPage = () => {
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
     dealEndsAt: "",
   });
+  const [pkg, setPkg] = useState<PackageDims>(emptyPackageDims);
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
   const [showBulkPrice, setShowBulkPrice] = useState(false);
@@ -112,6 +114,7 @@ const EditProductPage = () => {
       delivery: "",
       dealEndsAt: p.deal_ends_at ? new Date(p.deal_ends_at).toISOString().slice(0, 16) : "",
     });
+    setPkg(packageDimsFromProduct(p));
     setKeyFeatures(p.key_features?.length ? [...p.key_features] : [""]);
     setWhatsInBoxItems(Array.isArray(p.whats_in_box) && p.whats_in_box.length ? [...p.whats_in_box] : [""]);
     setVideoUrl(p.video_url || "");
@@ -239,7 +242,7 @@ const EditProductPage = () => {
     switch (step) {
       case 0: if (!selectedCategoryId) { toast.error("Please select a category"); return false; } return true;
       case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } return true;
-      case 2: if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } return true;
+      case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
       case 3: return true;
       case 4: if (hasVariants && variantRows.length === 0) { toast.error("Add at least one variant option with values"); return false; } return true;
       default: return true;
@@ -251,6 +254,8 @@ const EditProductPage = () => {
 
   // Submit
   const handleSubmit = async () => {
+    const pkgErr = validatePackageDims(pkg);
+    if (pkgErr) { toast.error(pkgErr); setStep(2); return; }
     if (!vendor || !productId) return;
     setLoading(true);
     try {
@@ -269,6 +274,7 @@ const EditProductPage = () => {
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
+        ...packageDimsToColumns(pkg),
       } as any).eq("id", productId);
       if (error) throw error;
 
@@ -477,6 +483,8 @@ const EditProductPage = () => {
                 <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Auto-generated if empty" />
               </div>
             </div>
+
+            <PackageMeasurementsFields value={pkg} onChange={setPkg} />
 
             <div>
               <Label>Delivery Options</Label>
