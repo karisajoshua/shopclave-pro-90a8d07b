@@ -43,11 +43,21 @@ interface OrderConfirmationProps {
   total?: number
   shippingAddress?: ShippingAddress
   paymentMethodLabel?: string
+  paymentStatusLabel?: string
+  stage?: 'received' | 'paid'
+  currency?: string
+  chargedNote?: { amount: number; currency: string } | null
   trackUrl?: string
 }
 
-const fmt = (n: number) =>
-  'KSh ' + (n || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })
+const CURRENT = { currency: 'CAD' }
+const money = (n: number, currency = CURRENT.currency) => {
+  try {
+    return new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format(n || 0)
+  } catch {
+    return `${currency} ${(n || 0).toFixed(2)}`
+  }
+}
 
 const OrderConfirmationEmail = ({
   customerName,
@@ -55,23 +65,27 @@ const OrderConfirmationEmail = ({
   orderDate,
   items = [],
   subtotal = 0,
-  deliveryFee = 200,
+  deliveryFee = 0,
   total = 0,
   shippingAddress,
   paymentMethodLabel = 'Pay on Delivery',
   trackUrl = 'https://barakaz.com/account',
-}: OrderConfirmationProps) => (
+  paymentStatusLabel,
+  stage = 'received',
+  currency = 'CAD',
+  chargedNote = null,
+}: OrderConfirmationProps) => { CURRENT.currency = currency; const paid = stage === 'paid'; return (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Your {SITE_NAME} order #{orderShortId} is confirmed
+      {paid ? `Your ${SITE_NAME} order #${orderShortId} is confirmed` : `We received your ${SITE_NAME} order #${orderShortId}`}
     </Preview>
     <Body style={main}>
       <Container style={container}>
         {/* Header */}
         <Section style={header}>
           <Img
-            src="https://barakaz.com/email-logo.png"
+            src="https://barakaz.com/email-logo.png?v=2"
             width="140"
             height="auto"
             alt={SITE_NAME}
@@ -84,8 +98,9 @@ const OrderConfirmationEmail = ({
             {customerName ? `Thanks for your order, ${customerName}!` : 'Thanks for your order!'}
           </Heading>
           <Text style={text}>
-            We've received your order and the seller has been notified. You'll
-            get another update as soon as it ships.
+            {paid
+              ? "Your payment has been confirmed and the seller has been notified. You'll get another update as soon as it ships."
+              : "We've received your order. Payment has not been confirmed yet — if you haven't completed payment, your order will not be processed. We'll email you again once payment is confirmed."}
           </Text>
 
           <Section style={metaBox}>
@@ -100,6 +115,14 @@ const OrderConfirmationEmail = ({
             <Text style={metaLine}>
               <strong>Payment:</strong> {paymentMethodLabel}
             </Text>
+            <Text style={metaLine}>
+              <strong>Payment status:</strong> {paymentStatusLabel ?? (paid ? 'Paid' : 'Awaiting payment')}
+            </Text>
+            {chargedNote && (
+              <Text style={metaLine}>
+                <strong>Charged:</strong> {money(chargedNote.amount, chargedNote.currency)}
+              </Text>
+            )}
           </Section>
 
           {/* Items */}
@@ -116,8 +139,8 @@ const OrderConfirmationEmail = ({
                   ) : null}
                 </Text>
                 <Text style={itemMeta}>
-                  Qty {it.quantity} × {fmt(it.unitPrice)} ={' '}
-                  <strong>{fmt(it.lineTotal)}</strong>
+                  Qty {it.quantity} × {money(it.unitPrice)} ={' '}
+                  <strong>{money(it.lineTotal)}</strong>
                 </Text>
               </Section>
             ))}
@@ -125,19 +148,10 @@ const OrderConfirmationEmail = ({
 
           {/* Totals */}
           <Section style={totalsBox}>
-            <Text style={totalRow}>
-              <span>Subtotal</span>
-              <span>{fmt(subtotal)}</span>
-            </Text>
-            <Text style={totalRow}>
-              <span>Delivery</span>
-              <span>{fmt(deliveryFee)}</span>
-            </Text>
+            <SumRow style={totalRow} label={<>Subtotal</>} value={money(subtotal)} />
+            <SumRow style={totalRow} label={<>Delivery</>} value={money(deliveryFee)} />
             <Hr style={hr} />
-            <Text style={grandTotalRow}>
-              <span>Total</span>
-              <span>{fmt(total)}</span>
-            </Text>
+            <SumRow style={grandTotalRow} label={<>Total</>} value={money(total)} />
           </Section>
 
           {/* Delivery */}
@@ -172,12 +186,14 @@ const OrderConfirmationEmail = ({
       </Container>
     </Body>
   </Html>
-)
+) }
 
 export const template = {
   component: OrderConfirmationEmail,
   subject: (data: Record<string, any>) =>
-    `Your ${SITE_NAME} order #${data?.orderShortId ?? ''} is confirmed`,
+    data?.stage === 'paid'
+      ? `Your ${SITE_NAME} order #${data?.orderShortId ?? ''} is confirmed`
+      : `We received your ${SITE_NAME} order #${data?.orderShortId ?? ''} — payment pending`,
   displayName: 'Order confirmation',
   previewData: {
     customerName: 'Jane Doe',
@@ -201,6 +217,17 @@ export const template = {
     trackUrl: 'https://barakaz.com/account',
   },
 } satisfies TemplateEntry
+
+function SumRow({ label, value, style }: { label: React.ReactNode; value: React.ReactNode; style: React.CSSProperties }) {
+  return (
+    <table width="100%" cellPadding={0} cellSpacing={0} role="presentation" style={{ ...style, display: 'table' }}>
+      <tbody><tr>
+        <td style={{ textAlign: 'left' }}>{label}</td>
+        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '12px' }}>{value}</td>
+      </tr></tbody>
+    </table>
+  )
+}
 
 // Styles
 const main: React.CSSProperties = {

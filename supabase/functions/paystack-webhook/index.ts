@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json, paystackKey, fromSubunit } from "../_shared/paystack.ts";
+import { sendOrderEmails } from "../_shared/order-emails.ts";
 
 async function hmacSha512Hex(secret: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -153,6 +154,11 @@ Deno.serve(async (req) => {
             console.error("shippo-purchase-label error:", e);
           }
         }
+      }
+      // Verified payment: now send the paid confirmation + seller notification.
+      if (orderId) {
+        try { await sendOrderEmails(admin, orderId, "paid", { notifyVendors: true }); }
+        catch (e) { console.error("paid emails failed:", e); }
       }
     } else if (event?.event === "charge.failed") {
       if (orderId || reference) {

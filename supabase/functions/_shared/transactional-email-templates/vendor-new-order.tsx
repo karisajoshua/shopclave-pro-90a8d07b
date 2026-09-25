@@ -43,11 +43,19 @@ interface VendorNewOrderProps {
   buyerName?: string
   shippingAddress?: ShippingAddress
   paymentMethodLabel?: string
+  paymentStatusLabel?: string
+  currency?: string
   manageUrl?: string
 }
 
-const fmt = (n: number) =>
-  'KSh ' + (n || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })
+const CURRENT = { currency: 'CAD' }
+const money = (n: number, currency = CURRENT.currency) => {
+  try {
+    return new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format(n || 0)
+  } catch {
+    return `${currency} ${(n || 0).toFixed(2)}`
+  }
+}
 
 const VendorNewOrderEmail = ({
   vendorName,
@@ -60,7 +68,9 @@ const VendorNewOrderEmail = ({
   shippingAddress,
   paymentMethodLabel = 'Pay on Delivery',
   manageUrl = 'https://barakaz.com/vendor/orders',
-}: VendorNewOrderProps) => (
+  paymentStatusLabel,
+  currency = 'CAD',
+}: VendorNewOrderProps) => { CURRENT.currency = currency; return (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
@@ -70,7 +80,7 @@ const VendorNewOrderEmail = ({
       <Container style={container}>
         <Section style={header}>
           <Img
-            src="https://barakaz.com/email-logo.png"
+            src="https://barakaz.com/email-logo.png?v=2"
             width="140"
             height="auto"
             alt={SITE_NAME}
@@ -99,6 +109,11 @@ const VendorNewOrderEmail = ({
             <Text style={metaLine}>
               <strong>Payment:</strong> {paymentMethodLabel}
             </Text>
+            {paymentStatusLabel && (
+              <Text style={metaLine}>
+                <strong>Payment status:</strong> {paymentStatusLabel}
+              </Text>
+            )}
           </Section>
 
           <Heading as="h2" style={h2}>
@@ -114,8 +129,8 @@ const VendorNewOrderEmail = ({
                   ) : null}
                 </Text>
                 <Text style={itemMeta}>
-                  Qty {it.quantity} × {fmt(it.unitPrice)} ={' '}
-                  <strong>{fmt(it.lineTotal)}</strong>
+                  Qty {it.quantity} × {money(it.unitPrice)} ={' '}
+                  <strong>{money(it.lineTotal)}</strong>
                 </Text>
               </Section>
             ))}
@@ -123,10 +138,7 @@ const VendorNewOrderEmail = ({
 
           <Section style={totalsBox}>
             <Hr style={hr} />
-            <Text style={grandTotalRow}>
-              <span>Your subtotal</span>
-              <span>{fmt(vendorSubtotal)}</span>
-            </Text>
+            <SumRow style={grandTotalRow} label={<>Your subtotal</>} value={money(vendorSubtotal)} />
           </Section>
 
           {shippingAddress && (
@@ -165,7 +177,7 @@ const VendorNewOrderEmail = ({
       </Container>
     </Body>
   </Html>
-)
+) }
 
 export const template = {
   component: VendorNewOrderEmail,
@@ -195,6 +207,18 @@ export const template = {
   },
 } satisfies TemplateEntry
 
+function SumRow({ label, value, style }: { label: React.ReactNode; value: React.ReactNode; style: React.CSSProperties }) {
+  return (
+    <table width="100%" cellPadding={0} cellSpacing={0} role="presentation" style={{ ...style, display: 'table' }}>
+      <tbody><tr>
+        <td style={{ textAlign: 'left' }}>{label}</td>
+        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '12px' }}>{value}</td>
+      </tr></tbody>
+    </table>
+  )
+}
+
+// Styles
 const main: React.CSSProperties = {
   backgroundColor: '#ffffff',
   fontFamily: 'Inter, Arial, sans-serif',

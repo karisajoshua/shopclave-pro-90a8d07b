@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { sendOrderEmails, ONLINE_METHODS } from "../_shared/order-emails.ts";
 import {
   addressFingerprint,
   itemsFingerprint,
@@ -352,205 +353,17 @@ Deno.serve(async (req) => {
         .in("id", quotes.map((q) => q.id));
     }
 
-    // Send order confirmation email (best-effort — never fail the order)
+    // Emails (best-effort). Payment is NOT verified here, so we only send an
+    // "order received / awaiting payment" note. For online card payments the
+    // paid confirmation and seller notification are sent by the signed webhook.
     try {
-      // Build short id, formatted date, items with product names
-      const orderShortId = order.id.slice(0, 8).toUpperCase();
-      const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+      await sendOrderEmails(adminClient, order.id, "received", {
+        notifyVendors: !ONLINE_METHODS.has(payment_method),
       });
-
-      const emailItems = orderItems.map((oi) => {
-        const product = productMap.get(oi.product_id);
-        const variantLabel =
-          oi.variant_options && typeof oi.variant_options === "object"
-            ? (oi.variant_options as Record<string, string>).label ?? null
-            : null;
-        return {
-          name: product?.name ?? "Product",
-          variantLabel,
-          quantity: oi.quantity,
-          unitPrice: oi.price,
-          lineTotal: oi.price * oi.quantity,
-        };
-      });
-
-      const subtotal = total;
-      const deliveryFee = shippingTotal;
-      const grandTotal = subtotal + deliveryFee;
-
-      const paymentLabelMap: Record<string, string> = {
-        mpesa: "M-Pesa",
-        card: "Card",
-        cod: "Pay on Delivery",
-        vendor_payment: "Pay Vendor Directly",
-      };
-
-      // Resolve recipient email with priority: form > JWT > auth.admin lookup
-      let recipientEmail: string | null =
-        (shipping_address.email && shipping_address.email.trim()) || user.email || null;
-
-      if (!recipientEmail) {
-        try {
-          const { data: adminUserData } = await adminClient.auth.admin.getUserById(user.id);
-          recipientEmail = adminUserData?.user?.email ?? null;
-        } catch (lookupErr) {
-          console.error("auth.admin.getUserById failed:", lookupErr);
-        }
-      }
-
-      if (!recipientEmail) {
-        console.warn(
-          `[order ${order.id}] No recipient email found (user ${user.id}). Skipping confirmation email.`
-        );
-      } else {
-        const emailPayload = {
-          templateName: "order-confirmation",
-          recipientEmail,
-          idempotencyKey: `order-confirm-${order.id}`,
-          templateData: {
-            customerName: shipping_address.fullName,
-            orderShortId,
-            orderDate,
-            items: emailItems,
-            subtotal,
-            deliveryFee,
-            total: grandTotal,
-            shippingAddress: shipping_address,
-            paymentMethodLabel: paymentLabelMap[payment_method] ?? payment_method,
-            trackUrl: "https://barakaz.com/account",
-          },
-        };
-
-        const { data: invokeData, error: invokeError } = await adminClient.functions.invoke(
-          "send-transactional-email",
-          { body: emailPayload }
-        );
-
-        if (invokeError) {
-          console.error(
-            `[order ${order.id}] send-transactional-email invoke failed: recipient=${recipientEmail} error=${JSON.stringify(invokeError)}`
-          );
-        } else {
-          console.log(
-            `[order ${order.id}] order-confirmation enqueued for ${recipientEmail} response=${JSON.stringify(invokeData)}`
-          );
-        }
-      }
     } catch (emailErr) {
-      console.error("order confirmation email failed:", emailErr);
+      console.error("order received email failed:", emailErr);
     }
 
-    // Vendor notification emails (best-effort — never fail the order)
-    try {
-      const orderShortId = order.id.slice(0, 8).toUpperCase();
-      const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      const paymentLabelMap: Record<string, string> = {
-        mpesa: "M-Pesa",
-        card: "Card",
-        cod: "Pay on Delivery",
-        vendor_payment: "Pay Vendor Directly",
-      };
-
-      // Fetch vendor owners
-      const { data: vendorRows } = await adminClient
-        .from("vendors")
-        .select("id, store_name, user_id")
-        .in("id", vendorIds);
-      const vendorOwnerMap = new Map((vendorRows || []).map((v) => [v.id, v]));
-
-      // Group items by vendor
-      const itemsByVendor = new Map<string, typeof orderItems>();
-      for (const oi of orderItems) {
-        const arr = itemsByVendor.get(oi.vendor_id) ?? [];
-        arr.push(oi);
-        itemsByVendor.set(oi.vendor_id, arr);
-      }
-
-      for (const [vendorId, vItems] of itemsByVendor.entries()) {
-        const vendor = vendorOwnerMap.get(vendorId);
-        if (!vendor?.user_id) {
-          console.warn(`[order ${order.id}] vendor ${vendorId} has no user_id; skipping vendor email`);
-          continue;
-        }
-
-        let vendorEmail: string | null = null;
-        let vendorFullName: string | null = null;
-        try {
-          const { data: vUserData } = await adminClient.auth.admin.getUserById(vendor.user_id);
-          vendorEmail = vUserData?.user?.email ?? null;
-          vendorFullName =
-            (vUserData?.user?.user_metadata as any)?.full_name ?? null;
-        } catch (lookupErr) {
-          console.error(`[order ${order.id}] vendor user lookup failed:`, lookupErr);
-        }
-
-        if (!vendorEmail) {
-          console.warn(
-            `[order ${order.id}] No email for vendor ${vendorId} (user ${vendor.user_id}). Skipping.`
-          );
-          continue;
-        }
-
-        const vendorEmailItems = vItems.map((oi) => {
-          const product = productMap.get(oi.product_id);
-          const variantLabel =
-            oi.variant_options && typeof oi.variant_options === "object"
-              ? (oi.variant_options as Record<string, string>).label ?? null
-              : null;
-          return {
-            name: product?.name ?? "Product",
-            variantLabel,
-            quantity: oi.quantity,
-            unitPrice: oi.price,
-            lineTotal: oi.price * oi.quantity,
-          };
-        });
-        const vendorSubtotal = vendorEmailItems.reduce((s, i) => s + i.lineTotal, 0);
-
-        const payload = {
-          templateName: "vendor-new-order",
-          recipientEmail: vendorEmail,
-          idempotencyKey: `vendor-new-order-${order.id}-${vendorId}`,
-          templateData: {
-            vendorName: vendorFullName,
-            storeName: vendor.store_name,
-            orderShortId,
-            orderDate,
-            items: vendorEmailItems,
-            vendorSubtotal,
-            buyerName: shipping_address.fullName,
-            shippingAddress: shipping_address,
-            paymentMethodLabel: paymentLabelMap[payment_method] ?? payment_method,
-            manageUrl: "https://barakaz.com/vendor/orders",
-          },
-        };
-
-        try {
-          const { error: invokeError } = await adminClient.functions.invoke(
-            "send-transactional-email",
-            { body: payload }
-          );
-          if (invokeError) {
-            console.error(
-              `[order ${order.id}] vendor-new-order invoke failed for ${vendorEmail}: ${JSON.stringify(invokeError)}`
-            );
-          } else {
-            console.log(`[order ${order.id}] vendor-new-order enqueued for ${vendorEmail}`);
-          }
-        } catch (sendErr) {
-          console.error(`[order ${order.id}] vendor-new-order send error:`, sendErr);
-        }
-      }
-    } catch (vendorEmailErr) {
-      console.error("vendor notification emails failed:", vendorEmailErr);
-    }
 
 
 
