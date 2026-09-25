@@ -180,7 +180,7 @@ const HeroBanner = () => {
               <img
                 src={slide.image}
                 alt={slide.title || "Hero banner"}
-                className="w-full h-[200px] sm:h-[300px] md:h-[400px] lg:h-[450px] object-cover transition-all duration-700"
+                className="w-full h-[160px] sm:h-[300px] md:h-[400px] lg:h-[450px] object-contain sm:object-cover bg-secondary transition-all duration-700"
               />
             </picture>
             {(slide.title || slide.cta) && (
