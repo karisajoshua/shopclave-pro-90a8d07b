@@ -46,7 +46,8 @@ interface OrderConfirmationProps {
   trackUrl?: string
 }
 
-const money = (n: number, currency = 'CAD') => {
+const CURRENT = { currency: 'CAD' }
+const money = (n: number, currency = CURRENT.currency) => {
   try {
     return new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format(n || 0)
   } catch {
@@ -121,8 +122,8 @@ const OrderConfirmationEmail = ({
                   ) : null}
                 </Text>
                 <Text style={itemMeta}>
-                  Qty {it.quantity} × {fmt(it.unitPrice)} ={' '}
-                  <strong>{fmt(it.lineTotal)}</strong>
+                  Qty {it.quantity} × {money(it.unitPrice)} ={' '}
+                  <strong>{money(it.lineTotal)}</strong>
                 </Text>
               </Section>
             ))}
@@ -130,19 +131,10 @@ const OrderConfirmationEmail = ({
 
           {/* Totals */}
           <Section style={totalsBox}>
-            <Text style={totalRow}>
-              <span>Subtotal</span>
-              <span>{fmt(subtotal)}</span>
-            </Text>
-            <Text style={totalRow}>
-              <span>Delivery</span>
-              <span>{fmt(deliveryFee)}</span>
-            </Text>
+            <SumRow style={totalRow} label={<>Subtotal</>} value={{money(subtotal)}} />
+            <SumRow style={totalRow} label={<>Delivery</>} value={{money(deliveryFee)}} />
             <Hr style={hr} />
-            <Text style={grandTotalRow}>
-              <span>Total</span>
-              <span>{fmt(total)}</span>
-            </Text>
+            <SumRow style={grandTotalRow} label={<>Total</>} value={{money(total)}} />
           </Section>
 
           {/* Delivery */}
@@ -206,6 +198,17 @@ export const template = {
     trackUrl: 'https://barakaz.com/account',
   },
 } satisfies TemplateEntry
+
+function SumRow({ label, value, style }: { label: React.ReactNode; value: React.ReactNode; style: React.CSSProperties }) {
+  return (
+    <table width="100%" cellPadding={0} cellSpacing={0} role="presentation" style={{ ...style, display: 'table' }}>
+      <tbody><tr>
+        <td style={{ textAlign: 'left' }}>{label}</td>
+        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '12px' }}>{value}</td>
+      </tr></tbody>
+    </table>
+  )
+}
 
 // Styles
 const main: React.CSSProperties = {

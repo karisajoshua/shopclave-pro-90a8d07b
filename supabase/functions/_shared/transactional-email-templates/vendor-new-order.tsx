@@ -46,7 +46,8 @@ interface VendorNewOrderProps {
   manageUrl?: string
 }
 
-const money = (n: number, currency = 'CAD') => {
+const CURRENT = { currency: 'CAD' }
+const money = (n: number, currency = CURRENT.currency) => {
   try {
     return new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format(n || 0)
   } catch {
@@ -119,8 +120,8 @@ const VendorNewOrderEmail = ({
                   ) : null}
                 </Text>
                 <Text style={itemMeta}>
-                  Qty {it.quantity} × {fmt(it.unitPrice)} ={' '}
-                  <strong>{fmt(it.lineTotal)}</strong>
+                  Qty {it.quantity} × {money(it.unitPrice)} ={' '}
+                  <strong>{money(it.lineTotal)}</strong>
                 </Text>
               </Section>
             ))}
@@ -128,10 +129,7 @@ const VendorNewOrderEmail = ({
 
           <Section style={totalsBox}>
             <Hr style={hr} />
-            <Text style={grandTotalRow}>
-              <span>Your subtotal</span>
-              <span>{fmt(vendorSubtotal)}</span>
-            </Text>
+            <SumRow style={grandTotalRow} label={<>Your subtotal</>} value={{money(vendorSubtotal)}} />
           </Section>
 
           {shippingAddress && (
