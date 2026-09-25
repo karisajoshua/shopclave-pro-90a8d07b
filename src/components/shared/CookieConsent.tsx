@@ -71,27 +71,27 @@ const CookieConsent = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 inset-x-0 z-[100] p-4 md:p-6">
-        <div className="max-w-4xl mx-auto bg-card border border-border rounded-xl shadow-2xl p-5 md:p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <Shield className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+      <div className="fixed bottom-16 md:bottom-0 inset-x-0 z-[100] p-2 md:p-6">
+        <div className="max-w-4xl mx-auto bg-card border border-border rounded-xl shadow-2xl p-3 md:p-6">
+          <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-4">
+            <Shield className="h-4 w-4 md:h-6 md:w-6 text-primary shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-foreground mb-1">We value your privacy</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="font-semibold text-sm md:text-base text-foreground mb-0.5 md:mb-1">We value your privacy</h3>
+              <p className="text-xs md:text-sm text-muted-foreground leading-snug md:leading-relaxed line-clamp-3 md:line-clamp-none">
                 We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic.
                 By clicking "Accept All", you consent to our use of cookies.{" "}
                 <Link to="/cookie-policy" className="text-primary hover:underline">Cookie Policy</Link>
               </p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
-            <Button variant="outline" size="sm" onClick={() => setShowPrefs(true)}>
-              Manage Preferences
+          <div className="flex flex-row gap-2 justify-end">
+            <Button variant="outline" size="sm" className="text-xs px-2 md:px-3" onClick={() => setShowPrefs(true)}>
+              Preferences
             </Button>
-            <Button variant="outline" size="sm" onClick={rejectNonEssential}>
-              Reject Non-Essential
+            <Button variant="outline" size="sm" className="text-xs px-2 md:px-3" onClick={rejectNonEssential}>
+              Reject
             </Button>
-            <Button size="sm" onClick={acceptAll}>
+            <Button size="sm" className="text-xs px-2 md:px-3" onClick={acceptAll}>
               Accept All
             </Button>
           </div>
