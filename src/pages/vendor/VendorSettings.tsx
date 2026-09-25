@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,30 @@ import { Loader2, Upload, Trash2, ImageIcon } from "lucide-react";
 import { convertImageToWebp } from "@/lib/imageToWebp";
 
 type ImageKind = "logo" | "banner";
+
+type JsonRecord = Record<string, unknown>;
+
+const asJsonRecord = (value: unknown): JsonRecord => {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as JsonRecord;
+  return {};
+};
+
+const addressValue = (value: unknown, key: string) => {
+  const field = asJsonRecord(value)[key];
+  return typeof field === "string" ? field : "";
+};
+
+const normalizedAddress = (value: unknown) => {
+  const address = asJsonRecord(value);
+  return {
+    street1: addressValue(address, "street1").trim(),
+    city: addressValue(address, "city").trim(),
+    state: addressValue(address, "state").trim(),
+    zip: addressValue(address, "zip").trim(),
+    country: addressValue(address, "country").trim(),
+    phone: addressValue(address, "phone").trim(),
+  };
+};
 
 interface ImageUploadFieldProps {
   kind: ImageKind;
@@ -141,37 +165,73 @@ const VendorSettings = () => {
     payment_details: vendor.payment_details || {},
     warehouse_address: vendor.warehouse_address || {},
   });
-  const paymentDetails = form.payment_details as any;
-  const warehouse = form.warehouse_address as any;
+  const paymentDetails = asJsonRecord(form.payment_details);
+  const warehouse = asJsonRecord(form.warehouse_address);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm({
+      store_name: vendor.store_name || "",
+      store_description: vendor.store_description || "",
+      logo_url: vendor.logo_url || "",
+      banner_url: vendor.banner_url || "",
+      slug: vendor.slug || "",
+      phone: vendor.phone || "",
+      phone2: vendor.phone2 || "",
+      whatsapp: vendor.whatsapp || "",
+      website: vendor.website || "",
+      payment_details: asJsonRecord(vendor.payment_details),
+      warehouse_address: asJsonRecord(vendor.warehouse_address),
+    });
+  }, [vendor]);
 
   // Mirrors the server-side check used at checkout (validateWarehouse).
   const originIso = (() => {
-    const c = String(warehouse.country || "").trim();
+    const c = addressValue(warehouse, "country").trim();
     if (c.length === 2) return c.toUpperCase();
     const map: Record<string, string> = { kenya: "KE", canada: "CA", "united states": "US", usa: "US", "united kingdom": "GB", uk: "GB", india: "IN", australia: "AU" };
     return map[c.toLowerCase()] ?? c.slice(0, 2).toUpperCase();
   })();
   const missingOrigin: string[] = [];
-  if (!warehouse.street1?.trim()) missingOrigin.push("street address");
-  if (!warehouse.city?.trim()) missingOrigin.push("city");
-  if (!warehouse.country?.trim()) missingOrigin.push("country");
-  if (!warehouse.phone?.trim()) missingOrigin.push("pickup phone number");
-  if (["US", "CA", "AU", "IN"].includes(originIso) && !warehouse.state?.trim()) missingOrigin.push("state/province");
-  if (["US", "CA", "GB", "DE", "FR", "AU", "IN", "CN", "NL", "ES", "IT"].includes(originIso) && !warehouse.zip?.trim()) missingOrigin.push("postal code");
+  if (!addressValue(warehouse, "street1").trim()) missingOrigin.push("street address");
+  if (!addressValue(warehouse, "city").trim()) missingOrigin.push("city");
+  if (!addressValue(warehouse, "country").trim()) missingOrigin.push("country");
+  if (!addressValue(warehouse, "phone").trim()) missingOrigin.push("pickup phone number");
+  if (["US", "CA", "AU", "IN"].includes(originIso) && !addressValue(warehouse, "state").trim()) missingOrigin.push("state/province");
+  if (["US", "CA", "GB", "DE", "FR", "AU", "IN", "CN", "NL", "ES", "IT"].includes(originIso) && !addressValue(warehouse, "zip").trim()) missingOrigin.push("postal code");
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (missingOrigin.length > 0) {
-        toast.warning(`Saved, but shipping is not ready yet — still missing: ${missingOrigin.join(", ")}.`);
-      }
-      const { error } = await supabase.from("vendors").update(form).eq("id", vendor.id);
+      if (!user?.id) throw new Error("Your session has expired. Please sign in again.");
+      const { data: updatedRows, error } = await supabase
+        .from("vendors")
+        .update(form)
+        .eq("id", vendor.id)
+        .eq("user_id", user.id)
+        .select("id");
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["vendor"] });
-      toast.success("Store settings saved!");
-    } catch (e: any) {
-      toast.error(e.message);
+      if (!updatedRows || updatedRows.length !== 1) {
+        throw new Error("No store record was updated. Reload the page and try again.");
+      }
+
+      const { data: privateRows, error: verifyError } = await supabase.rpc("get_vendor_private_fields_v2", {
+        _vendor_id: vendor.id,
+      });
+      if (verifyError) throw verifyError;
+      const persisted = Array.isArray(privateRows) ? privateRows[0] : null;
+      if (!persisted || JSON.stringify(normalizedAddress(persisted.warehouse_address)) !== JSON.stringify(normalizedAddress(form.warehouse_address))) {
+        throw new Error("Your store was updated, but the shipping origin could not be verified. Please try again.");
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["vendor", user.id] });
+      if (missingOrigin.length > 0) {
+        toast.warning(`Settings saved and verified, but shipping still needs: ${missingOrigin.join(", ")}.`);
+      } else {
+        toast.success("Store settings and shipping origin saved and verified.");
+      }
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Store settings could not be saved.");
     } finally {
       setSaving(false);
     }
@@ -258,7 +318,7 @@ const VendorSettings = () => {
         <div>
           <Label>Pickup Phone Number *</Label>
           <Input
-            value={warehouse.phone || ""}
+            value={addressValue(warehouse, "phone")}
             onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, phone: e.target.value } })}
             placeholder="Phone the courier can call at pickup, with country code"
           />
@@ -267,7 +327,7 @@ const VendorSettings = () => {
         <div>
           <Label>Street Address</Label>
           <Input
-            value={warehouse.street1 || ""}
+            value={addressValue(warehouse, "street1")}
             onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, street1: e.target.value } })}
             placeholder="e.g., 123 Moi Avenue"
           />
@@ -276,7 +336,7 @@ const VendorSettings = () => {
           <div>
             <Label>City</Label>
             <Input
-              value={warehouse.city || ""}
+              value={addressValue(warehouse, "city")}
               onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, city: e.target.value } })}
               placeholder="Nairobi"
             />
@@ -284,7 +344,7 @@ const VendorSettings = () => {
           <div>
             <Label>State / Region</Label>
             <Input
-              value={warehouse.state || ""}
+              value={addressValue(warehouse, "state")}
               onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, state: e.target.value } })}
               placeholder="Optional"
             />
@@ -294,7 +354,7 @@ const VendorSettings = () => {
           <div>
             <Label>ZIP / Postal Code</Label>
             <Input
-              value={warehouse.zip || ""}
+              value={addressValue(warehouse, "zip")}
               onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, zip: e.target.value } })}
               placeholder="00100"
             />
@@ -302,7 +362,7 @@ const VendorSettings = () => {
           <div>
             <Label>Country (ISO code or name)</Label>
             <Input
-              value={warehouse.country || ""}
+              value={addressValue(warehouse, "country")}
               onChange={(e) => setForm({ ...form, warehouse_address: { ...warehouse, country: e.target.value } })}
               placeholder="KE"
             />
@@ -315,7 +375,7 @@ const VendorSettings = () => {
         <div>
           <Label>M-Pesa Till/Paybill Number</Label>
           <Input
-            value={paymentDetails.mpesa_number || ""}
+            value={String(paymentDetails.mpesa_number || "")}
             onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, mpesa_number: e.target.value } })}
             placeholder="e.g., Till 123456 or Paybill 654321"
           />
@@ -323,7 +383,7 @@ const VendorSettings = () => {
         <div>
           <Label>Bank Name</Label>
           <Input
-            value={paymentDetails.bank_name || ""}
+            value={String(paymentDetails.bank_name || "")}
             onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, bank_name: e.target.value } })}
             placeholder="e.g., KCB, Equity"
           />
@@ -331,7 +391,7 @@ const VendorSettings = () => {
         <div>
           <Label>Bank Account Number</Label>
           <Input
-            value={paymentDetails.bank_account || ""}
+            value={String(paymentDetails.bank_account || "")}
             onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, bank_account: e.target.value } })}
             placeholder="Account number"
           />
@@ -339,7 +399,7 @@ const VendorSettings = () => {
         <div>
           <Label>Custom Payment Instructions</Label>
           <Textarea
-            value={paymentDetails.custom_instructions || ""}
+            value={String(paymentDetails.custom_instructions || "")}
             onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, custom_instructions: e.target.value } })}
             placeholder="Any additional payment instructions for customers..."
             rows={2}

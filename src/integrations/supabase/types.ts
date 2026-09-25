@@ -2832,6 +2832,14 @@ export type Database = {
           warehouse_address: string
         }[]
       }
+      get_vendor_private_fields_v2: {
+        Args: { _vendor_id: string }
+        Returns: {
+          id: string
+          payment_details: Json
+          warehouse_address: Json
+        }[]
+      }
       has_permission: {
         Args: { _perm: string; _user_id: string }
         Returns: boolean
