@@ -262,74 +262,24 @@ Deno.serve(async (req) => {
         console.error("SHIPPO_API_TOKEN is not configured — live rates unavailable");
       }
 
-      const options: Array<Record<string, unknown>> = [];
-
-      if (liveRates.length > 0) {
-        const sorted = liveRates
-          .map((rt) => ({
-            rate_id: String(rt.object_id),
-            provider: String(rt.provider ?? "Carrier"),
-            service:
-              String((rt.servicelevel as any)?.name ?? (rt.servicelevel as any)?.token ?? "Standard"),
-            amount: Number(rt.amount),
-            currency: String(rt.currency ?? "USD"),
-            estimated_days: rt.estimated_days ? Number(rt.estimated_days) : null,
-            duration_terms: (rt.duration_terms as string) ?? null,
-          }))
-          .filter((rt) => Number.isFinite(rt.amount))
-          .sort((a, b) => a.amount - b.amount)
-          .slice(0, 4);
-
-        for (const rt of sorted) {
-          const norm = normalizeToCad(rt.amount, rt.currency, rates ?? {});
-          if (!norm) {
-            console.error(`Unconvertible carrier currency ${rt.currency} for vendor ${vendorId}`);
-            continue; // never mix currencies
-          }
-          options.push({
-            source: "shippo",
-            rate_id: rt.rate_id,
-            provider: rt.provider,
-            service: rt.service,
-            amount_original: rt.amount,
-            currency_original: rt.currency,
-            fx_rate_to_cad: norm.fx_rate_to_cad,
-            amount_cad: norm.amount_cad,
-            estimated_days: rt.estimated_days,
-            duration_terms: rt.duration_terms,
-            is_estimate: false,
-          });
-        }
+      // Customer-facing shipping is a fixed CAD fee PER VENDOR. Carrier selection is
+      // deliberately deferred to fulfillment: do not persist a Shippo rate_id here,
+      // since a carrier quote must never be silently purchased without vendor choice.
+      // Limit this tariff to Canadian domestic shipments until international pricing is approved.
+      if (originISO !== "CA" || destISO !== "CA") {
+        pushBlocked("flat_rate_unavailable", "Standard and Express flat-rate shipping are currently available only for shipments within Canada.");
+        continue;
       }
-
-      // 3. No live rate → clearly-labelled Barakaz estimate, or nothing at all.
-      if (options.length === 0) {
-        if (policy.fallback_mode !== "estimate") {
-          pushBlocked(
-            "live_rates_unavailable",
-            "Live shipping rates are temporarily unavailable for this seller. Please try again shortly.",
-          );
-          continue;
-        }
-        const kg = Math.max(parcel.weight_g / 1000, 0.1);
-        const base =
-          (policy.estimate_base_cad + kg * policy.estimate_per_kg_cad) *
-          (originISO === destISO ? 1 : policy.estimate_international_multiplier);
-        const amountCad = round2(Math.max(5, Math.ceil(base * 2) / 2));
-        options.push({
-          source: "estimate",
-          rate_id: null,
-          provider: "Barakaz",
-          service: "Barakaz Estimated Shipping",
-          amount_original: amountCad,
-          currency_original: "CAD",
-          fx_rate_to_cad: 1,
-          amount_cad: amountCad,
-          estimated_days: handlingDays + (originISO === destISO ? 4 : 12),
-          duration_terms: "Estimated — carrier assigned after the order is paid",
-          is_estimate: true,
-        });
-      }
+      const options: Array<Record<string, unknown>> = [
+        { source: "estimate", rate_id: null, provider: "Barakaz", service: "Standard Shipping",
+          amount_original: 12.50, currency_original: "CAD", fx_rate_to_cad: 1,
+          amount_cad: 12.50, estimated_days: 7,
+          duration_terms: "Estimated delivery: 3–7 business days; carrier selected at fulfillment", is_estimate: true },
+        { source: "estimate", rate_id: null, provider: "Barakaz", service: "Express Shipping",
+          amount_original: 19.99, currency_original: "CAD", fx_rate_to_cad: 1,
+          amount_cad: 19.99, estimated_days: 3,
+          duration_terms: "Estimated delivery: 1–3 business days; carrier selected at fulfillment", is_estimate: true },
+      ];
 
       for (const o of options) {
         quoteRows.push({

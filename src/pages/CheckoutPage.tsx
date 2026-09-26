@@ -565,7 +565,7 @@ const CheckoutPage = () => {
                 <div className="px-4 pb-4 space-y-4">
                   {ratesLoading && (
                     <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-                      Fetching live shipping rates…
+                      Preparing delivery options…
                     </div>
                   )}
 
@@ -619,10 +619,10 @@ const CheckoutPage = () => {
                                 <Truck className="h-4 w-4 text-primary shrink-0" />
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium truncate">
-                                    {r.is_estimate ? r.service : `${r.provider} — ${r.service}`}
+                                    {r.service}
                                   </p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    {r.estimated_days ? etaLabel(r.estimated_days) : r.duration_terms || "Carrier ETA unavailable"}
+                                    {r.service === "Express Shipping" ? "Estimated delivery: 1–3 business days" : "Estimated delivery: 3–7 business days"}
                                   </p>
                                 </div>
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
@@ -655,7 +655,7 @@ const CheckoutPage = () => {
               {deliveryConfirmed && activeStep !== "delivery" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p>Door delivery • {items.length} item(s)</p>
-                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.provider} — {rate.service}: {formatPrice(rate.amount_cad)} · {etaLabel(rate.estimated_days)}</p>)}
+                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)} · {rate.service === "Express Shipping" ? "1–3 business days" : "3–7 business days"}</p>)}
                 </div>
               )}
             </div>
