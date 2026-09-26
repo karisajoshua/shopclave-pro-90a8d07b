@@ -40,6 +40,7 @@ const OrderConfirmationPage = () => {
         if (data?.paid) {
           setState("paid");
           clearCart();
+          sessionStorage.removeItem("barakaz_pending_stripe_order");
           if (data.amount && data.currency) {
             setCharged({ amount: data.amount, currency: data.currency });
           }
