@@ -415,9 +415,12 @@ const CheckoutPage = () => {
         );
         if (paymentErr) throw paymentErr;
         if (paymentData?.error) throw new Error(paymentData.error);
-        const payUrl: string | undefined = paymentData?.url;
-        const allowedHost = isStripe ? /(^|\.)stripe\.com$/ : /(^|\.)paystack\.(com|co)$/;
-        if (!payUrl || !allowedHost.test(new URL(payUrl).hostname)) {
+        const rawUrl: string | undefined = paymentData?.url;
+        const payUrl = isStripe
+          ? validateStripeCheckoutUrl(rawUrl)
+          : rawUrl && /(^|\.)paystack\.(com|co)$/.test(new URL(rawUrl).hostname) ? rawUrl : null;
+        if (!payUrl) {
+          if (isStripe) logHandoff("invalid_checkout_url", { framed: isFramed, orderRef: orderId });
           throw new Error(`We couldn't open the secure ${isStripe ? "Stripe" : "Paystack"} payment page.`);
         }
         if (isStripe && typeof paymentData.amount === "number" && Math.abs(paymentData.amount - grandTotal) > 0.01) {
@@ -427,13 +430,35 @@ const CheckoutPage = () => {
         }
         setCheckoutStage("redirect");
         redirecting = true;
+        // Durable fallback: always show a manual Continue button once a valid session exists.
+        if (isStripe) setStripeCheckoutUrl(payUrl);
+        const stopLoader = (reason: string) => {
+          if (isStripe) logHandoff("auto_redirect_stalled", { framed: isFramed, orderRef: orderId, reason });
+          setLoading(false);
+          setCheckoutStage(null);
+        };
         // A framed preview cannot navigate its parent after asynchronous server calls.
         // Use the window opened directly by the original customer click instead.
-        if (paymentWindow) {
-          paymentWindow.location.replace(payUrl);
+        if (paymentWindow && !paymentWindow.closed) {
+          try {
+            paymentWindow.location.replace(payUrl);
+            logHandoff("auto_redirect_started", { framed: true, orderRef: orderId });
+          } catch {
+            paymentWindow.close();
+          }
+          stopLoader("new_window");
           return;
         }
+        if (isFramed) {
+          stopLoader("framed_no_window");
+          return;
+        }
+        logHandoff("auto_redirect_started", { framed: false, orderRef: orderId });
         window.location.assign(payUrl);
+        // If navigation hasn't happened after a few seconds, reveal the manual button.
+        window.setTimeout(() => {
+          if (document.visibilityState === "visible") stopLoader("timeout");
+        }, 4000);
         return;
       }
 
