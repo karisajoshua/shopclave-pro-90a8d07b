@@ -17,6 +17,10 @@ import { useLocale } from "@/hooks/useLocale";
 import CheckoutLoader from "@/components/checkout/CheckoutLoader";
 import { validateStripeCheckoutUrl, logHandoff } from "@/lib/stripeHandoff";
 import { estimateDeliveryWindow, formatDeliveryWindow, transitDaysForService, deliveryItemsLabel } from "@/lib/deliveryEstimate";
+import { COUNTRIES, DEFAULT_COUNTRY, countryByCode, countryByName, searchCountries, addressFormat, validatePostal, isDomesticDestination } from "@/lib/countries";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 type Step = "address" | "delivery" | "review" | "payment";
 
@@ -95,17 +99,17 @@ const CheckoutPage = () => {
     phone: "",
     addressLine: "",
     city: "",
-    country: "",
+    country: countryByCode(DEFAULT_COUNTRY)!.name,
     state: "",
     zip: "",
     email: "",
   });
-
-  useEffect(() => {
-    if (country.name && country.name !== "Detecting…") {
-      setAddress((prev) => prev.country ? prev : { ...prev, country: country.name });
-    }
-  }, [country.name]);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const selectedCountry = countryByName(address.country);
+  const countryCode = selectedCountry?.code ?? "";
+  const fmt = addressFormat(countryCode);
+  const domestic = isDomesticDestination(countryCode);
+  void country;
   // Prefill email from auth user
   useEffect(() => {
     if (user?.email) {
@@ -302,17 +306,32 @@ const CheckoutPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, addressConfirmed]);
 
+  const changeCountry = (code: string) => {
+    const c = countryByCode(code);
+    setCountryOpen(false);
+    if (!c || c.code === countryCode) return;
+    // Stale region/postal/quotes never carry across countries.
+    setAddress((a) => ({ ...a, country: c.name, state: "", zip: "" }));
+    setShippingRates({});
+    setSelectedRates({});
+    setShippingErrors({});
+    setFallbackOrigin({});
+    setAddressConfirmed(false);
+    setDeliveryConfirmed(false);
+  };
+
   const handleConfirmAddress = () => {
     if (!address.fullName || !address.phone || !address.addressLine || !address.city) {
       toast.error("Please fill in all address fields");
       return;
     }
-    if (address.country.trim().toLowerCase() === "canada") {
-      if (!address.state) { toast.error("Please select your province or territory"); return; }
-      if (!/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(address.zip.trim())) {
-        toast.error("Enter a valid Canadian postal code, e.g. K1A 0B1"); return;
-      }
+    if (!domestic) {
+      toast.error("International shipping isn't available yet. We currently deliver within Canada only.");
+      return;
     }
+    if (!address.state) { toast.error("Please select your province or territory"); return; }
+    const postalErr = validatePostal(countryCode, address.zip);
+    if (postalErr) { toast.error(postalErr); return; }
     // Reset rates so they re-fetch for the (possibly updated) address
     setShippingRates({});
     setSelectedRates({});
@@ -591,8 +610,13 @@ const CheckoutPage = () => {
                       <Input value={address.fullName} onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
                     </div>
                     <div>
-                      <Label className="text-xs">Phone Number</Label>
-                      <Input value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} placeholder="+254..." />
+                      <Label className="text-xs" htmlFor="checkout-phone">Phone Number</Label>
+                      <div className="flex">
+                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-muted px-2 text-xs text-muted-foreground" aria-label={`Dial code ${selectedCountry?.name ?? ""}`}>
+                          {selectedCountry ? `${selectedCountry.code} ${selectedCountry.dial}` : "+"}
+                        </span>
+                        <Input id="checkout-phone" type="tel" className="rounded-l-none" value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} placeholder={countryCode === "CA" ? "416 555 0123" : "Phone number"} />
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -605,11 +629,35 @@ const CheckoutPage = () => {
                       <Input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
                     </div>
                     <div>
-                      <Label className="text-xs">Country</Label>
-                      <Input value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
+                      <Label className="text-xs" id="country-label">Country</Label>
+                      <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" role="combobox" aria-expanded={countryOpen} aria-labelledby="country-label" className="w-full justify-between font-normal">
+                            <span className="truncate">{selectedCountry?.name ?? "Select country"}</span>
+                            <ChevronsUpDown className="h-4 w-4 opacity-50" aria-hidden="true" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-0" align="start">
+                          <Command filter={(value, search) => (searchCountries(search).some((c) => c.code === value) ? 1 : 0)}>
+                            <CommandInput placeholder="Search country…" />
+                            <CommandList>
+                              <CommandEmpty>No country found.</CommandEmpty>
+                              <CommandGroup>
+                                {COUNTRIES.map((c) => (
+                                  <CommandItem key={c.code} value={c.code} onSelect={() => changeCountry(c.code)}>
+                                    <Check className={`mr-2 h-4 w-4 ${c.code === countryCode ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
+                                    <span className="flex-1 truncate">{c.name}</span>
+                                    <span className="text-xs text-muted-foreground">{c.dial}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
-                  {address.country.trim().toLowerCase() === "canada" ? (
+                  {countryCode === "CA" ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Province / Territory</Label>
@@ -622,8 +670,16 @@ const CheckoutPage = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
-                      <div><Label className="text-xs">State / Region</Label><Input value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} /></div>
-                      <div><Label className="text-xs">Postal / ZIP Code</Label><Input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} /></div>
+                      <div><Label className="text-xs">{fmt.regionLabel}</Label><Input value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} /></div>
+                      <div><Label className="text-xs">{fmt.postalLabel}</Label><Input value={address.zip} placeholder={fmt.postalExample} onChange={(e) => setAddress({ ...address, zip: e.target.value })} /></div>
+                    </div>
+                  )}
+                  {!domestic && (
+                    <div role="status" className="rounded-md border border-border bg-muted p-3 text-sm">
+                      <p className="font-medium">International shipping quote required — not yet available</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        We currently deliver within Canada only. Shipping, tax and duties for {selectedCountry?.name ?? "this destination"} can't be calculated yet, so checkout and payment are unavailable. Prices are shown in CAD.
+                      </p>
                     </div>
                   )}
                   <div>
@@ -638,7 +694,7 @@ const CheckoutPage = () => {
                       We'll send your order confirmation here.
                     </p>
                   </div>
-                  <Button className="w-full mt-2" onClick={handleConfirmAddress}>
+                  <Button className="w-full mt-2" onClick={handleConfirmAddress} disabled={!domestic}>
                     Save & Continue
                   </Button>
                 </div>
@@ -856,7 +912,7 @@ const CheckoutPage = () => {
                     className="w-full mt-4 font-semibold h-12 text-base"
                     size="lg"
                     variant={stripeCheckoutUrl ? "outline" : "default"}
-                    disabled={loading}
+                    disabled={loading || !domestic}
                     onClick={handlePlaceOrder}
                   >
                     {loading ? "Preparing secure checkout…" : checkoutError || stripeCheckoutUrl ? "Try again" : "Continue to payment"}
