@@ -301,6 +301,36 @@ const CheckoutPage = () => {
     setActiveStep("payment");
   };
 
+  // Manual, user-gesture handoff. Works when auto-redirect or pop-ups were blocked.
+  const handleContinueToStripe = () => {
+    const url = validateStripeCheckoutUrl(stripeCheckoutUrl);
+    const framed = window.top !== window.self;
+    const orderRef = pendingOrderRef.current?.orderId ?? readPendingStripeOrder()?.orderId;
+    if (!url) {
+      logHandoff("invalid_checkout_url", { framed, orderRef });
+      setStripeCheckoutUrl(null);
+      setCheckoutError("The payment link expired. Tap Try again to get a new one.");
+      return;
+    }
+    logHandoff("manual_continue_clicked", { framed, orderRef });
+    if (framed) {
+      // Framed preview: parent navigation is blocked, so open a new top-level tab from this click.
+      const opened = window.open(url, "_blank", "noopener");
+      if (!opened) {
+        // With noopener some browsers return null even on success; fall back to a direct anchor click.
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      return;
+    }
+    window.location.assign(url);
+  };
+
   const handlePlaceOrder = async () => {
     if (loading) return;
     const isFramed = window.top !== window.self;
@@ -308,14 +338,13 @@ const CheckoutPage = () => {
       ? window.open("about:blank", "_blank")
       : null;
     if (paymentMethod === "card" && isFramed && !paymentWindow) {
-      const message = "Your browser blocked the secure payment page. Allow pop-ups for this preview, then tap Try again.";
-      setCheckoutError(message);
-      toast.error(message);
-      return;
+      // Don't stop: we'll still prepare the session and show the manual Continue button.
+      logHandoff("popup_blocked", { framed: true });
     }
     if (paymentWindow) showPaymentWindowLoader(paymentWindow);
     setLoading(true);
     setCheckoutError(null);
+    setStripeCheckoutUrl(null);
     setCheckoutStage("order");
     let redirecting = false;
     try {
@@ -689,17 +718,36 @@ const CheckoutPage = () => {
                     </div>
                   )}
 
+                  {stripeCheckoutUrl && (
+                    <div role="status" className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
+                      <p className="text-sm font-medium">Your secure Stripe payment page is ready.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        If it didn't open automatically, tap below. You won't be charged until you pay on Stripe.
+                      </p>
+                      <Button
+                        className="w-full mt-3 font-semibold h-12 text-base"
+                        size="lg"
+                        onClick={handleContinueToStripe}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Continue to secure Stripe payment
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     className="w-full mt-4 font-semibold h-12 text-base"
                     size="lg"
+                    variant={stripeCheckoutUrl ? "outline" : "default"}
                     disabled={loading}
                     onClick={handlePlaceOrder}
                   >
-                    {loading ? "Preparing secure checkout…" : checkoutError ? "Try again" : "Continue to payment"}
+                    {loading ? "Preparing secure checkout…" : checkoutError || stripeCheckoutUrl ? "Try again" : "Continue to payment"}
                   </Button>
                   {checkoutError && (
                     <div role="alert" className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                      <p className="font-medium">Payment didn't start — you have not been charged.</p>
+                      <p className="font-medium">
+                        {stripeCheckoutUrl ? "Payment hasn't started yet — you have not been charged." : "Payment didn't start — you have not been charged."}
+                      </p>
                       <p className="mt-1 text-xs">{checkoutError}</p>
                       <p className="mt-1 text-xs">Tap "Try again" to retry. We'll reuse the same order, so you won't get a duplicate.</p>
                     </div>
