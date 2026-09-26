@@ -4,16 +4,22 @@ Status: **NOT ACTIVE.** Engine at `supabase/functions/_shared/tax.ts` is code-on
 
 Policy decision: Barakaz collects and remits tax as the marketplace operator for all marketplace orders.
 
-## Legal / tax advisor must confirm (blocking)
-- [ ] GST/HST registration number and marketplace-operator obligations (Excise Tax Act, platform rules since 2021).
-- [ ] BC PST: registration as marketplace facilitator; PST on delivery charges.
-- [ ] QC QST: registration (specified/general), marketplace obligations; QST on shipping.
-- [ ] MB RST: registration requirement for online marketplace; RST on shipping.
-- [ ] SK PST: marketplace facilitator registration; PST on shipping.
-- [ ] Non-resident vendors vs Canadian vendors — any differing treatment.
-- [ ] Product category mapping (taxable / zero-rated / exempt) for each Barakaz category, including provincial PST exemptions (children's clothing, books, etc. differ by province).
-- [ ] Shipping rule: engine pro-rates shipping to taxable goods; each `shippingTaxable` flag must be confirmed per province/component.
-- [ ] Place-of-supply basis: destination province from delivery address.
+## Registration status (user-confirmed)
+- [x] **GST/HST registered.** Barakaz holds a GST/HST registration (marketplace-operator obligations, Excise Tax Act platform rules since 2021).
+  - [ ] Pending: exact effective date of registration — needed to reject/accept tax points before it; until supplied, activation uses date-gated rates only and must not backdate obligations.
+  - [ ] Pending: CRA validation of the registration number for display on invoices/receipts.
+- [ ] **Provincial registrations: status UNKNOWN — do not assume.**
+  - [ ] BC PST: registration as marketplace facilitator; PST on delivery charges.
+  - [ ] QC QST: registration (specified/general), marketplace obligations; QST on shipping.
+  - [ ] MB RST: registration requirement for online marketplace; RST on shipping.
+  - [ ] SK PST: marketplace facilitator registration; PST on shipping.
+
+## GST/HST-only activation path
+The engine supports activating with **federal components only** and fails closed elsewhere: configure `registrations = {"GST","HST"}` (no provincial keys). Then:
+- AB, NT, NU, YT (GST 5%) and ON, NS, NB, NL, PE (HST) calculate normally.
+- BC, MB, SK, QC return `{ ok: false, reason: "unregistered:<P>:<PST|RST|QST>" }` → no tax quote → no checkout charge in those provinces.
+- Even under GST/HST-only activation, the shipping-taxability flags for GST/HST still need advisor sign-off before charging tax on shipping.
+- Activation is per-environment config; provincial components switch on later by adding their registration keys once confirmed — no engine change required.
 - [ ] Tax point date (order date vs payment date).
 - [ ] Rounding method (engine: half-up per line per component).
 - [ ] Returns/refunds: tax reversal on partial/full refunds, credit notes, reporting period adjustments.
