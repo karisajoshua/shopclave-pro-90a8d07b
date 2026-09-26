@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Package, Truck } from "lucide-react";
 import TrackingTimeline, { SHIPMENT_STATUS_LABELS } from "@/components/shipping/TrackingTimeline";
 import { useLocale } from "@/hooks/useLocale";
+import { hasShipped } from "@/lib/orderTracking";
 
 const OrderTrackingPage = () => {
   const { orderId } = useParams();
@@ -96,7 +97,9 @@ const OrderTrackingPage = () => {
                     Parcel {idx + 1} — {s.vendors?.store_name || "Seller"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {s.carrier ? `${s.carrier}${s.service ? ` • ${s.service}` : ""}` : "Carrier pending"}
+                    {hasShipped(s.status) && s.carrier
+                      ? `${s.carrier}${s.service ? ` • ${s.service}` : ""}`
+                      : "Carrier and tracking appear once your parcel ships"}
                   </p>
                 </div>
                 <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
@@ -112,8 +115,8 @@ const OrderTrackingPage = () => {
                 ))}
               </div>
 
-              <div className="text-xs text-muted-foreground space-y-1">
-                {s.tracking_number && (
+              <div className="text-xs text-muted-foreground space-y-1 break-words">
+                {hasShipped(s.status) && s.tracking_number && (
                   <p>
                     Tracking number: <span className="font-mono">{s.tracking_number}</span>
                     {s.tracking_url && (
