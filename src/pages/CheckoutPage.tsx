@@ -10,11 +10,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft } from "lucide-react";
+import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft, Lock, ShieldCheck, RotateCcw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/hooks/useLocale";
 import CheckoutLoader from "@/components/checkout/CheckoutLoader";
 import { validateStripeCheckoutUrl, logHandoff } from "@/lib/stripeHandoff";
+import { estimateDeliveryWindow, formatDeliveryWindow, transitDaysForService, deliveryItemsLabel } from "@/lib/deliveryEstimate";
 
 type Step = "address" | "delivery" | "payment";
 
@@ -200,11 +201,33 @@ const CheckoutPage = () => {
     enabled: vendorIds.length > 0,
   });
 
-  const unreadyVendors = vendorIds.filter((vid) => {
-    const row = vendorPaystackStatuses?.find((r) => r.vendor_id === vid);
-    return !row?.active;
+  // Seller payout readiness is internal; warnings belong in vendor/admin views only.
+  void vendorPaystackStatuses;
+
+  // Seller handling days (max per vendor) for delivery-date estimates.
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const { data: handlingRows } = useQuery({
+    queryKey: ["checkout-handling-days", productIds],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("id, vendor_id, handling_time_days").in("id", productIds);
+      return data || [];
+    },
+    enabled: productIds.length > 0,
   });
-  const directSettlement = unreadyVendors.length === 0;
+  const handlingByVendor: Record<string, number> = {};
+  (handlingRows || []).forEach((r) => {
+    handlingByVendor[r.vendor_id] = Math.max(handlingByVendor[r.vendor_id] ?? 0, r.handling_time_days ?? 1);
+  });
+  const windowFor = (vendorId: string, service: string) =>
+    formatDeliveryWindow(
+      estimateDeliveryWindow({
+        from: new Date(),
+        ...transitDaysForService(service),
+        handlingDays: handlingByVendor[vendorId] ?? 1,
+        province: address.country === "Canada" ? address.state : undefined,
+      }),
+    );
+
 
 
   // Live shipping rates from Shippo (keyed by vendor_id)
@@ -688,6 +711,7 @@ const CheckoutPage = () => {
                                   <p className="text-[11px] text-muted-foreground">
                                     {r.service === "Express Shipping" ? "Estimated delivery: 1–3 business days" : "Estimated delivery: 3–7 business days"}
                                   </p>
+                                  <p className="text-[11px] text-muted-foreground">Est. arrival {windowFor(vendorId, r.service)} (not guaranteed)</p>
                                 </div>
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
                               </label>
@@ -718,8 +742,9 @@ const CheckoutPage = () => {
               )}
               {deliveryConfirmed && activeStep !== "delivery" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
-                  <p>Door delivery • {items.length} item(s)</p>
-                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)} · {rate.service === "Express Shipping" ? "1–3 business days" : "3–7 business days"}</p>)}
+                  <p>{deliveryItemsLabel(items.length)}</p>
+                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)} · Est. {windowFor(vid, rate.service)}</p>)}
+                  <p className="text-[11px]">Estimates only, not guaranteed.</p>
                 </div>
               )}
             </div>
@@ -745,13 +770,12 @@ const CheckoutPage = () => {
                     You'll be redirected to Stripe's secure payment page to enter your card. Charged in CAD.
                   </p>
 
-                  {!directSettlement && (
-                    <div className="mt-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-xs text-warning-foreground">
-                      One or more sellers in your cart haven't added payout details yet. You can
-                      still pay now — Barakaz holds their share securely and releases it once they
-                      complete setup.
-                    </div>
-                  )}
+                  <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-border bg-secondary/40 p-2 text-center text-[11px] text-muted-foreground" aria-label="Checkout protections">
+                    <div className="flex flex-col items-center gap-1"><Lock className="h-4 w-4 text-primary" aria-hidden="true" />Secure Payment</div>
+                    <div className="flex flex-col items-center gap-1"><ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />Buyer Protection</div>
+                    <Link to="/return-policy" className="flex flex-col items-center gap-1 underline-offset-2 hover:underline"><RotateCcw className="h-4 w-4 text-primary" aria-hidden="true" />Easy Returns</Link>
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Returns subject to our <Link to="/return-policy" className="underline">return policy</Link>.</p>
 
                   {stripeCheckoutUrl && (
                     <div role="status" className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
