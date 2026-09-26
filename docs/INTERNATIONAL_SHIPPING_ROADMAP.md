@@ -60,3 +60,11 @@ Status: **development only**. Checkout blocks non-Canadian destinations; no inte
 - Landed-cost provider decision and credentials.
 - Tax advisor confirmation of export zero-rating and evidence rules.
 - Restricted-goods policy and international return policy wording.
+
+## Acceptance gate before merging PR #3 or accepting international payments
+- Run `npm ci`, `npx vitest run src/test/international.test.ts`, `npx vitest run`, and `npx tsc --noEmit -p tsconfig.app.json` in an environment with repository dependencies; record logs and resolve failures. GitHub PR #3 remains draft until validated.
+- Obtain a live-capable **test/sandbox** carrier account and landed-cost API credentials through secret storage; never commit API keys. Confirm actual DDP/DAP eligibility and provider-calculated duties for each origin/destination/carrier lane.
+- Bind quote to immutable vendor parcel fingerprint, full normalized shipping address, user/guest session, currency conversion snapshot, carrier service and server-side expiration. Reject any changed basket, destination, vendor origin, customs line or expired quote before payment.
+- Prevent duplicate vendor quotes and negative/non-finite amounts; enforce all quote ownership and RLS checks on the server, never trust browser-provided `verified` or monetary fields.
+- Add idempotent server order creation and Stripe initialization; keep international and live-payment feature gates closed until independent staging end-to-end tests pass.
+- Validate applicable export tax treatment and destination duties with a qualified tax/customs professional. Maintain country-specific sanctions and restricted-goods rules with a documented update owner; a static country list is not a substitute for screening.
