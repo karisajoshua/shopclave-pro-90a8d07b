@@ -353,15 +353,18 @@ Deno.serve(async (req) => {
         .in("id", quotes.map((q) => q.id));
     }
 
-    // Emails (best-effort). Payment is NOT verified here, so we only send an
-    // "order received / awaiting payment" note. For online card payments the
-    // paid confirmation and seller notification are sent by the signed webhook.
-    try {
-      await sendOrderEmails(adminClient, order.id, "received", {
-        notifyVendors: !ONLINE_METHODS.has(payment_method),
-      });
-    } catch (emailErr) {
-      console.error("order received email failed:", emailErr);
+    // Emails (best-effort). Online card payments (Stripe/Paystack): NO email
+    // here — the customer and sellers are only emailed by the signed webhook
+    // after verified payment ("paid" stage). Offline methods (COD, pay vendor
+    // directly, M-Pesa) still get the "order received / awaiting payment" note.
+    if (!ONLINE_METHODS.has(payment_method)) {
+      try {
+        await sendOrderEmails(adminClient, order.id, "received", {
+          notifyVendors: true,
+        });
+      } catch (emailErr) {
+        console.error("order received email failed:", emailErr);
+      }
     }
 
 
