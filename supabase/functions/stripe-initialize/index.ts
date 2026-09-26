@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { liveCheckoutAllowed } from "../_shared/stripeLiveGuard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,9 @@ Deno.serve(async (req) => {
 
     // Retry: reuse a still-open Stripe session rather than creating a new one.
     const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!liveCheckoutAllowed(secretKey, Deno.env.get("STRIPE_LIVE_CHECKOUT_ENABLED"))) {
+      return json({ error: "Live payments are not enabled yet. You have not been charged." }, 503);
+    }
     if (secretKey && order.stripe_checkout_session_id) {
       const existing = await fetch(
         `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(order.stripe_checkout_session_id)}`,
