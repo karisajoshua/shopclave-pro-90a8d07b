@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateTax, BASELINE_RATES, normalizeProvince, taxOn, type TaxConfig } from "../../supabase/functions/_shared/tax";
+import { calculateTax, BASELINE_RATES, normalizeProvince, taxOn, configFromRegistrations, REGISTRATION_STATE, type TaxConfig } from "../../supabase/functions/_shared/tax";
 
 const ALL = new Set(["GST", "HST", "BC:PST", "MB:RST", "SK:PST", "QC:QST"]);
 const cfg = (reg = ALL): TaxConfig => ({ rates: BASELINE_RATES, registrations: reg });
@@ -88,5 +88,39 @@ describe("GST/HST-only activation (federal registrations, provinces unconfirmed)
     expect(calculateTax(province("QC"), cfg)).toEqual({ ok: false, reason: "unregistered:QC:QST" });
     expect(calculateTax(province("MB"), cfg)).toEqual({ ok: false, reason: "unregistered:MB:RST" });
     expect(calculateTax(province("SK"), cfg)).toEqual({ ok: false, reason: "unregistered:SK:PST" });
+  });
+});
+
+describe("registration state (GST/HST stated 2026-09-25, provincial unknown)", () => {
+  const ALL13 = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
+  const stated = configFromRegistrations(BASELINE_RATES, REGISTRATION_STATE, true);
+
+  it("default (unverified not allowed) fails closed everywhere", () => {
+    const strict = configFromRegistrations(BASELINE_RATES, REGISTRATION_STATE);
+    for (const p of ALL13) expect(calculateTax(req(p), strict).ok).toBe(false);
+  });
+  it("every province/territory has a federal rate on/after 2026-09-25", () => {
+    for (const p of ALL13) {
+      const r = calculateTax(req(p, { date: "2026-09-25" }), cfg());
+      expect(r.ok).toBe(true);
+    }
+  });
+  it("GST/HST boundary: 2026-09-24 not effective, 2026-09-25 applies", () => {
+    expect(calculateTax(req("AB", { date: "2026-09-24" }), stated)).toEqual({ ok: false, reason: "registration_not_effective:GST" });
+    expect(calculateTax(req("ON", { date: "2026-09-24" }), stated)).toEqual({ ok: false, reason: "registration_not_effective:HST" });
+    const ab = calculateTax(req("AB", { date: "2026-09-25" }), stated);
+    const on = calculateTax(req("ON", { date: "2026-09-25" }), stated);
+    expect(ab.ok && ab.totalTaxCents).toBe(500);
+    expect(on.ok && on.totalTaxCents).toBe(1300);
+  });
+  it("GST/HST provinces calculate; PST/QST/RST provinces fail closed as unknown", () => {
+    for (const p of ["AB", "NT", "NU", "YT", "ON", "NS", "NB", "NL", "PE"]) expect(calculateTax(req(p), stated).ok).toBe(true);
+    expect(calculateTax(req("BC"), stated)).toEqual({ ok: false, reason: "unregistered:BC:PST" });
+    expect(calculateTax(req("MB"), stated)).toEqual({ ok: false, reason: "unregistered:MB:RST" });
+    expect(calculateTax(req("SK"), stated)).toEqual({ ok: false, reason: "unregistered:SK:PST" });
+    expect(calculateTax(req("QC"), stated)).toEqual({ ok: false, reason: "unregistered:QC:QST" });
+  });
+  it("provincial records stay unknown until evidence", () => {
+    expect(REGISTRATION_STATE.filter((r) => r.key.includes(":")).every((r) => r.status === "unknown")).toBe(true);
   });
 });

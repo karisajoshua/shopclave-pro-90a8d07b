@@ -24,6 +24,32 @@ export interface TaxConfig {
   rates: RateRule[];
   /** Components Barakaz is confirmed registered to collect, e.g. "GST", "HST", "BC:PST", "QC:QST". */
   registrations: Set<string>;
+  /** Optional per-key registration start date (YYYY-MM-DD inclusive). Tax points before it fail closed. */
+  registrationEffectiveFrom?: Record<string, string>;
+}
+
+export type RegistrationStatus = "stated_unverified" | "verified" | "unknown";
+export interface RegistrationRecord { key: string; status: RegistrationStatus; effectiveFrom?: string; note: string }
+
+/** Development record of registration facts. Only "verified" or explicitly admin-approved
+ *  "stated_unverified" keys may be passed into TaxConfig.registrations; "unknown" never is. */
+export const REGISTRATION_STATE: RegistrationRecord[] = [
+  { key: "GST", status: "stated_unverified", effectiveFrom: "2026-09-25", note: "User-stated; CRA documentation not yet verified" },
+  { key: "HST", status: "stated_unverified", effectiveFrom: "2026-09-25", note: "User-stated; CRA documentation not yet verified" },
+  { key: "BC:PST", status: "unknown", note: "Supported by engine; registration not confirmed" },
+  { key: "MB:RST", status: "unknown", note: "Supported by engine; registration not confirmed" },
+  { key: "SK:PST", status: "unknown", note: "Supported by engine; registration not confirmed" },
+  { key: "QC:QST", status: "unknown", note: "Supported by engine; registration not confirmed" },
+];
+
+/** Build config from registration records. Unknown keys are always excluded (fail closed). */
+export function configFromRegistrations(rates: RateRule[], records: RegistrationRecord[], allowStatedUnverified = false): TaxConfig {
+  const ok = records.filter((r) => r.status === "verified" || (allowStatedUnverified && r.status === "stated_unverified"));
+  return {
+    rates,
+    registrations: new Set(ok.map((r) => r.key)),
+    registrationEffectiveFrom: Object.fromEntries(ok.filter((r) => r.effectiveFrom).map((r) => [r.key, r.effectiveFrom!])),
+  };
 }
 
 export interface TaxLineInput {
@@ -105,7 +131,10 @@ export function calculateTax(req: TaxRequest, cfg: TaxConfig): TaxResult {
   const rules = rulesFor(cfg.rates, p, req.date);
   if (!rules.some((r) => federal(r.component))) return { ok: false, reason: "no_federal_rate" };
   for (const r of rules) {
-    if (!cfg.registrations.has(registrationKey(p, r.component))) return { ok: false, reason: `unregistered:${registrationKey(p, r.component)}` };
+    const key = registrationKey(p, r.component);
+    if (!cfg.registrations.has(key)) return { ok: false, reason: `unregistered:${key}` };
+    const from = cfg.registrationEffectiveFrom?.[key];
+    if (from && req.date < from) return { ok: false, reason: `registration_not_effective:${key}` };
   }
 
   const totals = new Map<TaxComponent, ComponentAmount>();

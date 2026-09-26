@@ -4,15 +4,17 @@ Status: **NOT ACTIVE.** Engine at `supabase/functions/_shared/tax.ts` is code-on
 
 Policy decision: Barakaz collects and remits tax as the marketplace operator for all marketplace orders.
 
-## Registration status (user-confirmed)
-- [x] **GST/HST registered.** Barakaz holds a GST/HST registration (marketplace-operator obligations, Excise Tax Act platform rules since 2021).
-  - [ ] Pending: exact effective date of registration — needed to reject/accept tax points before it; until supplied, activation uses date-gated rates only and must not backdate obligations.
-  - [ ] Pending: CRA validation of the registration number for display on invoices/receipts.
-- [ ] **Provincial registrations: status UNKNOWN — do not assume.**
+Scope: all 13 Canadian provinces/territories. The engine SUPPORTS GST, HST, PST (BC/SK), RST (MB) and QST (QC). Support is not the same as a verified registration.
+
+## Registration status (engine record: `REGISTRATION_STATE` in tax.ts)
+- [x] **GST/HST: stated_unverified, effective 2026-09-25 (user-stated).** Tax points before 2026-09-25 fail closed (`registration_not_effective`).
+  - [ ] Pending: CRA documentation confirming number and effective date; set status to `verified`.
+- [ ] **BC PST, QC QST, MB RST, SK PST: `unknown`.** User has not confirmed registration. Engine fails closed (`unregistered:<P>:<TAX>`) in BC, QC, MB, SK.
   - [ ] BC PST: registration as marketplace facilitator; PST on delivery charges.
   - [ ] QC QST: registration (specified/general), marketplace obligations; QST on shipping.
   - [ ] MB RST: registration requirement for online marketplace; RST on shipping.
   - [ ] SK PST: marketplace facilitator registration; PST on shipping.
+- Activation: `configFromRegistrations()` only includes `verified` keys by default; `stated_unverified` requires an explicit admin opt-in; `unknown` is never included. Future admin configuration = the `tax_registrations` table in the draft migration (not applied).
 
 ## GST/HST-only activation path
 The engine supports activating with **federal components only** and fails closed elsewhere: configure `registrations = {"GST","HST"}` (no provincial keys). Then:
