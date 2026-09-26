@@ -61,7 +61,7 @@ const CheckoutPage = () => {
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
   const location = useLocation();
   const hasCheckedRef = useRef(false);
-  const pendingOrderRef = useRef<{ signature: string; orderId: string } | null>(null);
+  const pendingOrderRef = useRef<PendingStripeOrder | null>(null);
   const [checkoutStage, setCheckoutStage] = useState<"order" | "payment" | "redirect" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const cartFingerprint = JSON.stringify(items.map((item) => ({
