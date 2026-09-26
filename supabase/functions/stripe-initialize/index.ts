@@ -57,6 +57,10 @@ Deno.serve(async (req) => {
 
     const secret = Deno.env.get("STRIPE_SECRET_KEY");
     if (!secret) return json({ error: "Stripe is not configured" }, 503);
+    // Live payments stay blocked until tax is server-authoritative and reconciled.
+    if (!liveCheckoutAllowed(secret, Deno.env.get("STRIPE_LIVE_CHECKOUT_ENABLED"))) {
+      return json({ error: "Live payments are not enabled yet. You have not been charged." }, 503);
+    }
 
     const shipping = order.shipping_address as Record<string, unknown> | null;
     const shippingEmail = typeof shipping?.email === "string" ? shipping.email.trim() : "";
