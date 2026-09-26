@@ -14,6 +14,7 @@ import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft } from
 import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/hooks/useLocale";
 import CheckoutLoader from "@/components/checkout/CheckoutLoader";
+import { validateStripeCheckoutUrl, logHandoff } from "@/lib/stripeHandoff";
 
 type Step = "address" | "delivery" | "payment";
 
@@ -64,6 +65,7 @@ const CheckoutPage = () => {
   const pendingOrderRef = useRef<PendingStripeOrder | null>(null);
   const [checkoutStage, setCheckoutStage] = useState<"order" | "payment" | "redirect" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
   const cartFingerprint = JSON.stringify(items.map((item) => ({
     productId: item.productId,
     quantity: item.quantity,
@@ -301,6 +303,36 @@ const CheckoutPage = () => {
     setActiveStep("payment");
   };
 
+  // Manual, user-gesture handoff. Works when auto-redirect or pop-ups were blocked.
+  const handleContinueToStripe = () => {
+    const url = validateStripeCheckoutUrl(stripeCheckoutUrl);
+    const framed = window.top !== window.self;
+    const orderRef = pendingOrderRef.current?.orderId ?? readPendingStripeOrder()?.orderId;
+    if (!url) {
+      logHandoff("invalid_checkout_url", { framed, orderRef });
+      setStripeCheckoutUrl(null);
+      setCheckoutError("The payment link expired. Tap Try again to get a new one.");
+      return;
+    }
+    logHandoff("manual_continue_clicked", { framed, orderRef });
+    if (framed) {
+      // Framed preview: parent navigation is blocked, so open a new top-level tab from this click.
+      const opened = window.open(url, "_blank", "noopener");
+      if (!opened) {
+        // With noopener some browsers return null even on success; fall back to a direct anchor click.
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      return;
+    }
+    window.location.assign(url);
+  };
+
   const handlePlaceOrder = async () => {
     if (loading) return;
     const isFramed = window.top !== window.self;
@@ -308,14 +340,13 @@ const CheckoutPage = () => {
       ? window.open("about:blank", "_blank")
       : null;
     if (paymentMethod === "card" && isFramed && !paymentWindow) {
-      const message = "Your browser blocked the secure payment page. Allow pop-ups for this preview, then tap Try again.";
-      setCheckoutError(message);
-      toast.error(message);
-      return;
+      // Don't stop: we'll still prepare the session and show the manual Continue button.
+      logHandoff("popup_blocked", { framed: true });
     }
     if (paymentWindow) showPaymentWindowLoader(paymentWindow);
     setLoading(true);
     setCheckoutError(null);
+    setStripeCheckoutUrl(null);
     setCheckoutStage("order");
     let redirecting = false;
     try {
@@ -386,9 +417,12 @@ const CheckoutPage = () => {
         );
         if (paymentErr) throw paymentErr;
         if (paymentData?.error) throw new Error(paymentData.error);
-        const payUrl: string | undefined = paymentData?.url;
-        const allowedHost = isStripe ? /(^|\.)stripe\.com$/ : /(^|\.)paystack\.(com|co)$/;
-        if (!payUrl || !allowedHost.test(new URL(payUrl).hostname)) {
+        const rawUrl: string | undefined = paymentData?.url;
+        const payUrl = isStripe
+          ? validateStripeCheckoutUrl(rawUrl)
+          : rawUrl && /(^|\.)paystack\.(com|co)$/.test(new URL(rawUrl).hostname) ? rawUrl : null;
+        if (!payUrl) {
+          if (isStripe) logHandoff("invalid_checkout_url", { framed: isFramed, orderRef: orderId });
           throw new Error(`We couldn't open the secure ${isStripe ? "Stripe" : "Paystack"} payment page.`);
         }
         if (isStripe && typeof paymentData.amount === "number" && Math.abs(paymentData.amount - grandTotal) > 0.01) {
@@ -398,13 +432,35 @@ const CheckoutPage = () => {
         }
         setCheckoutStage("redirect");
         redirecting = true;
+        // Durable fallback: always show a manual Continue button once a valid session exists.
+        if (isStripe) setStripeCheckoutUrl(payUrl);
+        const stopLoader = (reason: string) => {
+          if (isStripe) logHandoff("auto_redirect_stalled", { framed: isFramed, orderRef: orderId, reason });
+          setLoading(false);
+          setCheckoutStage(null);
+        };
         // A framed preview cannot navigate its parent after asynchronous server calls.
         // Use the window opened directly by the original customer click instead.
-        if (paymentWindow) {
-          paymentWindow.location.replace(payUrl);
+        if (paymentWindow && !paymentWindow.closed) {
+          try {
+            paymentWindow.location.replace(payUrl);
+            logHandoff("auto_redirect_started", { framed: true, orderRef: orderId });
+          } catch {
+            paymentWindow.close();
+          }
+          stopLoader("new_window");
           return;
         }
+        if (isFramed) {
+          stopLoader("framed_no_window");
+          return;
+        }
+        logHandoff("auto_redirect_started", { framed: false, orderRef: orderId });
         window.location.assign(payUrl);
+        // If navigation hasn't happened after a few seconds, reveal the manual button.
+        window.setTimeout(() => {
+          if (document.visibilityState === "visible") stopLoader("timeout");
+        }, 4000);
         return;
       }
 
@@ -413,6 +469,7 @@ const CheckoutPage = () => {
       navigate(`/order-confirmation/${orderId}`);
     } catch (err: any) {
       paymentWindow?.close();
+      if (paymentMethod === "card") logHandoff("initialize_failed", { framed: isFramed, reason: err?.name || "error" });
       if (err.message?.includes("Refresh Token") || err.message?.includes("Unauthorized")) {
         toast.error("Your session has expired. Please sign in again.");
         navigate("/auth", { replace: true });
@@ -689,17 +746,36 @@ const CheckoutPage = () => {
                     </div>
                   )}
 
+                  {stripeCheckoutUrl && (
+                    <div role="status" className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
+                      <p className="text-sm font-medium">Your secure Stripe payment page is ready.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        If it didn't open automatically, tap below. You won't be charged until you pay on Stripe.
+                      </p>
+                      <Button
+                        className="w-full mt-3 font-semibold h-12 text-base"
+                        size="lg"
+                        onClick={handleContinueToStripe}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Continue to secure Stripe payment
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     className="w-full mt-4 font-semibold h-12 text-base"
                     size="lg"
+                    variant={stripeCheckoutUrl ? "outline" : "default"}
                     disabled={loading}
                     onClick={handlePlaceOrder}
                   >
-                    {loading ? "Preparing secure checkout…" : checkoutError ? "Try again" : "Continue to payment"}
+                    {loading ? "Preparing secure checkout…" : checkoutError || stripeCheckoutUrl ? "Try again" : "Continue to payment"}
                   </Button>
                   {checkoutError && (
                     <div role="alert" className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                      <p className="font-medium">Payment didn't start — you have not been charged.</p>
+                      <p className="font-medium">
+                        {stripeCheckoutUrl ? "Payment hasn't started yet — you have not been charged." : "Payment didn't start — you have not been charged."}
+                      </p>
                       <p className="mt-1 text-xs">{checkoutError}</p>
                       <p className="mt-1 text-xs">Tap "Try again" to retry. We'll reuse the same order, so you won't get a duplicate.</p>
                     </div>
