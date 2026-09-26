@@ -32,7 +32,22 @@ describe("inventory helpers", () => {
     const sql = readFileSync("docs/inventory/migrations-draft/001_stock_reservations.sql", "utf8");
     expect(sql).toContain("FOR UPDATE");
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.reserve_order_stock.*anon, authenticated/);
-    expect(sql).not.toMatch(/GRANT .* TO (anon|authenticated)/);
+    expect(sql).not.toMatch(/GRANT EXECUTE[^;]*TO (anon|authenticated)/);
+    expect(sql).not.toMatch(/GRANT[^;]*stock_reservations[^;]*TO (anon|authenticated)/);
     expect(sql).not.toMatch(/\bDROP\b/);
+  });
+  it("late payment with no stock becomes an exception, never negative stock", () => {
+    expect(nextReservationStatus("reserved", "paid", 3, 1)).toBe("exception");
+    expect(nextReservationStatus("exception", "paid", 3, 10)).toBe("exception");
+    const sql = readFileSync("docs/inventory/migrations-draft/001_stock_reservations.sql", "utf8");
+    expect(sql).toMatch(/stock = stock - r\.quantity WHERE id = r\.product_id AND stock >= r\.quantity/);
+    expect(sql).toMatch(/stock = stock - r\.quantity WHERE id = r\.variant_id AND stock >= r\.quantity/);
+    expect(sql).toContain("INSERT INTO stock_exceptions");
+    expect(sql).toContain("ON CONFLICT (reservation_id) DO NOTHING");
+    expect(sql).toContain("NOT atomic with create-order");
+  });
+  it("release never touches committed or exception rows", () => {
+    const sql = readFileSync("docs/inventory/migrations-draft/001_stock_reservations.sql", "utf8");
+    expect(sql).toMatch(/SET status = 'released'[^;]*WHERE order_id = _order_id AND status = 'reserved'/);
   });
 });

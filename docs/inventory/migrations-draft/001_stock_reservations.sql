@@ -1,4 +1,9 @@
 -- DRAFT ONLY — NOT APPLIED. Review in a draft/branch DB before production.
+-- NOT atomic with create-order yet: create-order inserts via separate PostgREST calls.
+-- Atomicity requires a single create_order_with_reservation RPC (not written).
+-- Session vs hold expiry: stripe-initialize must set Stripe expires_at <= hold expires_at
+-- (Stripe min 30 min, so TTL >= 30 min + grace). Late/async payments after expiry still
+-- land in commit_order_stock and are either fulfilled from free stock or recorded as exceptions.
 -- Additive: no existing column/constraint changed; create-order behaviour unchanged until wired in.
 
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS idempotency_key text;
@@ -12,13 +17,14 @@ CREATE TABLE IF NOT EXISTS public.stock_reservations (
   product_id uuid NOT NULL REFERENCES public.products(id),
   variant_id uuid REFERENCES public.product_variants(id),
   quantity integer NOT NULL CHECK (quantity > 0),
-  status text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved','committed','released')),
+  status text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved','committed','released','exception')),
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS stock_reservations_line_key
-  ON public.stock_reservations (order_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid));
+  ON public.stock_reservations (order_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid))
+  WHERE status IN ('reserved','committed','exception');
 CREATE INDEX IF NOT EXISTS stock_reservations_active_idx
   ON public.stock_reservations (product_id, variant_id) WHERE status = 'reserved';
 
@@ -32,11 +38,17 @@ CREATE OR REPLACE FUNCTION public.reserve_order_stock(_order_id uuid, _lines jso
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE l record; avail int;
 BEGIN
-  IF EXISTS (SELECT 1 FROM stock_reservations WHERE order_id = _order_id AND status IN ('reserved','committed')) THEN
+  -- Retry: already paid/flagged → nothing to do; live hold → extend; expired hold → release and re-check stock.
+  IF EXISTS (SELECT 1 FROM stock_reservations WHERE order_id = _order_id AND status IN ('committed','exception')) THEN
+    RETURN;
+  END IF;
+  IF EXISTS (SELECT 1 FROM stock_reservations WHERE order_id = _order_id AND status = 'reserved' AND expires_at > now()) THEN
     UPDATE stock_reservations SET expires_at = now() + make_interval(mins => _ttl_minutes), updated_at = now()
       WHERE order_id = _order_id AND status = 'reserved';
     RETURN;
   END IF;
+  UPDATE stock_reservations SET status = 'released', updated_at = now()
+    WHERE order_id = _order_id AND status = 'reserved';
   -- Lock rows in deterministic order to avoid deadlocks across vendors/products.
   FOR l IN
     SELECT (x->>'product_id')::uuid pid, NULLIF(x->>'variant_id','')::uuid vid,
@@ -60,21 +72,68 @@ BEGIN
   END LOOP;
 END $$;
 
--- Called only from verified-paid webhook. Replay-safe: only 'reserved' rows move.
--- Commits even if expired (payment settled) — may drive stock negative; flagged for admin, never silently dropped.
+-- Paid-but-unfulfillable exceptions (late payment after hold expiry, stock gone).
+-- Payment is NOT silently accepted: order is flagged for admin refund/backorder decision.
+CREATE TABLE IF NOT EXISTS public.stock_exceptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  reservation_id uuid NOT NULL REFERENCES public.stock_reservations(id) ON DELETE CASCADE,
+  product_id uuid NOT NULL,
+  variant_id uuid,
+  requested_qty integer NOT NULL,
+  available_qty integer NOT NULL,
+  reason text NOT NULL DEFAULT 'paid_after_hold_expiry_insufficient_stock',
+  status text NOT NULL DEFAULT 'open' CHECK (status IN ('open','refunded','backordered','resolved')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  resolved_at timestamptz,
+  UNIQUE (reservation_id)
+);
+GRANT ALL ON public.stock_exceptions TO service_role;
+GRANT SELECT ON public.stock_exceptions TO authenticated;
+ALTER TABLE public.stock_exceptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins read stock exceptions" ON public.stock_exceptions
+  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+
+-- Called only from verified-paid webhook. Never drives stock negative.
+-- Lock order: reservations then stock rows, both sorted (product_id, variant_id NULLS FIRST),
+-- identical to reserve_order_stock, so concurrent reserve/commit cannot deadlock.
+-- Idempotent: only 'reserved' rows are processed; committed/released/exception are terminal.
+-- Returns number of exception lines (0 = fully fulfilled). Caller must NOT mark the order
+-- fulfillable / trigger labels when > 0; it sets an admin-review flag instead.
 CREATE OR REPLACE FUNCTION public.commit_order_stock(_order_id uuid)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE r record;
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE r record; cur int; held_by_others int; exceptions int := 0;
 BEGIN
   FOR r IN SELECT * FROM stock_reservations WHERE order_id = _order_id AND status = 'reserved'
            ORDER BY product_id, variant_id NULLS FIRST FOR UPDATE LOOP
     IF r.variant_id IS NULL THEN
-      UPDATE products SET stock = stock - r.quantity WHERE id = r.product_id;
+      SELECT stock INTO cur FROM products WHERE id = r.product_id FOR UPDATE;
     ELSE
-      UPDATE product_variants SET stock = stock - r.quantity WHERE id = r.variant_id;
+      SELECT stock INTO cur FROM product_variants WHERE id = r.variant_id FOR UPDATE;
     END IF;
-    UPDATE stock_reservations SET status = 'committed', updated_at = now() WHERE id = r.id;
+    -- A still-valid hold was already counted against availability; an expired one was not,
+    -- so other live holds must be respected before we can take stock for it.
+    held_by_others := CASE WHEN r.expires_at > now() THEN 0 ELSE COALESCE((
+      SELECT sum(quantity) FROM stock_reservations
+      WHERE product_id = r.product_id AND variant_id IS NOT DISTINCT FROM r.variant_id
+        AND status = 'reserved' AND expires_at > now() AND id <> r.id), 0) END;
+    IF cur IS NULL OR cur - held_by_others < r.quantity THEN
+      INSERT INTO stock_exceptions(order_id, reservation_id, product_id, variant_id, requested_qty, available_qty)
+        VALUES (_order_id, r.id, r.product_id, r.variant_id, r.quantity, GREATEST(COALESCE(cur,0) - held_by_others, 0))
+        ON CONFLICT (reservation_id) DO NOTHING;
+      UPDATE stock_reservations SET status = 'exception', updated_at = now() WHERE id = r.id;
+      exceptions := exceptions + 1;
+    ELSE
+      IF r.variant_id IS NULL THEN
+        UPDATE products SET stock = stock - r.quantity WHERE id = r.product_id AND stock >= r.quantity;
+      ELSE
+        UPDATE product_variants SET stock = stock - r.quantity WHERE id = r.variant_id AND stock >= r.quantity;
+      END IF;
+      UPDATE stock_reservations SET status = 'committed', updated_at = now() WHERE id = r.id;
+    END IF;
   END LOOP;
+  RETURN (SELECT count(*)::int FROM stock_reservations
+    WHERE order_id = _order_id AND status = 'exception');
 END $$;
 
 -- Payment failed / session expired / cancelled before payment. Never touches committed rows.
@@ -86,6 +145,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.reserve_order_stock(uuid, jsonb, int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.commit_order_stock(uuid) FROM PUBLIC, anon, authenticated;
+-- stock_exceptions: admins read via RLS; writes are service_role only.
 REVOKE ALL ON FUNCTION public.release_order_stock(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_order_stock(uuid, jsonb, int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.commit_order_stock(uuid) TO service_role;
