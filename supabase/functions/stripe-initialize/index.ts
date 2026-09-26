@@ -59,7 +59,8 @@ Deno.serve(async (req) => {
     if (!secret) return json({ error: "Stripe is not configured" }, 503);
 
     const shipping = order.shipping_address as Record<string, unknown> | null;
-    const email = (shipping?.email && String(shipping.email).trim()) || user.email;
+    const shippingEmail = typeof shipping?.email === "string" ? shipping.email.trim() : "";
+    const email: string | undefined = shippingEmail || user.email;
     if (!email) return json({ error: "Customer email is required" }, 400);
 
     // Never trust a caller-controlled Origin for payment redirects.
