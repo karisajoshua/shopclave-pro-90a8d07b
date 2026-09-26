@@ -23,6 +23,7 @@ type PendingStripeOrder = {
   signature: string;
   orderId: string;
   userId: string;
+  cartFingerprint: string;
 };
 
 const readPendingStripeOrder = (): PendingStripeOrder | null => {
@@ -63,6 +64,20 @@ const CheckoutPage = () => {
   const pendingOrderRef = useRef<{ signature: string; orderId: string } | null>(null);
   const [checkoutStage, setCheckoutStage] = useState<"order" | "payment" | "redirect" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const cartFingerprint = JSON.stringify(items.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity,
+    variantId: item.variantId ?? null,
+    price: item.price,
+  })));
+
+  useEffect(() => {
+    const pending = readPendingStripeOrder();
+    if (pending && pending.cartFingerprint !== cartFingerprint) {
+      sessionStorage.removeItem(PENDING_STRIPE_ORDER_KEY);
+      pendingOrderRef.current = null;
+    }
+  }, [cartFingerprint]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -324,13 +339,26 @@ const CheckoutPage = () => {
         // Only opaque quote ids — the server owns every shipping price.
         shipping_quote_ids: Object.values(selectedRates).map((r: any) => r.quote_id),
       };
-      const signature = JSON.stringify({ ...orderPayload, cardProvider });
+      const signature = JSON.stringify({
+        items: orderPayload.items,
+        shippingAddress: orderPayload.shipping_address,
+        paymentMethod: orderPayload.payment_method,
+        cardProvider,
+        rates: Object.values(selectedRates).map((rate: any) => ({
+          vendorId: rate.vendor_id,
+          provider: rate.provider,
+          service: rate.service,
+          amountCad: Number(rate.amount_cad),
+        })),
+      });
 
       // Retry safety: reuse the unpaid order created for this exact cart instead of creating a duplicate.
       const savedPendingOrder = readPendingStripeOrder();
       const reusablePendingOrder = pendingOrderRef.current?.signature === signature
         ? pendingOrderRef.current
-        : savedPendingOrder?.signature === signature && savedPendingOrder.userId === user.id
+        : savedPendingOrder?.signature === signature &&
+            savedPendingOrder.userId === user.id &&
+            savedPendingOrder.cartFingerprint === cartFingerprint
           ? savedPendingOrder
           : null;
       let orderId: string | null = reusablePendingOrder?.orderId ?? null;
@@ -341,8 +369,9 @@ const CheckoutPage = () => {
         if (data?.error) throw new Error(data.error);
         orderId = data.order_id as string;
         if (paymentMethod === "card") {
-          pendingOrderRef.current = { signature, orderId };
-          sessionStorage.setItem(PENDING_STRIPE_ORDER_KEY, JSON.stringify({ signature, orderId, userId: user.id }));
+          const pendingOrder = { signature, orderId, userId: user.id, cartFingerprint };
+          pendingOrderRef.current = pendingOrder;
+          sessionStorage.setItem(PENDING_STRIPE_ORDER_KEY, JSON.stringify(pendingOrder));
         }
       }
 
