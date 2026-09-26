@@ -17,7 +17,7 @@ import CheckoutLoader from "@/components/checkout/CheckoutLoader";
 import { validateStripeCheckoutUrl, logHandoff } from "@/lib/stripeHandoff";
 import { estimateDeliveryWindow, formatDeliveryWindow, transitDaysForService, deliveryItemsLabel } from "@/lib/deliveryEstimate";
 
-type Step = "address" | "delivery" | "payment";
+type Step = "address" | "delivery" | "review" | "payment";
 
 const PENDING_STRIPE_ORDER_KEY = "barakaz_pending_stripe_order";
 
@@ -323,7 +323,7 @@ const CheckoutPage = () => {
 
   const handleConfirmDelivery = () => {
     setDeliveryConfirmed(true);
-    setActiveStep("payment");
+    setActiveStep("review");
   };
 
   // Manual, user-gesture handoff. Works when auto-redirect or pop-ups were blocked.
@@ -523,13 +523,15 @@ const CheckoutPage = () => {
   const stepDone = (step: Step) => {
     if (step === "address") return addressConfirmed;
     if (step === "delivery") return deliveryConfirmed;
+    if (step === "review") return activeStep === "payment";
     return false;
   };
 
   const stepNumber = (step: Step) => {
     if (step === "address") return 1;
     if (step === "delivery") return 2;
-    return 3;
+    if (step === "review") return 3;
+    return 4;
   };
 
   const StepHeader = ({ step, title }: { step: Step; title: string }) => (
@@ -538,7 +540,7 @@ const CheckoutPage = () => {
       onClick={() => {
         if (step === "address") setActiveStep("address");
         if (step === "delivery" && addressConfirmed) setActiveStep("delivery");
-        if (step === "payment" && deliveryConfirmed) setActiveStep("payment");
+        if (step === "review" && deliveryConfirmed) setActiveStep("review");
       }}
     >
       {stepDone(step) ? (
@@ -564,11 +566,14 @@ const CheckoutPage = () => {
   return (
     <MarketplaceLayout>
       <CheckoutLoader stage={checkoutStage} provider={paymentMethod === "card" ? cardProvider : null} />
-      <div className="container py-6 max-w-5xl">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="container px-3 sm:px-4 py-4 sm:py-6 max-w-5xl">
+        <div className="flex items-center gap-2 mb-4">
           <Link to="/cart" className="text-sm text-primary hover:underline flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Go back & continue shopping
           </Link>
+        </div>
+        <div role="note" className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
+          {CHECKOUT_MODE_LABEL}
         </div>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-6">
@@ -749,7 +754,60 @@ const CheckoutPage = () => {
               )}
             </div>
 
-            {/* Step 3: Payment Method */}
+            {/* Step 3: Review */}
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <StepHeader step="review" title="Review Order" />
+              {activeStep === "review" && (
+                <div className="px-4 pb-4 space-y-4 text-sm">
+                  <div className="rounded-md border border-border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Deliver to</p>
+                        <p className="font-medium">{address.fullName}</p>
+                        <p className="text-muted-foreground break-words">{address.addressLine}, {address.city}, {address.state} {address.zip}, {address.country}</p>
+                      </div>
+                      <button type="button" className="text-xs text-primary underline shrink-0" onClick={() => setActiveStep("address")}>Edit</button>
+                    </div>
+                  </div>
+                  {Object.entries(vendorGroups).map(([vendorId, group]) => {
+                    const rate = selectedRates[vendorId];
+                    return (
+                      <div key={vendorId} className="rounded-md border border-border p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">Sold by <span className="font-medium text-foreground">{group.vendorName}</span></p>
+                          <button type="button" className="text-xs text-primary underline shrink-0" onClick={() => setActiveStep("delivery")}>Edit delivery</button>
+                        </div>
+                        {group.items.map((item) => (
+                          <div key={item.id} className="flex justify-between gap-2">
+                            <span className="min-w-0 truncate">{item.quantity} × {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ""}</span>
+                            <span className="font-medium shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                        {rate && (
+                          <div className="flex justify-between gap-2 text-muted-foreground">
+                            <span className="min-w-0">{rate.service} · Est. {windowFor(vendorId, rate.service)}</span>
+                            <span className="shrink-0">{formatPrice(rate.amount_cad)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div className="rounded-md border border-border p-3 space-y-1">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(totalPrice)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{formatPrice(shippingTotal)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Taxes</span><span className="text-muted-foreground">Not yet calculated</span></div>
+                    <Separator className="my-1" />
+                    <div className="flex justify-between font-semibold"><span>Total before applicable taxes (CAD)</span><span>{formatPrice(grandTotal)}</span></div>
+                    <p className="text-[11px] text-muted-foreground">Delivery dates are estimates, not guaranteed. <Link to="/cart" className="underline">Edit items</Link></p>
+                  </div>
+                  <Button className="w-full h-11 font-semibold" onClick={() => setActiveStep("payment")}>
+                    Continue to secure payment
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Step 4: Payment Method */}
             <div className="bg-card rounded-lg border border-border overflow-hidden">
               <StepHeader step="payment" title="Payment Method" />
               {activeStep === "payment" && (
@@ -848,30 +906,11 @@ const CheckoutPage = () => {
                 <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
               </div>
 
-              <Button
-                className="w-full font-semibold h-11"
-                size="lg"
-                disabled={loading || !deliveryConfirmed || activeStep !== "payment"}
-                onClick={handlePlaceOrder}
-              >
-                {loading ? "Preparing secure checkout…" : "Confirm Order"}
-              </Button>
-
-              {(!deliveryConfirmed || activeStep !== "payment") && (
+              {activeStep !== "payment" && (
                 <p className="text-xs text-center text-muted-foreground">
-                  (Complete the steps in order to proceed)
+                  Complete each step on the left to continue.
                 </p>
               )}
-
-              <div className="text-xs space-y-2 rounded-md border p-3">
-                <p className="font-semibold">Review your order</p>
-                <p>{address.fullName} · {address.city}, {address.state} · {address.country}</p>
-                <button type="button" className="text-primary underline" onClick={() => setActiveStep("address")}>Edit address</button>
-                <span className="mx-2">·</span>
-                <button type="button" className="text-primary underline" onClick={() => setActiveStep("delivery")}>Edit delivery</button>
-                <span className="mx-2">·</span>
-                <Link className="text-primary underline" to="/cart">Edit items</Link>
-              </div>
               <p className="text-[10px] text-center text-muted-foreground">
                 By proceeding, you are automatically accepting the{" "}
                 <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link>
