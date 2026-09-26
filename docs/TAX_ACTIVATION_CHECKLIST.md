@@ -20,6 +20,11 @@ The engine supports activating with **federal components only** and fails closed
 - BC, MB, SK, QC return `{ ok: false, reason: "unregistered:<P>:<PST|RST|QST>" }` → no tax quote → no checkout charge in those provinces.
 - Even under GST/HST-only activation, the shipping-taxability flags for GST/HST still need advisor sign-off before charging tax on shipping.
 - Activation is per-environment config; provincial components switch on later by adding their registration keys once confirmed — no engine change required.
+## Advisor confirmations (still blocking)
+- [ ] Non-resident vendors vs Canadian vendors — any differing treatment.
+- [ ] Product category mapping (taxable / zero-rated / exempt) for each Barakaz category, including provincial PST exemptions (children's clothing, books, etc. differ by province).
+- [ ] Shipping rule: engine pro-rates shipping to taxable goods; each `shippingTaxable` flag must be confirmed per province/component.
+- [ ] Place-of-supply basis: destination province from delivery address.
 - [ ] Tax point date (order date vs payment date).
 - [ ] Rounding method (engine: half-up per line per component).
 - [ ] Returns/refunds: tax reversal on partial/full refunds, credit notes, reporting period adjustments.
