@@ -24,7 +24,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
-  const [cardProvider, setCardProvider] = useState<"paystack" | "stripe">("paystack");
+  const [cardProvider, setCardProvider] = useState<"paystack" | "stripe">("stripe");
   const [activeStep, setActiveStep] = useState<Step>("address");
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
@@ -598,29 +598,14 @@ const CheckoutPage = () => {
                       <Label htmlFor="card" className="cursor-pointer flex-1">
                         <span className="font-medium text-sm">Pay securely online</span>
                         <p className="text-xs text-muted-foreground">
-                          Card, bank transfer, USSD or mobile money — processed by Paystack
+                          Visa, Mastercard, Amex and more — processed securely by Stripe
                         </p>
                       </Label>
                     </div>
                   </RadioGroup>
 
-                  <div className="mt-3 space-y-2">
-                    <Label className="text-xs font-medium">Card payment provider</Label>
-                    <RadioGroup value={cardProvider} onValueChange={(v) => setCardProvider(v as "paystack" | "stripe")} className="grid grid-cols-2 gap-2">
-                      <label htmlFor="provider-paystack" className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer ${cardProvider === "paystack" ? "border-primary bg-primary/5" : "border-border"}`}>
-                        <RadioGroupItem value="paystack" id="provider-paystack" />
-                        <span className="text-sm font-medium">Paystack</span>
-                      </label>
-                      <label htmlFor="provider-stripe" className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer ${cardProvider === "stripe" ? "border-primary bg-primary/5" : "border-border"}`}>
-                        <RadioGroupItem value="stripe" id="provider-stripe" />
-                        <span className="text-sm font-medium">Stripe</span>
-                      </label>
-                    </RadioGroup>
-                  </div>
-
                   <p className="mt-3 text-xs text-muted-foreground">
-                    You'll be redirected to a secure {cardProvider === "stripe" ? "Stripe" : "Paystack"} checkout.
-                    Stripe charges this Barakaz order in CAD; Paystack uses its supported settlement currency.
+                    You'll be redirected to Stripe's secure payment page to enter your card. Charged in CAD.
                   </p>
 
                   {!directSettlement && (
