@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS public.stock_reservations (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS stock_reservations_line_key
-  ON public.stock_reservations (order_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid));
+  ON public.stock_reservations (order_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid))
+  WHERE status IN ('reserved','committed','exception');
 CREATE INDEX IF NOT EXISTS stock_reservations_active_idx
   ON public.stock_reservations (product_id, variant_id) WHERE status = 'reserved';
 
@@ -37,11 +38,17 @@ CREATE OR REPLACE FUNCTION public.reserve_order_stock(_order_id uuid, _lines jso
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE l record; avail int;
 BEGIN
-  IF EXISTS (SELECT 1 FROM stock_reservations WHERE order_id = _order_id AND status IN ('reserved','committed')) THEN
+  -- Retry: already paid/flagged → nothing to do; live hold → extend; expired hold → release and re-check stock.
+  IF EXISTS (SELECT 1 FROM stock_reservations WHERE order_id = _order_id AND status IN ('committed','exception')) THEN
+    RETURN;
+  END IF;
+  IF EXISTS (SELECT 1 FROM stock_reservations WHERE order_id = _order_id AND status = 'reserved' AND expires_at > now()) THEN
     UPDATE stock_reservations SET expires_at = now() + make_interval(mins => _ttl_minutes), updated_at = now()
       WHERE order_id = _order_id AND status = 'reserved';
     RETURN;
   END IF;
+  UPDATE stock_reservations SET status = 'released', updated_at = now()
+    WHERE order_id = _order_id AND status = 'reserved';
   -- Lock rows in deterministic order to avoid deadlocks across vendors/products.
   FOR l IN
     SELECT (x->>'product_id')::uuid pid, NULLIF(x->>'variant_id','')::uuid vid,
@@ -125,8 +132,8 @@ BEGIN
       UPDATE stock_reservations SET status = 'committed', updated_at = now() WHERE id = r.id;
     END IF;
   END LOOP;
-  RETURN exceptions + (SELECT count(*)::int FROM stock_reservations
-    WHERE order_id = _order_id AND status = 'exception') - exceptions;
+  RETURN (SELECT count(*)::int FROM stock_reservations
+    WHERE order_id = _order_id AND status = 'exception');
 END $$;
 
 -- Payment failed / session expired / cancelled before payment. Never touches committed rows.
@@ -138,6 +145,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.reserve_order_stock(uuid, jsonb, int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.commit_order_stock(uuid) FROM PUBLIC, anon, authenticated;
+-- stock_exceptions: admins read via RLS; writes are service_role only.
 REVOKE ALL ON FUNCTION public.release_order_stock(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_order_stock(uuid, jsonb, int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.commit_order_stock(uuid) TO service_role;
