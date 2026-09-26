@@ -29,9 +29,10 @@ describe("order email timing", () => {
   });
 
   it("both webhooks send the paid email with vendor notification", () => {
+    const pattern = /sendOrderEmails\(\s*admin\s*,\s*orderId\s*,\s*"paid"\s*,\s*\{\s*notifyVendors:\s*true\s*\}\s*\)/;
     for (const f of ["stripe-webhook", "paystack-webhook"]) {
       const src = read(`supabase/functions/${f}/index.ts`);
-      expect(src).toContain('sendOrderEmails(admin, orderId, "paid", { notifyVendors: true })');
+      expect(src).toMatch(pattern);
     }
   });
 
