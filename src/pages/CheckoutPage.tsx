@@ -418,9 +418,16 @@ const CheckoutPage = () => {
         if (paymentErr) throw paymentErr;
         if (paymentData?.error) throw new Error(paymentData.error);
         const rawUrl: string | undefined = paymentData?.url;
-        const payUrl = isStripe
-          ? validateStripeCheckoutUrl(rawUrl)
-          : rawUrl && /(^|\.)paystack\.(com|co)$/.test(new URL(rawUrl).hostname) ? rawUrl : null;
+        const paystackUrl = (() => {
+          if (!rawUrl) return null;
+          try {
+            const parsed = new URL(rawUrl);
+            return parsed.protocol === "https:" && /(^|\.)paystack\.(com|co)$/.test(parsed.hostname) ? rawUrl : null;
+          } catch {
+            return null;
+          }
+        })();
+        const payUrl = isStripe ? validateStripeCheckoutUrl(rawUrl) : paystackUrl;
         if (!payUrl) {
           if (isStripe) logHandoff("invalid_checkout_url", { framed: isFramed, orderRef: orderId });
           throw new Error(`We couldn't open the secure ${isStripe ? "Stripe" : "Paystack"} payment page.`);
