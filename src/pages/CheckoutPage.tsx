@@ -17,6 +17,36 @@ import CheckoutLoader from "@/components/checkout/CheckoutLoader";
 
 type Step = "address" | "delivery" | "payment";
 
+const PENDING_STRIPE_ORDER_KEY = "barakaz_pending_stripe_order";
+
+type PendingStripeOrder = {
+  signature: string;
+  orderId: string;
+  userId: string;
+};
+
+const readPendingStripeOrder = (): PendingStripeOrder | null => {
+  try {
+    const saved = sessionStorage.getItem(PENDING_STRIPE_ORDER_KEY);
+    return saved ? JSON.parse(saved) as PendingStripeOrder : null;
+  } catch {
+    return null;
+  }
+};
+
+const showPaymentWindowLoader = (paymentWindow: Window) => {
+  paymentWindow.document.title = "Opening Stripe | Barakaz";
+  paymentWindow.document.body.innerHTML = `
+    <main style="min-height:100vh;display:grid;place-items:center;margin:0;background:#fff7f3;color:#201a18;font-family:system-ui,sans-serif">
+      <div style="padding:32px;text-align:center">
+        <div style="width:44px;height:44px;margin:0 auto 18px;border:4px solid #ffd3c5;border-top-color:#ff420e;border-radius:50%;animation:spin .8s linear infinite"></div>
+        <h1 style="margin:0 0 8px;font-size:20px">Preparing secure checkout…</h1>
+        <p style="margin:0;color:#6f625e;font-size:14px">Stripe will open here shortly.</p>
+      </div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){div{animation:none!important}}</style>
+    </main>`;
+};
+
 const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
@@ -258,6 +288,17 @@ const CheckoutPage = () => {
 
   const handlePlaceOrder = async () => {
     if (loading) return;
+    const isFramed = window.top !== window.self;
+    const paymentWindow = paymentMethod === "card" && isFramed
+      ? window.open("about:blank", "_blank")
+      : null;
+    if (paymentMethod === "card" && isFramed && !paymentWindow) {
+      const message = "Your browser blocked the secure payment page. Allow pop-ups for this preview, then tap Try again.";
+      setCheckoutError(message);
+      toast.error(message);
+      return;
+    }
+    if (paymentWindow) showPaymentWindowLoader(paymentWindow);
     setLoading(true);
     setCheckoutError(null);
     setCheckoutStage("order");
@@ -286,15 +327,23 @@ const CheckoutPage = () => {
       const signature = JSON.stringify({ ...orderPayload, cardProvider });
 
       // Retry safety: reuse the unpaid order created for this exact cart instead of creating a duplicate.
-      let orderId: string | null =
-        pendingOrderRef.current?.signature === signature ? pendingOrderRef.current.orderId : null;
+      const savedPendingOrder = readPendingStripeOrder();
+      const reusablePendingOrder = pendingOrderRef.current?.signature === signature
+        ? pendingOrderRef.current
+        : savedPendingOrder?.signature === signature && savedPendingOrder.userId === user.id
+          ? savedPendingOrder
+          : null;
+      let orderId: string | null = reusablePendingOrder?.orderId ?? null;
 
       if (!orderId) {
         const { data, error } = await supabase.functions.invoke("create-order", { body: orderPayload });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         orderId = data.order_id as string;
-        if (paymentMethod === "card") pendingOrderRef.current = { signature, orderId };
+        if (paymentMethod === "card") {
+          pendingOrderRef.current = { signature, orderId };
+          sessionStorage.setItem(PENDING_STRIPE_ORDER_KEY, JSON.stringify({ signature, orderId, userId: user.id }));
+        }
       }
 
       // Card payments can use Paystack or Stripe. Both are server-authoritative hosted checkouts.
@@ -320,16 +369,10 @@ const CheckoutPage = () => {
         }
         setCheckoutStage("redirect");
         redirecting = true;
-        // Keep the cart until payment is confirmed; clearing it here triggered an in-app
-        // redirect to /cart that raced (and cancelled) the navigation to the payment page.
-        // Hosted checkout pages refuse to load inside frames, so navigate the top window.
-        try {
-          if (window.top && window.top !== window.self) {
-            window.top.location.href = payUrl;
-            return;
-          }
-        } catch {
-          window.open(payUrl, "_blank", "noopener");
+        // A framed preview cannot navigate its parent after asynchronous server calls.
+        // Use the window opened directly by the original customer click instead.
+        if (paymentWindow) {
+          paymentWindow.location.replace(payUrl);
           return;
         }
         window.location.assign(payUrl);
@@ -340,6 +383,7 @@ const CheckoutPage = () => {
       toast.success("Order placed successfully!");
       navigate(`/order-confirmation/${orderId}`);
     } catch (err: any) {
+      paymentWindow?.close();
       if (err.message?.includes("Refresh Token") || err.message?.includes("Unauthorized")) {
         toast.error("Your session has expired. Please sign in again.");
         navigate("/auth", { replace: true });
