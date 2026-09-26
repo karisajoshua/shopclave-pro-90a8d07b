@@ -1,0 +1,34 @@
+import { describe, it, expect } from "vitest";
+import {
+  addBusinessDays, isBusinessDay, estimateDeliveryWindow, transitDaysForService, deliveryItemsLabel,
+} from "@/lib/deliveryEstimate";
+
+const d = (s: string) => { const [y, m, dd] = s.split("-").map(Number); return new Date(y, m - 1, dd); };
+const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+
+describe("deliveryEstimate", () => {
+  it("skips weekends", () => {
+    expect(iso(addBusinessDays(d("2026-09-25"), 1))).toBe("2026-09-28"); // Fri -> Mon
+  });
+  it("skips national holidays (Labour Day)", () => {
+    expect(iso(addBusinessDays(d("2026-09-04"), 1))).toBe("2026-09-08");
+  });
+  it("is province-aware (St-Jean-Baptiste only in QC)", () => {
+    expect(isBusinessDay(d("2026-06-24"), "QC")).toBe(false);
+    expect(isBusinessDay(d("2026-06-24"), "ON")).toBe(true);
+  });
+  it("adds conservative buffer for uncovered years", () => {
+    // 2028 not covered: 1 business day + 2 buffer from Mon Jan 3 2028 -> Thu Jan 6
+    expect(iso(addBusinessDays(d("2028-01-03"), 1))).toBe("2028-01-06");
+  });
+  it("includes handling days and service transit ranges", () => {
+    const w = estimateDeliveryWindow({ from: d("2026-09-28"), ...transitDaysForService("Standard Shipping"), handlingDays: 2, province: "AB" });
+    expect(iso(w.earliest)).toBe("2026-10-05"); // 5 business days
+    expect(iso(w.latest)).toBe("2026-10-09"); // 9 business days
+    expect(transitDaysForService("Express Shipping")).toEqual({ minDays: 1, maxDays: 3 });
+  });
+  it("labels items with correct plural", () => {
+    expect(deliveryItemsLabel(1)).toBe("Delivery to your address • 1 item");
+    expect(deliveryItemsLabel(3)).toBe("Delivery to your address • 3 items");
+  });
+});
