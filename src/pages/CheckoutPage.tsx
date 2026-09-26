@@ -14,6 +14,7 @@ import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft } from
 import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/hooks/useLocale";
 import CheckoutLoader from "@/components/checkout/CheckoutLoader";
+import { validateStripeCheckoutUrl, logHandoff } from "@/lib/stripeHandoff";
 
 type Step = "address" | "delivery" | "payment";
 
@@ -64,6 +65,7 @@ const CheckoutPage = () => {
   const pendingOrderRef = useRef<PendingStripeOrder | null>(null);
   const [checkoutStage, setCheckoutStage] = useState<"order" | "payment" | "redirect" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
   const cartFingerprint = JSON.stringify(items.map((item) => ({
     productId: item.productId,
     quantity: item.quantity,
@@ -467,6 +469,7 @@ const CheckoutPage = () => {
       navigate(`/order-confirmation/${orderId}`);
     } catch (err: any) {
       paymentWindow?.close();
+      if (paymentMethod === "card") logHandoff("initialize_failed", { framed: isFramed, reason: err?.name || "error" });
       if (err.message?.includes("Refresh Token") || err.message?.includes("Unauthorized")) {
         toast.error("Your session has expired. Please sign in again.");
         navigate("/auth", { replace: true });
