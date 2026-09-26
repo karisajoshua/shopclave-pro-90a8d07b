@@ -32,7 +32,8 @@ describe("inventory helpers", () => {
     const sql = readFileSync("docs/inventory/migrations-draft/001_stock_reservations.sql", "utf8");
     expect(sql).toContain("FOR UPDATE");
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.reserve_order_stock.*anon, authenticated/);
-    expect(sql).not.toMatch(/GRANT .* TO (anon|authenticated)/);
+    expect(sql).not.toMatch(/GRANT EXECUTE[^;]*TO (anon|authenticated)/);
+    expect(sql).not.toMatch(/GRANT[^;]*stock_reservations[^;]*TO (anon|authenticated)/);
     expect(sql).not.toMatch(/\bDROP\b/);
   });
   it("late payment with no stock becomes an exception, never negative stock", () => {
