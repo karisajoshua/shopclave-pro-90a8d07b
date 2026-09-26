@@ -106,7 +106,10 @@ export type QuoteIssue =
   | "missing_vendor"
   | "unknown_vendor"
   | "dap_not_acknowledged"
-  | "negative_amount";
+  | "negative_amount"
+  | "duplicate_vendor"
+  | "invalid_quote_currency"
+  | "invalid_expiration";
 
 /** Which modes may be shown for a vendor: only those backed by a verified, unexpired quote. */
 export function offerableModes(quotes: LandedCostQuote[], vendorId: string, userId: string, destination: string, now = new Date()): IncotermMode[] {
@@ -123,7 +126,11 @@ export function validateQuote(q: LandedCostQuote, o: { userId: string; destinati
   if (!q.verified) return "not_verified";
   if (!VERIFIED_SOURCES.includes(q.source)) return "unverified_source";
   if (q.userId !== o.userId) return "not_owner";
-  if (new Date(q.expiresAt).getTime() <= now.getTime()) return "expired";
+  const expiry = new Date(q.expiresAt).getTime();
+  if (!Number.isFinite(expiry)) return "invalid_expiration";
+  if (expiry <= now.getTime()) return "expired";
+  if (q.providerCurrency !== "CAD" && q.providerCurrency !== "USD" && !/^[A-Z]{3}$/.test(q.providerCurrency)) return "invalid_quote_currency";
+  // All *Cad fields must be converted and fixed by the trusted server; providerCurrency records the source currency.
   if (toISO(q.destinationCountry) !== toISO(o.destination)) return "lane_mismatch";
   for (const v of [q.shippingCad, q.dutiesCad ?? 0, q.importTaxCad ?? 0, q.customsFeeCad ?? 0]) {
     if (!Number.isFinite(v) || v < 0) return "negative_amount";
@@ -144,6 +151,7 @@ export function validateSelection(
     if (!o.vendorIds.includes(q.vendorId)) return { ok: false, issue: "unknown_vendor", vendorId: q.vendorId };
     const issue = validateQuote(q, o);
     if (issue) return { ok: false, issue, vendorId: q.vendorId };
+    if (seen.has(q.vendorId)) return { ok: false, issue: "duplicate_vendor", vendorId: q.vendorId };
     seen.add(q.vendorId);
     if (q.mode === "DAP") hasDap = true;
     total += q.shippingCad + (q.customsFeeCad ?? 0) + (q.mode === "DDP" ? (q.dutiesCad ?? 0) + (q.importTaxCad ?? 0) : 0);
