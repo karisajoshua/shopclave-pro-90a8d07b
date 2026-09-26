@@ -66,3 +66,27 @@ describe("tax engine", () => {
     expect(normalizeProvince("XX")).toBeNull();
   });
 });
+
+describe("GST/HST-only activation (federal registrations, provinces unconfirmed)", () => {
+  const federalOnly = new Set(["GST", "HST"]);
+  const cfg = { rates: BASELINE_RATES, registrations: federalOnly };
+  const province = (p: string) => req(p);
+
+  it("calculates GST provinces and HST provinces", () => {
+    for (const p of ["AB", "NT", "NU", "YT"]) {
+      const r = calculateTax(province(p), cfg);
+      expect(r.ok && r.components.map((c) => [c.component, c.taxCents])).toEqual([["GST", 500]]);
+    }
+    const on = calculateTax(province("ON"), cfg);
+    expect(on.ok && on.components).toEqual([
+      expect.objectContaining({ component: "HST", taxCents: 1300 }),
+    ]);
+  });
+
+  it("fails closed in every province with an unconfirmed registration", () => {
+    expect(calculateTax(province("BC"), cfg)).toEqual({ ok: false, reason: "unregistered:BC:PST" });
+    expect(calculateTax(province("QC"), cfg)).toEqual({ ok: false, reason: "unregistered:QC:QST" });
+    expect(calculateTax(province("MB"), cfg)).toEqual({ ok: false, reason: "unregistered:MB:RST" });
+    expect(calculateTax(province("SK"), cfg)).toEqual({ ok: false, reason: "unregistered:SK:PST" });
+  });
+});
