@@ -37,6 +37,7 @@ describe("international eligibility", () => {
 });
 
 describe("landed-cost quotes", () => {
+  it("rejects malformed expiry dates", () => expect(validateQuote(q({ expiresAt: "not-a-date" }), sel)).toBe("invalid_expiration"));
   it("rejects expired quotes", () => expect(validateQuote(q({ expiresAt: new Date(Date.now() - 1000).toISOString() }), sel)).toBe("expired"));
   it("rejects unverified and manual quotes", () => {
     expect(validateQuote(q({ verified: false }), sel)).toBe("not_verified");
@@ -60,6 +61,9 @@ describe("basket selection", () => {
     expect(validateSelection(quotes, base)).toEqual({ ok: false, issue: "dap_not_acknowledged" });
     const r = validateSelection(quotes, { ...base, dapAcknowledged: true });
     expect(r).toEqual({ ok: true, totalCad: 67, hasDap: true });
+  });
+  it("rejects duplicate quotes for the same vendor instead of double-charging", () => {
+    expect(validateSelection([q(), q({ id: "q-duplicate" })], sel)).toEqual({ ok: false, issue: "duplicate_vendor", vendorId: "v1" });
   });
   it("requires a quote per vendor", () => {
     const r = validateSelection([q()], { ...sel, vendorIds: ["v1", "v2"] });
