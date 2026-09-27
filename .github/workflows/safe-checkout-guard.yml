@@ -1,0 +1,24 @@
+name: Safe checkout guard
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/create-order/index.ts'
+      - 'src/test/international-checkout-guard.test.ts'
+      - '.github/workflows/safe-checkout-guard.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - run: npm ci
+      - run: npx vitest run src/test/international-checkout-guard.test.ts
+      - run: npx tsc --noEmit -p tsconfig.app.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/create-order/index.ts
