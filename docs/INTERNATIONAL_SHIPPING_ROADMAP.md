@@ -70,3 +70,24 @@ Status: **development only**. Checkout blocks non-Canadian destinations; no inte
 - Validate applicable export tax treatment and destination duties with a qualified tax/customs professional. Maintain country-specific sanctions and restricted-goods rules with a documented update owner; a static country list is not a substitute for screening.
 
 CI: `.github/workflows/international-validation.yml` runs the international tests, full Vitest suite and TypeScript checks on PR changes; do not merge until results are visible and passing.
+
+## Authenticated Shippo DAP quote endpoint (development draft)
+
+`supabase/functions/get-international-quotes/index.ts` now has a server-only quote pipeline:
+authenticate the shopper; re-read physical product, customs and warehouse data;
+reject variants pending variant-level customs handling; validate all vendor parcels;
+request live Shippo rates; convert using a live CAD FX snapshot; persist opaque
+per-vendor DAP quote IDs with address, cart and parcel fingerprints. It fails
+closed if any vendor lacks valid quotes. Canada-origin exports only.
+
+**Not deployed or connected to checkout.** The international customs migration
+must first be security-reviewed and applied to the correct Barakaz project.
+The endpoint must be exercised against Shippo sandbox responses, including
+carrier/customs document requirements, unavailable lanes, FX failure, and
+multi-vendor partial failure. Its per-vendor insert can leave unused quotes
+if the database fails; add cleanup/idempotency and expiry before launch.
+Customer-visible quote IDs do not authorize payment: order creation must
+recompute server-side fingerprints and atomically consume each verified quote.
+Variant-specific customs, customs declaration/label purchasing, delivery
+restrictions, tax treatment and explicit DAP acknowledgement remain blockers.
+Keep the international payment gate disabled.
