@@ -36,19 +36,9 @@ const VendorOrders = () => {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, productName, orderId }: { id: string; status: string; productName?: string; orderId?: string }) => {
+      // Customer notification is created by the database when the status changes.
       const { error } = await supabase.from("order_items").update({ status }).eq("id", id);
       if (error) throw error;
-      if (orderId) {
-        const { data: order } = await supabase.from("orders").select("user_id").eq("id", orderId).single();
-        if (order?.user_id) {
-          await supabase.from("notifications").insert({
-            recipient_id: order.user_id,
-            title: "Order Update",
-            message: `Your order${productName ? ` for "${productName}"` : ""} has been marked as ${status}`,
-            type: "order",
-          });
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-orders"] });
