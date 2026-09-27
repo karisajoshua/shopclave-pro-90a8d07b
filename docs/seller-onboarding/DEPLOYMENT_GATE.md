@@ -14,11 +14,11 @@ Development branch: `feature/seller-onboarding-global-v2`. No draft SQL has been
 
 ## SQL review and controlled rollout
 1. Confirm the actual deployed `vendors`, `user_roles` and storage schemas. Check ownership, existing RLS, migration history and role permissions.
-2. Review draft migrations 001–011 in numeric order, including `SECURITY DEFINER` authorization and JSON draft schema. Never run these blindly.
+2. Review draft migrations 001–016 in numeric order, including `SECURITY DEFINER` authorization and JSON draft schema. Never run these blindly.
 3. Before launch, add server-enforced country-specific required fields and document requirements and versioned published policies; verify policy links, retention and privacy terms.
-4. Complete secure verification workflow: Stripe-hosted Connect identity checks where eligible; separately review any documents Barakaz requires with private bucket, short-lived URLs and audited access. No identity uploads to public buckets or generic JSON.
+4. Review private KYC bucket, owner-upload registration, short-lived administrator signed URLs and audited document review (draft migrations 011–012 and 015–016). Add malware scanning, document retention, access monitoring and provider evidence reconciliation before production. No identity uploads to public buckets or generic JSON.
 5. Build the approval transaction to validate KYC and prevent duplicate vendor creation. Do not equate approved seller status with verified payouts.
-6. Add notification outbox and delivery worker for application submission, more-information requests, decisions and provider-status changes.
+6. Transactional notification outbox draft (014) queues application events. Implement and configure an authenticated delivery worker with verified sender, retry/claim semantics and delivery monitoring; the outbox alone does not send messages.
 7. End-to-end test draft resume, document ownership, agreement versions, admin authorization, country eligibility, webhook signatures/replays/out-of-order events and approval vs payout state.
 8. Only then migrate existing vendors and activate the new registration feature behind a feature flag.
 
@@ -31,3 +31,9 @@ Development branch: `feature/seller-onboarding-global-v2`. No draft SQL has been
 - Draft atomic administrator approval is KYC-gated and does not change Stripe payout verification.\n- Draft private KYC storage allows owner uploads, but upload registration, malware scanning, reviewer signed URL access and verified document workflow are NOT yet implemented.\n- The current KYC review RPC records an administrator decision; administrators must not mark KYC verified without independent evidence.\n- Country-specific agreements require actual published, versioned seller policy documents; none are silently substituted with general marketplace terms.
 - No automatic submission until real country rules, document flow and published seller policies are available.
 - No production migration, Edge Function deployment or live Stripe account verification performed.
+
+## Review constraints
+- Do not configure empty `required_documents` if manual KYC is expected: the KYC RPC refuses verification without independent evidence requirements.
+- Admin document access is audited when a 60-second signed URL is issued; the system cannot prove a human actually inspected its contents. Human verification training and a documented decision remain necessary.
+- No country rules or policy URLs have been inserted, so the final submission flow is fail-closed until reviewed configurations exist.
+- Existing Paystack integration elsewhere in Barakaz remains unchanged. This feature only creates Stripe Connect accounts.
