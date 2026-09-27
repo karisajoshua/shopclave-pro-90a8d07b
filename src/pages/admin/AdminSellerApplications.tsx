@@ -18,6 +18,14 @@ const AdminSellerApplications = () => {
    return (data||[]) as any[];
   }
  });
+ const approve=useMutation({
+  mutationFn:async(id:string)=>{
+   const {error}=await supabase.rpc("approve_seller_application" as any,{p_application_id:id});
+   if(error)throw error;
+  },
+  onSuccess:()=>{toast.success("Seller approved; Stripe payout verification remains separate");void qc.invalidateQueries({queryKey:["admin-seller-applications"]});},
+  onError:(e:Error)=>toast.error(e.message)
+ });
  const review=useMutation({
   mutationFn:async({id,decision}:{id:string;decision:string})=>{
    const {error}=await supabase.rpc("review_seller_application" as any,{
@@ -47,6 +55,7 @@ const AdminSellerApplications = () => {
       placeholder="Specify missing information or reason for rejection" />
    </label>
    <div className="flex flex-wrap gap-2">
+    <Button disabled={approve.isPending || a.kyc_status!=="verified" || !["submitted","under_review"].includes(a.status)} onClick={()=>approve.mutate(a.id)}>Approve verified seller</Button>
     <Button disabled={review.isPending} variant="outline" onClick={()=>review.mutate({id:a.id,decision:"under_review"})}>Mark under review</Button>
     <Button disabled={review.isPending||!reasons[a.id]?.trim()} variant="secondary" onClick={()=>review.mutate({id:a.id,decision:"more_information_required"})}>Request information</Button>
     <Button disabled={review.isPending||!reasons[a.id]?.trim()} variant="destructive" onClick={()=>review.mutate({id:a.id,decision:"rejected"})}>Reject</Button>
