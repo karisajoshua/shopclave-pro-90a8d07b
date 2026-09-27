@@ -49,3 +49,9 @@ verify_jwt = true
 
 [functions.barakaz-sync]
 verify_jwt = true
+
+[functions.seller-stripe-connect]
+verify_jwt = true
+
+[functions.seller-stripe-webhook]
+verify_jwt = false
