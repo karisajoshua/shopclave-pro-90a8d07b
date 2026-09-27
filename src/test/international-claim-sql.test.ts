@@ -1,9 +1,10 @@
 // Static migration guardrails; database-level concurrency tests are still required.
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const sql = readFileSync(
-  new URL("../../docs/international/migrations-draft/002_atomic_quote_claim.sql", import.meta.url),
+  resolve(process.cwd(), "docs/international/migrations-draft/002_atomic_quote_claim.sql"),
   "utf8",
 );
 
