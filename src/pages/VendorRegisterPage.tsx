@@ -1,108 +1,127 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { Store } from "lucide-react";
 
-const VendorRegisterPage = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [storeName, setStoreName] = useState("");
-  const [storeDescription, setStoreDescription] = useState("");
-  const [phone, setPhone] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [website, setWebsite] = useState("");
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth", { state: { from: "/vendor/register" } });
-    }
-  }, [user, navigate]);
-
-  if (!user) {
-    return null;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!storeName.trim()) {
-      toast.error("Store name is required");
-      return;
-    }
-    if (!phone.trim()) {
-      toast.error("Phone number is required");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error: vendorError } = await supabase.from("vendors").insert({
-        user_id: user.id,
-        store_name: storeName.trim(),
-        store_description: storeDescription.trim() || null,
-        phone: phone.trim(),
-        whatsapp: whatsapp.trim() || null,
-        website: website.trim() || null,
-        status: "pending",
-      });
-      if (vendorError) throw vendorError;
-
-      toast.success("Vendor application submitted! We'll review it shortly.");
-      navigate("/account");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to register");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <MarketplaceLayout>
-      <div className="container py-12 max-w-lg">
-        <div className="bg-card rounded-xl border border-border p-8">
-          <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Store className="h-7 w-7 text-primary" />
-            </div>
-            <h1 className="font-display text-2xl font-bold mb-2">Become a Seller</h1>
-            <p className="text-sm text-muted-foreground">Start listing your products on Barakaz marketplace</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Store Name *</Label>
-              <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Your Store Name" required />
-            </div>
-            <div>
-              <Label>Store Description</Label>
-              <Textarea value={storeDescription} onChange={(e) => setStoreDescription(e.target.value)} placeholder="Tell customers about your store..." rows={4} />
-            </div>
-            <div>
-              <Label>Phone Number *</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" required />
-            </div>
-            <div>
-              <Label>WhatsApp Number</Label>
-              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+254 7XX XXX XXX" />
-            </div>
-            <div>
-              <Label>Website (Optional)</Label>
-              <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://yourstore.com" />
-            </div>
-            <Button type="submit" className="w-full font-semibold" disabled={loading}>
-              {loading ? "Submitting..." : "Submit Application"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </MarketplaceLayout>
-  );
+type Draft = {
+  country: string; business_type: string; legal_name: string; registration_number: string;
+  full_name: string; phone: string; address: string; category: string;
+  store_name: string; store_description: string; ship_from: string; return_address: string;
 };
-
+const blank: Draft = { country: "", business_type: "", legal_name: "", registration_number: "",
+ full_name: "", phone: "", address: "", category: "", store_name: "", store_description: "",
+ ship_from: "", return_address: "" };
+const steps = ["Account", "Business", "Verification", "Store", "Payout", "Review"];
+const fields: Record<number, Array<[keyof Draft, string, boolean]>> = {
+  1: [["full_name", "Full name", true], ["phone", "Phone (international format)", true]],
+  2: [["country", "Country code (e.g. CA, CN)", true], ["business_type", "Business type: individual, sole_proprietor or company", true],
+      ["legal_name", "Legal business or personal name", true], ["registration_number", "Registration number (if applicable)", false],
+      ["address", "Registered business address", true], ["category", "Business category", true]],
+  4: [["store_name", "Store name", true], ["store_description", "Store description", true],
+      ["ship_from", "Ship-from address", true], ["return_address", "Return address", true]],
+};
+const VendorRegisterPage = () => {
+ const { user, loading: authLoading } = useAuth();
+ const navigate = useNavigate();
+ const [step, setStep] = useState(1);
+ const [draft, setDraft] = useState<Draft>(blank);
+ const [busy, setBusy] = useState(false);
+ const [loading, setLoading] = useState(true);
+ const [status, setStatus] = useState("draft");
+ const [saved, setSaved] = useState(false);
+ useEffect(() => {
+   if (authLoading) return;
+   if (!user) { navigate("/auth", { state: { from: "/vendor/register" } }); return; }
+   let cancelled = false;
+   (async () => {
+     const { data, error } = await supabase.from("seller_applications" as any).select("*").eq("user_id", user.id).maybeSingle();
+     if (cancelled) return;
+     if (error) { toast.error("Seller onboarding is not available yet. Please try later."); setLoading(false); return; }
+     if (data) {
+       const a = data as any;
+       setStep(a.current_step || 1); setStatus(a.status);
+       setDraft({ ...blank, ...(a.business_info || {}), ...(a.store_info || {}), country: a.country || "", business_type: a.business_type || "" });
+     } else { setDraft(d => ({ ...d, full_name: user.user_metadata?.full_name || "" })); }
+     setLoading(false);
+   })();
+   return () => { cancelled = true; };
+ }, [user, authLoading, navigate]);
+ const update = (key: keyof Draft, value: string) => { setDraft(d => ({ ...d, [key]: value })); setSaved(false); };
+ const save = async (nextStep: number) => {
+   if (!user || status !== "draft") return false;
+   setBusy(true);
+   const { error } = await supabase.rpc("save_seller_application_draft" as any, {
+     p_current_step: nextStep,
+     p_country: draft.country || null,
+     p_business_type: draft.business_type || null,
+     p_business_info: {
+       full_name: draft.full_name, phone: draft.phone, legal_name: draft.legal_name,
+       registration_number: draft.registration_number, address: draft.address, category: draft.category,
+     },
+     p_store_info: {
+       store_name: draft.store_name, store_description: draft.store_description,
+       ship_from: draft.ship_from, return_address: draft.return_address,
+     },
+   });
+   setBusy(false);
+   if (error) { toast.error(error.message); return false; }
+   setSaved(true); return true;
+ };
+ const advance = async () => {
+   if ((fields[step] || []).some(([key, , required]) => required && !draft[key].trim())) {
+     toast.error("Complete the required fields before continuing."); return;
+   }
+   if (step === 2 && (!/^[A-Z]{2}$/.test(draft.country) ||
+       !["individual", "sole_proprietor", "company"].includes(draft.business_type))) {
+     toast.error("Enter a two-letter country code and valid business type."); return;
+   }
+   if (step === 3 || step === 5 || step === 6) {
+     toast.info("This stage requires verified provider and policy integrations before submission.");
+     await save(step); return;
+   }
+   if (await save(step + 1)) setStep(step + 1);
+ };
+ if (authLoading || !user || loading) return <MarketplaceLayout><main className="container py-16">Loading seller application…</main></MarketplaceLayout>;
+ return <MarketplaceLayout><main className="container max-w-3xl py-10 space-y-6">
+   <div><h1 className="text-3xl font-bold">Become a Seller</h1>
+     <p className="text-muted-foreground mt-2">Create your store. Your application is saved as you progress.</p></div>
+   {status !== "draft" ? <section className="rounded-xl border p-6" role="status">
+     <h2 className="font-semibold">Application: {status.replace(/_/g, " ")}</h2>
+     <p className="text-sm text-muted-foreground">Your application is no longer editable. Check back for review updates.</p>
+   </section> : <>
+   <ol className="grid grid-cols-3 sm:grid-cols-6 gap-2" aria-label="Registration progress">
+     {steps.map((name, i) => <li key={name} className={`text-center text-xs rounded-lg p-2 border ${step === i + 1 ? "border-primary font-semibold" : ""}`}>
+       <span className="block text-lg">{i + 1}</span>{name}</li>)}
+   </ol>
+   <section className="rounded-xl border bg-card p-6 space-y-5">
+     <h2 className="text-xl font-semibold">{steps[step - 1]}</h2>
+     {step === 1 && <p className="text-sm text-muted-foreground">Signed in as {user.email}. Your existing Barakaz account will be used; no second password is required.</p>}
+     {(fields[step] || []).map(([key, label, required]) => <div key={key} className="space-y-2">
+       <Label htmlFor={key}>{label}{required ? " *" : ""}</Label>
+       {key === "store_description" ? <Textarea id={key} value={draft[key]} onChange={e => update(key, e.target.value)} /> :
+        key === "business_type" ? <select id={key} className="w-full rounded-md border bg-background p-2" value={draft[key]} onChange={e => update(key, e.target.value)}>
+          <option value="">Choose business type</option><option value="individual">Individual</option>
+          <option value="sole_proprietor">Sole proprietor</option><option value="company">Company / corporation</option></select> :
+        <Input id={key} required={required} value={draft[key]} maxLength={key === "country" ? 2 : 250}
+          onChange={e => update(key, key === "country" ? e.target.value.toUpperCase() : e.target.value)} />}
+     </div>)}
+     {step === 3 && <p className="text-sm">Identity and business verification will be collected securely according to your country and business type. Do not upload identity documents until the secure verification provider is connected.</p>}
+     {step === 5 && <p className="text-sm">Payout provider eligibility will be checked for your country. Seller approval and payout verification are separate.</p>}
+     {step === 6 && <p className="text-sm">Final submission will require verified identity documents, eligible payout onboarding and explicit acceptance of all applicable seller agreements.</p>}
+     <div className="flex flex-wrap justify-between gap-3 pt-4">
+       <Button variant="outline" disabled={busy || step === 1} onClick={() => setStep(s => s - 1)}>Back</Button>
+       <div className="flex gap-2">
+         <Button variant="outline" disabled={busy} onClick={() => void save(step)}>{saved ? "Saved" : "Save draft"}</Button>
+         <Button disabled={busy} onClick={() => void advance()}>{step === 6 ? "Awaiting verification" : "Save & continue"}</Button>
+       </div>
+     </div>
+   </section></>}
+ </main></MarketplaceLayout>;
+};
 export default VendorRegisterPage;
