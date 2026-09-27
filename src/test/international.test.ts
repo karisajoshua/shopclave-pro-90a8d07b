@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   checkInternationalEligibility, validateQuote, validateSelection, offerableModes,
-  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, type LandedCostQuote, type VendorParcel,
+  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, normalizeShippoInternationalRates, type LandedCostQuote, type VendorParcel,
 } from "../../supabase/functions/_shared/international.ts";
 
 const parcel = (over: Partial<VendorParcel> = {}): VendorParcel => ({
@@ -76,5 +76,16 @@ describe("payment gate", () => {
     expect(internationalPaymentAllowed(INTERNATIONAL_GATE_DEFAULT)).toBe(false);
     expect(internationalPaymentAllowed({ enabled: true, carrierIntegrationVerified: true })).toBe(false);
     expect(internationalPaymentAllowed(null)).toBe(false);
+  });
+});
+
+
+describe("Shippo international rate normalization", () => {
+  it("creates DAP-only quotes and converts USD rates to CAD", () => {
+    const rates = normalizeShippoInternationalRates([{ object_id: "rate-1", amount: "20.00", currency: "USD", provider: "UPS", servicelevel: { name: "Worldwide" } }], { USD: 0.8 });
+    expect(rates).toMatchObject([{ rateId: "rate-1", shippingCad: 25, mode: "DAP", dutiesCalculated: false, originalCurrency: "USD" }]);
+  });
+  it("rejects malformed and unconvertible carrier rates", () => {
+    expect(normalizeShippoInternationalRates([{ object_id: "r", amount: "-1", currency: "CAD" }, { object_id: "x", amount: "10", currency: "EUR" }, { amount: "15", currency: "CAD" }], {})).toEqual([]);
   });
 });
