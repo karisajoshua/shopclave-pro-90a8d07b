@@ -14,7 +14,7 @@ Development branch: `feature/seller-onboarding-global-v2`. No draft SQL has been
 
 ## SQL review and controlled rollout
 1. Confirm the actual deployed `vendors`, `user_roles` and storage schemas. Check ownership, existing RLS, migration history and role permissions.
-2. Review draft migrations 001–008 in numeric order, including `SECURITY DEFINER` authorization and JSON draft schema. Never run these blindly.
+2. Review draft migrations 001–011 in numeric order, including `SECURITY DEFINER` authorization and JSON draft schema. Never run these blindly.
 3. Before launch, add server-enforced country-specific required fields and document requirements and versioned published policies; verify policy links, retention and privacy terms.
 4. Complete secure verification workflow: Stripe-hosted Connect identity checks where eligible; separately review any documents Barakaz requires with private bucket, short-lived URLs and audited access. No identity uploads to public buckets or generic JSON.
 5. Build the approval transaction to validate KYC and prevent duplicate vendor creation. Do not equate approved seller status with verified payouts.
@@ -28,6 +28,6 @@ Development branch: `feature/seller-onboarding-global-v2`. No draft SQL has been
 - Signed Stripe Connect webhook with transactional idempotent payout-status update.
 - Draft country eligibility, server-validated submission and immutable policy acceptance RPCs.
 - Admin review queue with under-review, request-information and rejection decisions.
-- No automatic approval: requires secure KYC review and verified production database schema.
+- Draft atomic administrator approval is KYC-gated and does not change Stripe payout verification.\n- Draft private KYC storage allows owner uploads, but upload registration, malware scanning, reviewer signed URL access and verified document workflow are NOT yet implemented.\n- The current KYC review RPC records an administrator decision; administrators must not mark KYC verified without independent evidence.\n- Country-specific agreements require actual published, versioned seller policy documents; none are silently substituted with general marketplace terms.
 - No automatic submission until real country rules, document flow and published seller policies are available.
 - No production migration, Edge Function deployment or live Stripe account verification performed.
