@@ -9,6 +9,43 @@ export type IncotermMode = "DDP" | "DAP";
 export type QuoteSource = "shippo" | "dhl_express" | "zonos" | "manual_admin";
 export const VERIFIED_SOURCES: QuoteSource[] = ["shippo", "dhl_express", "zonos"];
 
+/** Shippo rates only establish shipping prices; never infer prepaid duties. */
+export interface ShippoCarrierRate {
+  object_id?: unknown;
+  amount?: unknown;
+  currency?: unknown;
+  provider?: unknown;
+  servicelevel?: { name?: unknown } | null;
+}
+export function normalizeShippoInternationalRates(
+  rates: ShippoCarrierRate[],
+  fxPerCad: Record<string, number>,
+) {
+  const options: Array<{
+    rateId: string; carrier: string; service: string; shippingCad: number;
+    originalCurrency: string; originalAmount: number; fxRateToCad: number;
+    mode: "DAP"; dutiesCalculated: false;
+  }> = [];
+  for (const rate of rates) {
+    const rateId = typeof rate.object_id === "string" ? rate.object_id.trim() : "";
+    const currency = typeof rate.currency === "string" ? rate.currency.trim().toUpperCase() : "";
+    const amount = typeof rate.amount === "string" || typeof rate.amount === "number" ? Number(rate.amount) : NaN;
+    const perCad = currency === "CAD" ? 1 : fxPerCad[currency];
+    if (!rateId || !/^[A-Z]{3}$/.test(currency) || !Number.isFinite(amount) || amount < 0 ||
+        !Number.isFinite(perCad) || perCad <= 0) continue;
+    const shippingCad = Math.round((amount / perCad + Number.EPSILON) * 100) / 100;
+    if (!Number.isFinite(shippingCad)) continue;
+    options.push({
+      rateId, carrier: String(rate.provider ?? "Carrier"),
+      service: String(rate.servicelevel?.name ?? "International"),
+      shippingCad, originalCurrency: currency, originalAmount: amount,
+      fxRateToCad: 1 / perCad, mode: "DAP", dutiesCalculated: false,
+    });
+  }
+  return options;
+}
+
+
 /** Destinations never offered (sanctions / carrier embargo). Admin-reviewable list. */
 export const RESTRICTED_DESTINATIONS = new Set(["CU", "IR", "KP", "SY", "RU", "BY"]);
 
@@ -47,6 +84,9 @@ export interface LandedCostQuote {
   customsFeeCad: number | null; // brokerage/clearance fee
   providerCurrency: string;
   expiresAt: string;
+  addressFingerprint?: string;
+  itemsFingerprint?: string;
+  parcelFingerprint?: string;
 }
 
 export const DDP_EXPLANATION =
