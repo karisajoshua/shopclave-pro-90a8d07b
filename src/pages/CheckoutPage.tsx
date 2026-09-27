@@ -796,8 +796,8 @@ const CheckoutPage = () => {
               {deliveryConfirmed && activeStep !== "delivery" && activeStep !== "review" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p>{deliveryItemsLabel(items.length)}</p>
-                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)} · Est. {windowFor(vid, rate.service)}</p>)}
-                  <p className="text-[11px]">Estimates only, not guaranteed.</p>
+                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)}</p>)}
+                
                 </div>
               )}
             </div>
