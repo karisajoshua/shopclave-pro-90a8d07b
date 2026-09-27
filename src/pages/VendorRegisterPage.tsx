@@ -73,6 +73,19 @@ const VendorRegisterPage = () => {
    if (error) { toast.error(error.message); return false; }
    setSaved(true); return true;
  };
+ const connectStripe = async () => {
+   if (!draft.country || !draft.business_type) { toast.error("Complete business information first."); return; }
+   if (!await save(5)) return;
+   setBusy(true);
+   const { data, error } = await supabase.functions.invoke("seller-stripe-connect");
+   setBusy(false);
+   if (error || !data?.url) { toast.error("Stripe Connect is not available for this seller country or account yet."); return; }
+   const target = new URL(data.url);
+   if (target.protocol !== "https:" || !target.hostname.endsWith(".stripe.com")) {
+     toast.error("Unexpected payout onboarding destination."); return;
+   }
+   window.location.assign(target.toString());
+ };
  const advance = async () => {
    if ((fields[step] || []).some(([key, , required]) => required && !draft[key].trim())) {
      toast.error("Complete the required fields before continuing."); return;
@@ -115,7 +128,7 @@ const VendorRegisterPage = () => {
           onChange={e => update(key, key === "country" ? e.target.value.toUpperCase() : e.target.value)} />}
      </div>)}
      {step === 3 && <p className="text-sm">Identity and business verification will be collected securely according to your country and business type. Do not upload identity documents until the secure verification provider is connected.</p>}
-     {step === 5 && <p className="text-sm">Payout provider eligibility will be checked for your country. Seller approval and payout verification are separate.</p>}
+     {step === 5 && <div className="space-y-3"><p className="text-sm">Payouts use Stripe Connect exclusively, where available. Verification is separate from Barakaz seller approval.</p><Button type="button" variant="secondary" disabled={busy} onClick={() => void connectStripe()}>Connect with Stripe</Button></div>}
      {step === 6 && <p className="text-sm">Final submission will require verified identity documents, eligible payout onboarding and explicit acceptance of all applicable seller agreements.</p>}
      <div className="flex flex-wrap justify-between gap-3 pt-4">
        <Button variant="outline" disabled={busy || step === 1} onClick={() => setStep(s => s - 1)}>Back</Button>
