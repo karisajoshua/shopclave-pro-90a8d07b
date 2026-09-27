@@ -23,6 +23,7 @@ DECLARE
   vendor_count integer;
   order_owner uuid;
   order_status text;
+  actual_vendor_count integer;
 BEGIN
   IF p_order_id IS NULL OR p_user_id IS NULL OR
      p_destination !~ '^[A-Z]{2}$' OR
@@ -46,6 +47,17 @@ BEGIN
   IF vendor_count <> cardinality(p_quote_ids) THEN
     RAISE EXCEPTION 'Vendor and quote counts differ';
   END IF;
+
+  -- The selected vendors must match the persisted order items, not merely
+  -- the caller-provided vendor map. The transaction must insert order_items
+  -- before claiming quotes; this function cannot repair partial orders.
+  SELECT count(DISTINCT oi.vendor_id) INTO actual_vendor_count
+  FROM public.order_items oi WHERE oi.order_id = p_order_id;
+  IF actual_vendor_count <> vendor_count OR EXISTS (
+    SELECT 1 FROM public.order_items oi
+    WHERE oi.order_id = p_order_id
+      AND NOT (p_vendor_parcels ? oi.vendor_id::text)
+  ) THEN RAISE EXCEPTION 'International quote vendors differ from order items'; END IF;
 
   -- Every provided vendor must have a nonempty fingerprint. Reject unrelated
   -- vendor keys as well as missing quote IDs before any quote is consumed.
