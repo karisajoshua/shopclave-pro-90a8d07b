@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION public.review_seller_application(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE a public.seller_applications;
+ previous_status text;
 BEGIN
  IF (SELECT auth.uid()) IS NULL OR NOT EXISTS (
   SELECT 1 FROM public.user_roles r
@@ -18,12 +19,12 @@ BEGIN
  SELECT * INTO a FROM public.seller_applications WHERE id=p_application_id FOR UPDATE;
  IF a.id IS NULL OR a.status NOT IN ('submitted','under_review','more_information_required') THEN
   RAISE EXCEPTION 'Application cannot be reviewed in current state'; END IF;
+ previous_status:=a.status;
  UPDATE public.seller_applications SET status=p_decision,reviewed_by=(SELECT auth.uid()),
   reviewed_at=now(),review_reason=p_reason,updated_at=now()
  WHERE id=p_application_id RETURNING * INTO a;
  INSERT INTO public.seller_application_events(application_id,actor_id,previous_status,new_status,reason)
- VALUES(p_application_id,(SELECT auth.uid()),(SELECT status FROM public.seller_application_events
- WHERE application_id=p_application_id ORDER BY created_at DESC LIMIT 1),p_decision,p_reason);
+ VALUES(p_application_id,(SELECT auth.uid()),previous_status,p_decision,p_reason);
  RETURN a;
 END $$;
 REVOKE ALL ON FUNCTION public.review_seller_application(uuid,text,text) FROM PUBLIC;
