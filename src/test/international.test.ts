@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   checkInternationalEligibility, validateQuote, validateSelection, offerableModes,
-  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, normalizeShippoInternationalRates, type LandedCostQuote, type VendorParcel,
+  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, normalizeShippoInternationalRates, prepareShippoDapQuoteRows, type LandedCostQuote, type VendorParcel,
 } from "../../supabase/functions/_shared/international.ts";
 
 const parcel = (over: Partial<VendorParcel> = {}): VendorParcel => ({
@@ -108,5 +108,30 @@ describe("strict quote fingerprint binding", () => {
     const bBound = { ...b, addressFingerprint: "addr1", itemsFingerprint: "basket1" };
     expect(validateSelection([a, bBound], base).ok).toBe(true);
     expect(validateSelection([a, bBound], { ...base, parcelFingerprints: { v1: "parcel1", v2: "changed" } })).toMatchObject({ ok: false, issue: "fingerprint_mismatch", vendorId: "v2" });
+  });
+});
+
+describe("server Shippo DAP quote preparation", () => {
+  const ctx = () => ({
+    userId: "u1", vendorId: "v1", originCountry: "CA", destinationCountry: "US",
+    addressFingerprint: "addr1", itemsFingerprint: "items1", parcelFingerprint: "parcel1",
+    parcel: parcel(), expiresAt: future(),
+  });
+  it("creates vendor-bound DAP persistence rows without inventing duties", () => {
+    const rows = prepareShippoDapQuoteRows(
+      [{ object_id: "shippo-rate", amount: "20", currency: "USD", provider: "UPS" }],
+      { USD: 0.8 }, ctx(),
+    );
+    expect(rows).toMatchObject([{
+      vendor_id: "v1", user_id: "u1", mode: "DAP", source: "shippo",
+      shipping_cad: 25, duties_cad: null, import_tax_cad: null,
+      address_fingerprint: "addr1", items_fingerprint: "items1",
+      parcel_fingerprint: "parcel1", rate_id: "shippo-rate",
+    }]);
+  });
+  it("rejects changed or incomplete server parcel context", () => {
+    expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), parcelFingerprint: "" })).toThrow();
+    expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), parcel: parcel({ vendorId: "other" }) })).toThrow();
+    expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), destinationCountry: "KP" })).toThrow();
   });
 });
