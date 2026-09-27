@@ -770,10 +770,6 @@ const CheckoutPage = () => {
                                   <p className="font-medium truncate">
                                     {r.service}
                                   </p>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {r.service === "Express Shipping" ? "Estimated delivery: 1–3 business days" : "Estimated delivery: 3–7 business days"}
-                                  </p>
-                                  <p className="text-[11px] text-muted-foreground">Est. arrival {windowFor(vendorId, r.service)} (not guaranteed)</p>
                                 </div>
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
                               </label>
@@ -800,8 +796,8 @@ const CheckoutPage = () => {
               {deliveryConfirmed && activeStep !== "delivery" && activeStep !== "review" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p>{deliveryItemsLabel(items.length)}</p>
-                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)} · Est. {windowFor(vid, rate.service)}</p>)}
-                  <p className="text-[11px]">Estimates only, not guaranteed.</p>
+                  {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)}</p>)}
+                
                 </div>
               )}
             </div>
