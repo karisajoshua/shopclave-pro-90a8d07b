@@ -71,6 +71,13 @@
       "when": 1790547427675,
       "tag": "0009_order_status_guard_notifications_realtime_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790550479242,
+      "tag": "0010_complete_seller_onboarding_foundation",
+      "breakpoints": true
     }
   ]
 }

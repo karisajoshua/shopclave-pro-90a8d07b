@@ -1540,6 +1540,399 @@ export type Database = {
           },
         ]
       }
+      seller_agreement_acceptances: {
+        Row: {
+          accepted_at: string
+          accepted_by: string
+          application_id: string
+          id: string
+          policy_code: string
+          policy_version: string
+        }
+        Insert: {
+          accepted_at?: string
+          accepted_by: string
+          application_id: string
+          id?: string
+          policy_code: string
+          policy_version: string
+        }
+        Update: {
+          accepted_at?: string
+          accepted_by?: string
+          application_id?: string
+          id?: string
+          policy_code?: string
+          policy_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_agreement_acceptances_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "seller_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_application_events: {
+        Row: {
+          actor_id: string | null
+          application_id: string
+          created_at: string
+          id: string
+          new_status: string
+          previous_status: string | null
+          reason: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          application_id: string
+          created_at?: string
+          id?: string
+          new_status: string
+          previous_status?: string | null
+          reason?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          application_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          previous_status?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_application_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "seller_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_applications: {
+        Row: {
+          business_info: Json
+          business_type: string | null
+          country: string | null
+          created_at: string
+          current_step: number
+          id: string
+          kyc_status: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules_version: string | null
+          status: string
+          store_info: Json
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          business_info?: Json
+          business_type?: string | null
+          country?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          kyc_status?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rules_version?: string | null
+          status?: string
+          store_info?: Json
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          business_info?: Json
+          business_type?: string | null
+          country?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          kyc_status?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rules_version?: string | null
+          status?: string
+          store_info?: Json
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_applications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_applications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_country_requirements: {
+        Row: {
+          business_type: string
+          country: string
+          required_documents: string[]
+          required_fields: string[]
+          reviewed_at: string | null
+          rules_version: string
+          stripe_connect_enabled: boolean
+        }
+        Insert: {
+          business_type: string
+          country: string
+          required_documents?: string[]
+          required_fields?: string[]
+          reviewed_at?: string | null
+          rules_version: string
+          stripe_connect_enabled?: boolean
+        }
+        Update: {
+          business_type?: string
+          country?: string
+          required_documents?: string[]
+          required_fields?: string[]
+          reviewed_at?: string | null
+          rules_version?: string
+          stripe_connect_enabled?: boolean
+        }
+        Relationships: []
+      }
+      seller_document_access_events: {
+        Row: {
+          accessed_at: string
+          action: string
+          document_id: string
+          id: string
+          reviewer_id: string
+        }
+        Insert: {
+          accessed_at?: string
+          action: string
+          document_id: string
+          id?: string
+          reviewer_id: string
+        }
+        Update: {
+          accessed_at?: string
+          action?: string
+          document_id?: string
+          id?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_document_access_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "seller_verification_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_notification_outbox: {
+        Row: {
+          application_id: string
+          attempts: number
+          claim_token: string | null
+          claimed_until: string | null
+          created_at: string
+          delivered_at: string | null
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          recipient_user_id: string
+        }
+        Insert: {
+          application_id: string
+          attempts?: number
+          claim_token?: string | null
+          claimed_until?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          recipient_user_id: string
+        }
+        Update: {
+          application_id?: string
+          attempts?: number
+          claim_token?: string | null
+          claimed_until?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          recipient_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_notification_outbox_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "seller_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_payout_accounts: {
+        Row: {
+          application_id: string
+          charges_enabled: boolean
+          country: string
+          currency: string | null
+          id: string
+          last_webhook_at: string | null
+          payouts_enabled: boolean
+          provider: string
+          provider_account_id: string | null
+          verification_status: string
+        }
+        Insert: {
+          application_id: string
+          charges_enabled?: boolean
+          country: string
+          currency?: string | null
+          id?: string
+          last_webhook_at?: string | null
+          payouts_enabled?: boolean
+          provider: string
+          provider_account_id?: string | null
+          verification_status?: string
+        }
+        Update: {
+          application_id?: string
+          charges_enabled?: boolean
+          country?: string
+          currency?: string | null
+          id?: string
+          last_webhook_at?: string | null
+          payouts_enabled?: boolean
+          provider?: string
+          provider_account_id?: string | null
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_payout_accounts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "seller_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_policy_documents: {
+        Row: {
+          document_url: string
+          policy_code: string
+          policy_version: string
+          published_at: string | null
+          title: string
+        }
+        Insert: {
+          document_url: string
+          policy_code: string
+          policy_version: string
+          published_at?: string | null
+          title: string
+        }
+        Update: {
+          document_url?: string
+          policy_code?: string
+          policy_version?: string
+          published_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      seller_stripe_webhook_events: {
+        Row: {
+          account_id: string
+          event_id: string
+          processed_at: string
+        }
+        Insert: {
+          account_id: string
+          event_id: string
+          processed_at?: string
+        }
+        Update: {
+          account_id?: string
+          event_id?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
+      seller_verification_documents: {
+        Row: {
+          application_id: string
+          id: string
+          private_storage_path: string
+          requirement_code: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          uploaded_at: string
+          verification_status: string
+        }
+        Insert: {
+          application_id: string
+          id?: string
+          private_storage_path: string
+          requirement_code: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          uploaded_at?: string
+          verification_status?: string
+        }
+        Update: {
+          application_id?: string
+          id?: string
+          private_storage_path?: string
+          requirement_code?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          uploaded_at?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_verification_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "seller_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_items: {
         Row: {
           created_at: string
@@ -2752,6 +3145,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_seller_agreements: { Args: { p_codes: string[] }; Returns: number }
       admin_get_message_originals: {
         Args: { _message_ids: string[] }
         Returns: {
@@ -2762,8 +3156,67 @@ export type Database = {
           original_message: string
         }[]
       }
+      approve_seller_application: {
+        Args: { p_application_id: string }
+        Returns: {
+          business_info: Json
+          business_type: string | null
+          country: string | null
+          created_at: string
+          current_step: number
+          id: string
+          kyc_status: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules_version: string | null
+          status: string
+          store_info: Json
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_manage_marketing: { Args: { _user_id: string }; Returns: boolean }
       can_manage_resources: { Args: { _user_id: string }; Returns: boolean }
+      claim_seller_notifications: {
+        Args: { p_limit?: number }
+        Returns: {
+          application_id: string
+          attempts: number
+          claim_token: string | null
+          claimed_until: string | null
+          created_at: string
+          delivered_at: string | null
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          recipient_user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "seller_notification_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_seller_notification: {
+        Args: {
+          p_claim_token: string
+          p_delivered: boolean
+          p_error?: string
+          p_id: string
+        }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2893,7 +3346,176 @@ export type Database = {
         Args: { _vendor_id: string }
         Returns: undefined
       }
+      record_seller_kyc_review: {
+        Args: { p_application_id: string; p_reason: string; p_result: string }
+        Returns: {
+          business_info: Json
+          business_type: string | null
+          country: string | null
+          created_at: string
+          current_step: number
+          id: string
+          kyc_status: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules_version: string | null
+          status: string
+          store_info: Json
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_seller_stripe_account_event: {
+        Args: {
+          p_account_id: string
+          p_charges_enabled: boolean
+          p_created_at: string
+          p_details_submitted: boolean
+          p_event_id: string
+          p_payouts_enabled: boolean
+        }
+        Returns: boolean
+      }
+      register_seller_kyc_upload: {
+        Args: { p_requirement_code: string; p_storage_path: string }
+        Returns: {
+          application_id: string
+          id: string
+          private_storage_path: string
+          requirement_code: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          uploaded_at: string
+          verification_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_verification_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      review_seller_application: {
+        Args: { p_application_id: string; p_decision: string; p_reason: string }
+        Returns: {
+          business_info: Json
+          business_type: string | null
+          country: string | null
+          created_at: string
+          current_step: number
+          id: string
+          kyc_status: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules_version: string | null
+          status: string
+          store_info: Json
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      review_seller_document: {
+        Args: { p_decision: string; p_document_id: string; p_reason: string }
+        Returns: {
+          application_id: string
+          id: string
+          private_storage_path: string
+          requirement_code: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          uploaded_at: string
+          verification_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_verification_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_seller_application_draft: {
+        Args: {
+          p_business_info: Json
+          p_business_type: string
+          p_country: string
+          p_current_step: number
+          p_store_info: Json
+        }
+        Returns: {
+          business_info: Json
+          business_type: string | null
+          country: string | null
+          created_at: string
+          current_step: number
+          id: string
+          kyc_status: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules_version: string | null
+          status: string
+          store_info: Json
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       slugify: { Args: { _input: string }; Returns: string }
+      submit_seller_application: {
+        Args: never
+        Returns: {
+          business_info: Json
+          business_type: string | null
+          country: string | null
+          created_at: string
+          current_step: number
+          id: string
+          kyc_status: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules_version: string | null
+          status: string
+          store_info: Json
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "vendor" | "customer"
