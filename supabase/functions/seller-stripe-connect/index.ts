@@ -22,7 +22,8 @@ Deno.serve(async req => {
   const admin=createClient(url,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const {data:a,error:appError}=await admin.from("seller_applications")
    .select("id,user_id,status,country,business_type").eq("user_id",user.id).maybeSingle();
-  if (appError || !a || a.status!=="draft") return respond({error:"No eligible seller draft"},403);
+   if (appError || !a || !["draft","more_information_required"].includes(a.status))
+    return respond({error:"No eligible seller draft"},403);
   const {data:rules}=await admin.from("seller_country_requirements")
    .select("stripe_connect_enabled").eq("country",a.country).eq("business_type",a.business_type)
    .eq("stripe_connect_enabled",true).not("reviewed_at","is",null).limit(1).maybeSingle();
