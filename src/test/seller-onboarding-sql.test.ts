@@ -85,4 +85,16 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("cardinality(r.required_documents)>0");
   expect(s).toContain("d.verification_status='verified'");
  });
+ it("notification worker claims are service-only and replay-safe", () => {
+  const s=sql("017_outbox_claims.sql");
+  expect(s).toContain("FOR UPDATE SKIP LOCKED");
+  expect(s).toContain("claim_token");
+  expect(s).toContain("service_role");
+  expect(s).toContain("attempts<8");
+ });
+ it("requires published seller policy versions", () => {
+  const s=sql("013_published_seller_policies.sql");
+  expect(s).toContain("published_at IS NOT NULL");
+  expect(s).toContain("policy_version=r.rules_version");
+ });
 });
