@@ -18,7 +18,17 @@ Deno.serve(async req=>{
  if(roleError||!role)return json({error:"Forbidden"},403);
  let body:unknown;
  try{body=await req.json();}catch{return json({error:"Invalid request"},400);}
- const id=(body as Record<string,unknown>)?.document_id;
+ const payload=body as Record<string,unknown>;
+ if(payload?.action==="list"){
+  const appId=payload.application_id;
+  if(typeof appId!=="string"||!/^[0-9a-f-]{36}$/i.test(appId))return json({error:"Invalid application"},400);
+  const {data:docs,error:listError}=await admin.from("seller_verification_documents")
+   .select("id,requirement_code,verification_status,uploaded_at,reviewed_at")
+   .eq("application_id",appId).order("uploaded_at",{ascending:false});
+  if(listError)return json({error:"Unable to load documents"},500);
+  return json({documents:docs});
+ }
+ const id=payload?.document_id;
  if(typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))return json({error:"Invalid document"},400);
  const {data:document,error}=await admin.from("seller_verification_documents")
   .select("id,private_storage_path,application_id,requirement_code,verification_status")
