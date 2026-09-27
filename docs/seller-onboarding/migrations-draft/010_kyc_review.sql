@@ -23,6 +23,10 @@ BEGIN
   AND r.rules_version=a.rules_version AND r.stripe_connect_enabled=true
   AND r.reviewed_at IS NOT NULL)
  THEN RAISE EXCEPTION 'Approved country rules required'; END IF;
+ IF p_result='verified' AND NOT EXISTS(SELECT 1 FROM public.seller_country_requirements r
+ WHERE r.country=a.country AND r.business_type=a.business_type
+ AND r.rules_version=a.rules_version AND cardinality(r.required_documents)>0)
+ THEN RAISE EXCEPTION 'Independent KYC evidence requirements are not configured'; END IF;
  IF p_result='verified' AND EXISTS(
   SELECT 1 FROM public.seller_country_requirements r
   CROSS JOIN LATERAL unnest(r.required_documents) AS required(code)
