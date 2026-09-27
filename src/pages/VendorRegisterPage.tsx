@@ -81,9 +81,12 @@ const VendorRegisterPage = () => {
        !["individual", "sole_proprietor", "company"].includes(draft.business_type))) {
      toast.error("Enter a two-letter country code and valid business type."); return;
    }
-   if (step === 3 || step === 5 || step === 6) {
-     toast.info("This stage requires verified provider and policy integrations before submission.");
+   if (step === 6) {
+     toast.info("Final submission is disabled until verification and agreements are securely integrated.");
      await save(step); return;
+   }
+   if (step === 3 || step === 5) {
+     toast.info("You can continue setting up your store. Verification and payouts must be completed before submission.");
    }
    if (await save(step + 1)) setStep(step + 1);
  };
