@@ -44,6 +44,10 @@ BEGIN
  OR nullif(btrim(a.store_info->>'ship_from'),'') IS NULL
  OR nullif(btrim(a.store_info->>'return_address'),'') IS NULL
  THEN RAISE EXCEPTION 'Required business or store information is missing'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.seller_payout_accounts p
+ WHERE p.application_id=a.id AND p.provider='stripe'
+ AND nullif(p.provider_account_id,'') IS NOT NULL)
+ THEN RAISE EXCEPTION 'Stripe Connect onboarding must be started before submission'; END IF;
  FOREACH code IN ARRAY r.required_fields LOOP
   IF nullif(btrim(coalesce(a.business_info->>code,a.store_info->>code,'')),'') IS NULL
   THEN RAISE EXCEPTION 'Missing required country field: %',code; END IF;
