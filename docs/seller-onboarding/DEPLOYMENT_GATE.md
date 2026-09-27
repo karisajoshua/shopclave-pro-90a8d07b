@@ -14,11 +14,11 @@ Development branch: `feature/seller-onboarding-global-v2`. No draft SQL has been
 
 ## SQL review and controlled rollout
 1. Confirm the actual deployed `vendors`, `user_roles` and storage schemas. Check ownership, existing RLS, migration history and role permissions.
-2. Review draft migrations 001–016 in numeric order, including `SECURITY DEFINER` authorization and JSON draft schema. Never run these blindly.
+2. Review draft migrations 001–017 in numeric order, including `SECURITY DEFINER` authorization and JSON draft schema. Never run these blindly.
 3. Before launch, add server-enforced country-specific required fields and document requirements and versioned published policies; verify policy links, retention and privacy terms.
 4. Review private KYC bucket, owner-upload registration, short-lived administrator signed URLs and audited document review (draft migrations 011–012 and 015–016). Add malware scanning, document retention, access monitoring and provider evidence reconciliation before production. No identity uploads to public buckets or generic JSON.
 5. Build the approval transaction to validate KYC and prevent duplicate vendor creation. Do not equate approved seller status with verified payouts.
-6. Transactional notification outbox draft (014) queues application events. Implement and configure an authenticated delivery worker with verified sender, retry/claim semantics and delivery monitoring; the outbox alone does not send messages.
+6. Transactional notification outbox draft (014) queues application events. A token-protected Resend delivery worker and atomic claim/ack SQL drafts are implemented (017). Configure verified sender, `RESEND_API_KEY`, `SELLER_NOTIFICATION_FROM`, `SELLER_NOTIFICATION_WORKER_TOKEN` and a trusted scheduled HTTP caller. Test delivery, retries and provider idempotency before enabling.
 7. End-to-end test draft resume, document ownership, agreement versions, admin authorization, country eligibility, webhook signatures/replays/out-of-order events and approval vs payout state.
 8. Only then migrate existing vendors and activate the new registration feature behind a feature flag.
 
