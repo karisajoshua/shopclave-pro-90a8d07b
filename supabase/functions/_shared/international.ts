@@ -109,7 +109,9 @@ export type QuoteIssue =
   | "negative_amount"
   | "duplicate_vendor"
   | "invalid_quote_currency"
-  | "invalid_expiration";
+  | "invalid_expiration"
+  | "missing_fingerprint"
+  | "fingerprint_mismatch";
 
 /** Which modes may be shown for a vendor: only those backed by a verified, unexpired quote. */
 export function offerableModes(quotes: LandedCostQuote[], vendorId: string, userId: string, destination: string, now = new Date()): IncotermMode[] {
@@ -121,11 +123,17 @@ export function offerableModes(quotes: LandedCostQuote[], vendorId: string, user
   return (["DDP", "DAP"] as IncotermMode[]).filter((m) => modes.has(m));
 }
 
-export function validateQuote(q: LandedCostQuote, o: { userId: string; destination: string; now?: Date }): QuoteIssue | null {
+export function validateQuote(q: LandedCostQuote, o: { userId: string; destination: string; now?: Date; addressFingerprint?: string; itemsFingerprint?: string; parcelFingerprint?: string; requireFingerprints?: boolean }): QuoteIssue | null {
   const now = o.now ?? new Date();
   if (!q.verified) return "not_verified";
   if (!VERIFIED_SOURCES.includes(q.source)) return "unverified_source";
   if (q.userId !== o.userId) return "not_owner";
+  if (o.requireFingerprints) {
+    if (!q.addressFingerprint || !q.itemsFingerprint || !q.parcelFingerprint ||
+        !o.addressFingerprint || !o.itemsFingerprint || !o.parcelFingerprint) return "missing_fingerprint";
+    if (q.addressFingerprint !== o.addressFingerprint || q.itemsFingerprint !== o.itemsFingerprint ||
+        q.parcelFingerprint !== o.parcelFingerprint) return "fingerprint_mismatch";
+  }
   const expiry = new Date(q.expiresAt).getTime();
   if (!Number.isFinite(expiry)) return "invalid_expiration";
   if (expiry <= now.getTime()) return "expired";
@@ -142,7 +150,7 @@ export function validateQuote(q: LandedCostQuote, o: { userId: string; destinati
 /** Validate the full basket selection: one verified quote per vendor, mixed DDP/DAP allowed. */
 export function validateSelection(
   selected: LandedCostQuote[],
-  o: { userId: string; destination: string; vendorIds: string[]; dapAcknowledged: boolean; now?: Date },
+  o: { userId: string; destination: string; vendorIds: string[]; dapAcknowledged: boolean; now?: Date; addressFingerprint?: string; itemsFingerprint?: string; parcelFingerprint?: string; requireFingerprints?: boolean },
 ): { ok: true; totalCad: number; hasDap: boolean } | { ok: false; issue: QuoteIssue; vendorId?: string } {
   const seen = new Set<string>();
   let total = 0;
