@@ -94,10 +94,9 @@ export default function SellerOnboardingV2Page(){
  };
  const next=async()=>{
   const validation=validateSellerStep(step,draft); if(validation){toast.error(validation);return;}
-  if(step===3&&(rule?.required_documents.length||0)>0&&!rule!.required_documents.every(code=>documents.some(d=>d.requirement_code===code))){toast.error("Upload each required verification document before continuing.");return;}
-  if(step===3&&!rule){toast.error("Verified onboarding requirements are not available for this country and seller type.");return;}
-  if(step===5&&!payout?.provider_account_id){toast.error("Start secure payout onboarding before continuing.");return;}
-  if(step===6){if(!rule||accepted.length!==SELLER_POLICY_CODES.length){toast.error("Accept all six published seller agreements before continuing.");return;} const {error}=await supabase.rpc("accept_seller_agreements",{p_codes:[...SELLER_POLICY_CODES]});if(error){toast.error(friendlyError(error.message));return;}}
+  if(step===3&&rule&&rule.required_documents.length>0&&!rule.required_documents.every(code=>documents.some(d=>d.requirement_code===code))){toast.error("Upload each required verification document before continuing.");return;}
+  if(step===5&&rule&&!payout?.provider_account_id){toast.error("Start secure payout onboarding before continuing.");return;}
+  if(step===6&&rule){if(accepted.length!==SELLER_POLICY_CODES.length){toast.error("Accept all six published seller agreements before continuing.");return;} const {error}=await supabase.rpc("accept_seller_agreements",{p_codes:[...SELLER_POLICY_CODES]});if(error){toast.error(friendlyError(error.message));return;}}
   const nextStep=Math.min(7,step+1); const app=await save(nextStep,true);if(app)setStep(nextStep);
  };
  const connectStripe=async()=>{
