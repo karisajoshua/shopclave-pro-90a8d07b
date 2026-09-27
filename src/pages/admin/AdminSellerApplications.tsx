@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import AdminSellerDocuments from "@/components/admin/AdminSellerDocuments";
 
 const AdminSellerApplications = () => {
  const qc=useQueryClient();
@@ -54,6 +55,7 @@ const AdminSellerApplications = () => {
     <Textarea value={reasons[a.id]||""} onChange={e=>setReasons(x=>({...x,[a.id]:e.target.value}))}
       placeholder="Specify missing information or reason for rejection" />
    </label>
+   <AdminSellerDocuments applicationId={a.id} onReviewed={()=>void qc.invalidateQueries({queryKey:["admin-seller-applications"]})} />
    <div className="flex flex-wrap gap-2">
     <Button disabled={approve.isPending || a.kyc_status!=="verified" || !["submitted","under_review"].includes(a.status)} onClick={()=>approve.mutate(a.id)}>Approve verified seller</Button>
     <Button disabled={review.isPending} variant="outline" onClick={()=>review.mutate({id:a.id,decision:"under_review"})}>Mark under review</Button>
