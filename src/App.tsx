@@ -36,6 +36,7 @@ import ReturnPolicyPage from "./pages/ReturnPolicyPage";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVendors from "./pages/admin/AdminVendors";
+import AdminSellerApplications from "./pages/admin/AdminSellerApplications";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminReturns from "./pages/admin/AdminReturns";
@@ -139,6 +140,7 @@ const App = () => (
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<RequirePermission perm={PERMISSIONS.DASHBOARD_VIEW}><AdminDashboard /></RequirePermission>} />
                   <Route path="vendors" element={<RequirePermission perm={PERMISSIONS.VENDORS_VIEW}><AdminVendors /></RequirePermission>} />
+                  <Route path="seller-applications" element={<RequirePermission perm={PERMISSIONS.VENDORS_VIEW}><AdminSellerApplications /></RequirePermission>} />
                   <Route path="products" element={<RequirePermission perm={PERMISSIONS.PRODUCTS_VIEW}><AdminProducts /></RequirePermission>} />
                   <Route path="orders" element={<RequirePermission perm={PERMISSIONS.ORDERS_VIEW}><AdminOrders /></RequirePermission>} />
                   <Route path="returns" element={<RequirePermission perm={PERMISSIONS.ORDERS_UPDATE}><AdminReturns /></RequirePermission>} />
