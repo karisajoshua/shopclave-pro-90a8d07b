@@ -89,3 +89,24 @@ describe("Shippo international rate normalization", () => {
     expect(normalizeShippoInternationalRates([{ object_id: "r", amount: "-1", currency: "CAD" }, { object_id: "x", amount: "10", currency: "EUR" }, { amount: "15", currency: "CAD" }], {})).toEqual([]);
   });
 });
+
+
+describe("strict quote fingerprint binding", () => {
+  const fingerprinted = q({ addressFingerprint: "addr1", itemsFingerprint: "basket1", parcelFingerprint: "parcel1" });
+  const options = { ...sel, addressFingerprint: "addr1", itemsFingerprint: "basket1", parcelFingerprint: "parcel1", requireFingerprints: true };
+  it("accepts matching server fingerprints", () => expect(validateQuote(fingerprinted, options)).toBeNull());
+  it("rejects a changed address, basket or vendor parcel", () => {
+    expect(validateQuote(fingerprinted, { ...options, addressFingerprint: "addr2" })).toBe("fingerprint_mismatch");
+    expect(validateQuote(fingerprinted, { ...options, itemsFingerprint: "basket2" })).toBe("fingerprint_mismatch");
+    expect(validateQuote(fingerprinted, { ...options, parcelFingerprint: "parcel2" })).toBe("fingerprint_mismatch");
+  });
+  it("fails closed when fingerprints are missing in strict mode", () => expect(validateQuote(q(), options)).toBe("missing_fingerprint"));
+  it("checks a separate parcel fingerprint for each vendor", () => {
+    const a = fingerprinted;
+    const b = q({ id: "q2", vendorId: "v2", mode: "DAP", parcelFingerprint: "parcel2" });
+    const base = { ...sel, vendorIds: ["v1", "v2"], dapAcknowledged: true, addressFingerprint: "addr1", itemsFingerprint: "basket1", parcelFingerprints: { v1: "parcel1", v2: "parcel2" }, requireFingerprints: true };
+    const bBound = { ...b, addressFingerprint: "addr1", itemsFingerprint: "basket1" };
+    expect(validateSelection([a, bBound], base).ok).toBe(true);
+    expect(validateSelection([a, bBound], { ...base, parcelFingerprints: { v1: "parcel1", v2: "changed" } })).toMatchObject({ ok: false, issue: "fingerprint_mismatch", vendorId: "v2" });
+  });
+});
