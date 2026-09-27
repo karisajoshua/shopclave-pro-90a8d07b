@@ -810,49 +810,78 @@ const CheckoutPage = () => {
             <div className="bg-card rounded-lg border border-border overflow-hidden">
               <StepHeader step="review" title="Review Order" />
               {activeStep === "review" && (
-                <div className="px-4 pb-4 space-y-4 text-sm">
-                  <div className="rounded-md border border-border p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">Deliver to</p>
-                        <p className="font-medium">{address.fullName}</p>
-                        <p className="text-muted-foreground break-words">{address.addressLine}, {address.city}, {address.state} {address.zip}, {address.country}</p>
-                      </div>
-                      <button type="button" className="text-xs text-primary underline shrink-0" onClick={() => setActiveStep("address")}>Edit</button>
+                <div className="px-4 pb-5 sm:px-6 sm:pb-6 space-y-6 text-sm">
+                  <p className="text-muted-foreground leading-relaxed">Check your delivery details and items before continuing to secure payment.</p>
+
+                  <section aria-labelledby="review-address" className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 id="review-address" className="text-sm font-semibold">Delivery address</h3>
+                      <button type="button" className="text-sm font-medium text-primary hover:underline" onClick={() => setActiveStep("address")}>Change</button>
                     </div>
-                  </div>
-                  {Object.entries(vendorGroups).map(([vendorId, group]) => {
-                    const rate = selectedRates[vendorId];
-                    return (
-                      <div key={vendorId} className="rounded-md border border-border p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs text-muted-foreground">Sold by <span className="font-medium text-foreground">{group.vendorName}</span></p>
-                          <button type="button" className="text-xs text-primary underline shrink-0" onClick={() => setActiveStep("delivery")}>Edit delivery</button>
+                    <div className="rounded-xl bg-muted/40 px-4 py-3 leading-relaxed">
+                      <p className="font-semibold text-foreground">{address.fullName}</p>
+                      <p className="mt-1 text-muted-foreground break-words">{address.addressLine}</p>
+                      <p className="text-muted-foreground break-words">{address.city}, {address.state} {address.zip}</p>
+                      <p className="text-muted-foreground">{address.country}</p>
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <section aria-labelledby="review-items" className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 id="review-items" className="text-sm font-semibold">Items & delivery</h3>
+                      <Link to="/cart" className="text-sm font-medium text-primary hover:underline">Edit cart</Link>
+                    </div>
+                    {Object.entries(vendorGroups).map(([vendorId, group]) => {
+                      const rate = selectedRates[vendorId];
+                      return (
+                        <div key={vendorId} className="rounded-xl border border-border/80 overflow-hidden">
+                          <div className="bg-muted/30 px-4 py-3 border-b border-border/70">
+                            <p className="text-xs text-muted-foreground">Sold by</p>
+                            <p className="font-semibold break-words">{group.vendorName}</p>
+                          </div>
+                          <div className="divide-y divide-border/60 px-4">
+                            {group.items.map((item) => (
+                              <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3 items-start">
+                                <div className="min-w-0">
+                                  <p className="font-medium break-words leading-snug">{item.name}</p>
+                                  {item.variantLabel && <p className="mt-1 text-xs text-muted-foreground break-words">{item.variantLabel}</p>}
+                                  <p className="mt-1 text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                </div>
+                                <p className="font-semibold whitespace-nowrap tabular-nums text-right">{formatPrice(item.price * item.quantity)}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {rate && (
+                            <div className="border-t border-border/70 bg-muted/20 px-4 py-3 flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <p className="font-medium break-words">{rate.service} delivery</p>
+                                <p className="text-xs text-muted-foreground mt-1">Estimated {windowFor(vendorId, rate.service)}</p>
+                                <button type="button" className="mt-2 text-xs font-medium text-primary hover:underline" onClick={() => setActiveStep("delivery")}>Change delivery</button>
+                              </div>
+                              <span className="font-medium whitespace-nowrap tabular-nums">{formatPrice(rate.amount_cad)}</span>
+                            </div>
+                          )}
                         </div>
-                        {group.items.map((item) => (
-                          <div key={item.id} className="flex justify-between gap-2">
-                            <span className="min-w-0 truncate">{item.quantity} × {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ""}</span>
-                            <span className="font-medium shrink-0">{formatPrice(item.price * item.quantity)}</span>
-                          </div>
-                        ))}
-                        {rate && (
-                          <div className="flex justify-between gap-2 text-muted-foreground">
-                            <span className="min-w-0">{rate.service} · Est. {windowFor(vendorId, rate.service)}</span>
-                            <span className="shrink-0">{formatPrice(rate.amount_cad)}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div className="rounded-md border border-border p-3 space-y-1">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(totalPrice)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{formatPrice(shippingTotal)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Taxes</span><span className="text-muted-foreground">Not yet calculated</span></div>
-                    <Separator className="my-1" />
-                    <div className="flex justify-between font-semibold"><span>Total before applicable taxes (CAD)</span><span>{formatPrice(grandTotal)}</span></div>
-                    <p className="text-[11px] text-muted-foreground">Delivery dates are estimates, not guaranteed. <Link to="/cart" className="underline">Edit items</Link></p>
-                  </div>
-                  <Button className="w-full h-11 font-semibold" onClick={() => setActiveStep("payment")}>
+                      );
+                    })}
+                  </section>
+
+                  <section aria-labelledby="review-total" className="rounded-xl bg-muted/40 px-4 py-4 space-y-3">
+                    <h3 id="review-total" className="font-semibold">Payment summary</h3>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Items subtotal</span><span className="tabular-nums whitespace-nowrap">{formatPrice(totalPrice)}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Delivery</span><span className="tabular-nums whitespace-nowrap">{formatPrice(shippingTotal)}</span></div>
+                    <div className="flex items-start justify-between gap-4"><span className="text-muted-foreground">Applicable taxes</span><span className="text-right text-xs text-muted-foreground">Calculated before payment</span></div>
+                    <Separator />
+                    <div className="flex items-start justify-between gap-4 text-base font-bold">
+                      <span className="leading-snug">Total before tax</span>
+                      <span className="tabular-nums whitespace-nowrap">{formatPrice(grandTotal)}</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">All amounts in CAD. Delivery dates are estimates, not guaranteed. Review the final amount, including any applicable taxes, before paying.</p>
+                  </section>
+
+                  <Button className="w-full min-h-12 font-semibold" onClick={() => setActiveStep("payment")}>
                     Continue to secure payment
                   </Button>
                 </div>
@@ -928,7 +957,7 @@ const CheckoutPage = () => {
           </div>
 
           {/* Right: Order Summary */}
-          <div className="lg:sticky lg:top-20 lg:self-start">
+          <div className={activeStep === "review" ? "hidden" : "lg:sticky lg:top-20 lg:self-start"}>
             <div className="bg-card rounded-lg border border-border p-4 space-y-4">
               <h3 className="font-semibold text-base">Order Summary</h3>
               <Separator />
