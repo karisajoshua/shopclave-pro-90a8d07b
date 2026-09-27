@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   checkInternationalEligibility, validateQuote, validateSelection, offerableModes,
-  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, normalizeShippoInternationalRates, prepareShippoDapQuoteRows, type LandedCostQuote, type VendorParcel,
+  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, normalizeShippoInternationalRates, prepareShippoDapQuoteRows, verifiedShippoShipmentRates, type LandedCostQuote, type VendorParcel,
 } from "../../supabase/functions/_shared/international.ts";
 
 const parcel = (over: Partial<VendorParcel> = {}): VendorParcel => ({
@@ -133,5 +133,24 @@ describe("server Shippo DAP quote preparation", () => {
     expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), parcelFingerprint: "" })).toThrow();
     expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), parcel: parcel({ vendorId: "other" }) })).toThrow();
     expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), destinationCountry: "KP" })).toThrow();
+  });
+});
+
+describe("Shippo shipment response verification", () => {
+  const valid = { object_id: "shipment-1", rates: [{
+    object_id: "rate-1", shipment: "shipment-1", amount: "20",
+    currency: "USD", provider: "UPS",
+  }] };
+  it("accepts rates bound to the returned shipment", () => {
+    expect(verifiedShippoShipmentRates(valid)).toEqual(valid.rates);
+  });
+  it("rejects a mismatched or missing shipment identifier", () => {
+    expect(verifiedShippoShipmentRates({ ...valid, object_id: "other" })).toBeNull();
+    expect(verifiedShippoShipmentRates({ rates: valid.rates })).toBeNull();
+  });
+  it("rejects malformed rate collections", () => {
+    expect(verifiedShippoShipmentRates({ ...valid, rates: {} })).toBeNull();
+    expect(verifiedShippoShipmentRates({ ...valid, rates: [null] })).toBeNull();
+    expect(verifiedShippoShipmentRates({ ...valid, rates: [{ object_id: "rate-2" }] })).toBeNull();
   });
 });
