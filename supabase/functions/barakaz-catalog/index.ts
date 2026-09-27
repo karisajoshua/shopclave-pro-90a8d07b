@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
 
   const bridgeUrl = Deno.env.get("BARAKAZ_BRIDGE_URL");
   const bridgeSecret = Deno.env.get("BARAKAZ_BRIDGE_SECRET");
-  if (!bridgeUrl || !bridgeSecret) return json({ error: "Bridge is not configured" }, 503);
+  if (!bridgeUrl || !bridgeSecret) return json({ ok: false, configured: false, data: [] });
 
   const body = await req.json().catch(() => ({}));
   const allowed = new Set(["products", "product_variants", "product_images", "categories"]);
