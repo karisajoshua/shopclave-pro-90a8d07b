@@ -67,4 +67,22 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("'pending'");
   expect(s).not.toContain("'verified')");
  });
+ it("requires document inspection before administrator verification", () => {
+  const s=sql("016_document_review.sql");
+  expect(s).toContain("r.role='admin'");
+  expect(s).toContain("seller_document_access_events");
+  expect(s).toContain("FOR UPDATE");
+  expect(s).toContain("seller_application_events");
+ });
+ it("queues seller notifications without exposing private verification data", () => {
+  const s=sql("014_notification_outbox.sql");
+  expect(s).toContain("seller_notification_outbox");
+  expect(s).toContain("AFTER INSERT ON public.seller_application_events");
+  expect(s).not.toContain("private_storage_path");
+ });
+ it("requires configured evidence for independent KYC verification", () => {
+  const s=sql("010_kyc_review.sql");
+  expect(s).toContain("cardinality(r.required_documents)>0");
+  expect(s).toContain("d.verification_status='verified'");
+ });
 });
