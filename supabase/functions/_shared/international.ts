@@ -157,7 +157,7 @@ export function validateSelection(
   let hasDap = false;
   for (const q of selected) {
     if (!o.vendorIds.includes(q.vendorId)) return { ok: false, issue: "unknown_vendor", vendorId: q.vendorId };
-    const issue = validateQuote(q, o);
+    const issue = validateQuote(q, { ...o, parcelFingerprint: o.parcelFingerprints?.[q.vendorId] });
     if (issue) return { ok: false, issue, vendorId: q.vendorId };
     if (seen.has(q.vendorId)) return { ok: false, issue: "duplicate_vendor", vendorId: q.vendorId };
     seen.add(q.vendorId);
