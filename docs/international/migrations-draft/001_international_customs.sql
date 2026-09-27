@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS public.international_quotes (
   customs_lines jsonb NOT NULL,
   address_fingerprint text NOT NULL,
   items_fingerprint text NOT NULL,
+  parcel_fingerprint text NOT NULL,
   rate_id text,
   consumed_order_id uuid REFERENCES public.orders(id),
   expires_at timestamptz NOT NULL,

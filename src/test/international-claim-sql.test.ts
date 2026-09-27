@@ -1,0 +1,48 @@
+// Static migration guardrails; database-level concurrency tests are still required.
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const sql = readFileSync(
+  resolve(process.cwd(), "docs/international/migrations-draft/002_atomic_quote_claim.sql"),
+  "utf8",
+);
+
+describe("international quote claim SQL safety contract", () => {
+  it("restricts execution to the server service role", () => {
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.claim_international_quotes[\s\S]*FROM PUBLIC/);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.claim_international_quotes[\s\S]*FROM anon, authenticated/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.claim_international_quotes[\s\S]*TO service_role/);
+  });
+  it("locks the shopper order and selected quotes", () => {
+    expect(sql).toContain("WHERE o.id = p_order_id FOR UPDATE");
+    expect(sql).toContain("order_owner IS DISTINCT FROM p_user_id");
+    expect(sql).toContain("ORDER BY id FOR UPDATE");
+    expect(sql).toContain("count(DISTINCT oi.vendor_id)");
+    expect(sql).toContain("International quote vendors differ from order items");
+    expect(sql).toContain("o.shipping_total, o.dap_acknowledged_at");
+    expect(sql).toContain("stored_dap_ack IS NULL");
+    expect(sql).toContain("round(stored_shipping_total,2) <> round(total_cad,2)");
+  });
+  it("checks expiration, fingerprints, consent and previous use", () => {
+    for (const check of [
+      "q.expires_at <= now()", "q.consumed_order_id IS NOT NULL",
+      "q.address_fingerprint <> p_address_fingerprint",
+      "q.items_fingerprint <> p_items_fingerprint",
+      "q.parcel_fingerprint <> p_vendor_parcels",
+      "p_dap_acknowledged IS NOT TRUE",
+      "claimed_count <> cardinality(p_quote_ids)",
+    ]) expect(sql).toContain(check);
+  });
+});
+
+describe("legacy order checkout international payment gate", () => {
+  const orderCode = readFileSync(resolve(process.cwd(), "supabase/functions/create-order/index.ts"), "utf8");
+  it("rejects international destinations before order or payment creation", () => {
+    const guard = orderCode.indexOf('toISO(shipping_address.country) !== "CA"');
+    const insert = orderCode.indexOf('.from("orders")');
+    expect(guard).toBeGreaterThan(0);
+    expect(insert).toBeGreaterThan(guard);
+    expect(orderCode).toContain("International checkout is not yet enabled");
+  });
+});

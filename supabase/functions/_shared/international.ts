@@ -9,6 +9,57 @@ export type IncotermMode = "DDP" | "DAP";
 export type QuoteSource = "shippo" | "dhl_express" | "zonos" | "manual_admin";
 export const VERIFIED_SOURCES: QuoteSource[] = ["shippo", "dhl_express", "zonos"];
 
+/** Shippo rates only establish shipping prices; never infer prepaid duties. */
+export interface ShippoCarrierRate {
+  object_id?: unknown;
+  amount?: unknown;
+  currency?: unknown;
+  provider?: unknown;
+  servicelevel?: { name?: unknown } | null;
+}
+/** Reject rates not belonging to the exact newly created Shippo shipment.
+ * Never treat a rate returned by a different shipment as an authorized quote.
+ */
+export function verifiedShippoShipmentRates(response: unknown): ShippoCarrierRate[] | null {
+  if (!response || typeof response !== "object") return null;
+  const shipment = response as Record<string, unknown>;
+  if (typeof shipment.object_id !== "string" || !shipment.object_id ||
+      !Array.isArray(shipment.rates)) return null;
+  if (!shipment.rates.every((rate: unknown) =>
+    rate !== null && typeof rate === "object" &&
+    (rate as Record<string, unknown>).shipment === shipment.object_id)) return null;
+  return shipment.rates as ShippoCarrierRate[];
+}
+
+export function normalizeShippoInternationalRates(
+  rates: ShippoCarrierRate[],
+  fxPerCad: Record<string, number>,
+) {
+  const options: Array<{
+    rateId: string; carrier: string; service: string; shippingCad: number;
+    originalCurrency: string; originalAmount: number; fxRateToCad: number;
+    mode: "DAP"; dutiesCalculated: false;
+  }> = [];
+  for (const rate of rates) {
+    const rateId = typeof rate.object_id === "string" ? rate.object_id.trim() : "";
+    const currency = typeof rate.currency === "string" ? rate.currency.trim().toUpperCase() : "";
+    const amount = typeof rate.amount === "string" || typeof rate.amount === "number" ? Number(rate.amount) : NaN;
+    const perCad = currency === "CAD" ? 1 : fxPerCad[currency];
+    if (!rateId || !/^[A-Z]{3}$/.test(currency) || !Number.isFinite(amount) || amount < 0 ||
+        !Number.isFinite(perCad) || perCad <= 0) continue;
+    const shippingCad = Math.round((amount / perCad + Number.EPSILON) * 100) / 100;
+    if (!Number.isFinite(shippingCad)) continue;
+    options.push({
+      rateId, carrier: String(rate.provider ?? "Carrier"),
+      service: String(rate.servicelevel?.name ?? "International"),
+      shippingCad, originalCurrency: currency, originalAmount: amount,
+      fxRateToCad: 1 / perCad, mode: "DAP", dutiesCalculated: false,
+    });
+  }
+  return options;
+}
+
+
 /** Destinations never offered (sanctions / carrier embargo). Admin-reviewable list. */
 export const RESTRICTED_DESTINATIONS = new Set(["CU", "IR", "KP", "SY", "RU", "BY"]);
 
@@ -47,6 +98,58 @@ export interface LandedCostQuote {
   customsFeeCad: number | null; // brokerage/clearance fee
   providerCurrency: string;
   expiresAt: string;
+  addressFingerprint?: string;
+  itemsFingerprint?: string;
+  parcelFingerprint?: string;
+}
+
+/** Prepare service-role-only persistence rows from server-fetched Shippo rates.
+ * Never accept these inputs from the browser; callers must authenticate and
+ * recompute fingerprints from current server-side address/cart/parcel data.
+ */
+export function prepareShippoDapQuoteRows(
+  rates: ShippoCarrierRate[],
+  fxPerCad: Record<string, number>,
+  context: {
+    userId: string; vendorId: string; originCountry: string; destinationCountry: string;
+    addressFingerprint: string; itemsFingerprint: string; parcelFingerprint: string;
+    parcel: VendorParcel; expiresAt: string;
+  },
+) {
+  if (!context.userId || !context.vendorId ||
+      !context.addressFingerprint || !context.itemsFingerprint || !context.parcelFingerprint ||
+      !/^[A-Z]{2}$/.test(context.originCountry) || !/^[A-Z]{2}$/.test(context.destinationCountry) ||
+      !Number.isFinite(Date.parse(context.expiresAt)) || Date.parse(context.expiresAt) <= Date.now()) {
+    throw new Error("Incomplete or expired international quote context");
+  }
+  const eligible = checkInternationalEligibility(context.destinationCountry, [context.parcel]);
+  if (!eligible.ok || context.parcel.vendorId !== context.vendorId ||
+      context.parcel.originCountry !== context.originCountry) {
+    throw new Error("International parcel is not eligible");
+  }
+  return normalizeShippoInternationalRates(rates, fxPerCad).map((rate) => ({
+    user_id: context.userId,
+    vendor_id: context.vendorId,
+    mode: "DAP" as const,
+    source: "shippo" as const,
+    verified: true,
+    origin_country: context.originCountry,
+    destination_country: context.destinationCountry,
+    shipping_cad: rate.shippingCad,
+    duties_cad: null,
+    import_tax_cad: null,
+    customs_fee_cad: null,
+    provider_currency: rate.originalCurrency,
+    provider_amount: rate.originalAmount,
+    fx_rate_to_cad: rate.fxRateToCad,
+    parcel: context.parcel,
+    customs_lines: context.parcel.lines,
+    address_fingerprint: context.addressFingerprint,
+    items_fingerprint: context.itemsFingerprint,
+    parcel_fingerprint: context.parcelFingerprint,
+    rate_id: rate.rateId,
+    expires_at: context.expiresAt,
+  }));
 }
 
 export const DDP_EXPLANATION =
@@ -106,7 +209,12 @@ export type QuoteIssue =
   | "missing_vendor"
   | "unknown_vendor"
   | "dap_not_acknowledged"
-  | "negative_amount";
+  | "negative_amount"
+  | "duplicate_vendor"
+  | "invalid_quote_currency"
+  | "invalid_expiration"
+  | "missing_fingerprint"
+  | "fingerprint_mismatch";
 
 /** Which modes may be shown for a vendor: only those backed by a verified, unexpired quote. */
 export function offerableModes(quotes: LandedCostQuote[], vendorId: string, userId: string, destination: string, now = new Date()): IncotermMode[] {
@@ -118,12 +226,22 @@ export function offerableModes(quotes: LandedCostQuote[], vendorId: string, user
   return (["DDP", "DAP"] as IncotermMode[]).filter((m) => modes.has(m));
 }
 
-export function validateQuote(q: LandedCostQuote, o: { userId: string; destination: string; now?: Date }): QuoteIssue | null {
+export function validateQuote(q: LandedCostQuote, o: { userId: string; destination: string; now?: Date; addressFingerprint?: string; itemsFingerprint?: string; parcelFingerprint?: string; requireFingerprints?: boolean }): QuoteIssue | null {
   const now = o.now ?? new Date();
   if (!q.verified) return "not_verified";
   if (!VERIFIED_SOURCES.includes(q.source)) return "unverified_source";
   if (q.userId !== o.userId) return "not_owner";
-  if (new Date(q.expiresAt).getTime() <= now.getTime()) return "expired";
+  if (o.requireFingerprints) {
+    if (!q.addressFingerprint || !q.itemsFingerprint || !q.parcelFingerprint ||
+        !o.addressFingerprint || !o.itemsFingerprint || !o.parcelFingerprint) return "missing_fingerprint";
+    if (q.addressFingerprint !== o.addressFingerprint || q.itemsFingerprint !== o.itemsFingerprint ||
+        q.parcelFingerprint !== o.parcelFingerprint) return "fingerprint_mismatch";
+  }
+  const expiry = new Date(q.expiresAt).getTime();
+  if (!Number.isFinite(expiry)) return "invalid_expiration";
+  if (expiry <= now.getTime()) return "expired";
+  if (q.providerCurrency !== "CAD" && q.providerCurrency !== "USD" && !/^[A-Z]{3}$/.test(q.providerCurrency)) return "invalid_quote_currency";
+  // All *Cad fields must be converted and fixed by the trusted server; providerCurrency records the source currency.
   if (toISO(q.destinationCountry) !== toISO(o.destination)) return "lane_mismatch";
   for (const v of [q.shippingCad, q.dutiesCad ?? 0, q.importTaxCad ?? 0, q.customsFeeCad ?? 0]) {
     if (!Number.isFinite(v) || v < 0) return "negative_amount";
@@ -135,15 +253,16 @@ export function validateQuote(q: LandedCostQuote, o: { userId: string; destinati
 /** Validate the full basket selection: one verified quote per vendor, mixed DDP/DAP allowed. */
 export function validateSelection(
   selected: LandedCostQuote[],
-  o: { userId: string; destination: string; vendorIds: string[]; dapAcknowledged: boolean; now?: Date },
+  o: { userId: string; destination: string; vendorIds: string[]; dapAcknowledged: boolean; now?: Date; addressFingerprint?: string; itemsFingerprint?: string; parcelFingerprints?: Record<string, string>; requireFingerprints?: boolean },
 ): { ok: true; totalCad: number; hasDap: boolean } | { ok: false; issue: QuoteIssue; vendorId?: string } {
   const seen = new Set<string>();
   let total = 0;
   let hasDap = false;
   for (const q of selected) {
     if (!o.vendorIds.includes(q.vendorId)) return { ok: false, issue: "unknown_vendor", vendorId: q.vendorId };
-    const issue = validateQuote(q, o);
+    const issue = validateQuote(q, { ...o, parcelFingerprint: o.parcelFingerprints?.[q.vendorId] });
     if (issue) return { ok: false, issue, vendorId: q.vendorId };
+    if (seen.has(q.vendorId)) return { ok: false, issue: "duplicate_vendor", vendorId: q.vendorId };
     seen.add(q.vendorId);
     if (q.mode === "DAP") hasDap = true;
     total += q.shippingCad + (q.customsFeeCad ?? 0) + (q.mode === "DDP" ? (q.dutiesCad ?? 0) + (q.importTaxCad ?? 0) : 0);

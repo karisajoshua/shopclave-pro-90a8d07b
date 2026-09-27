@@ -60,3 +60,49 @@ Status: **development only**. Checkout blocks non-Canadian destinations; no inte
 - Landed-cost provider decision and credentials.
 - Tax advisor confirmation of export zero-rating and evidence rules.
 - Restricted-goods policy and international return policy wording.
+
+## Acceptance gate before merging PR #3 or accepting international payments
+- Run `npm ci`, `npx vitest run src/test/international.test.ts`, `npx vitest run`, and `npx tsc --noEmit -p tsconfig.app.json` in an environment with repository dependencies; record logs and resolve failures. GitHub PR #3 remains draft until validated.
+- Obtain a live-capable **test/sandbox** carrier account and landed-cost API credentials through secret storage; never commit API keys. Confirm actual DDP/DAP eligibility and provider-calculated duties for each origin/destination/carrier lane.
+- Bind quote to immutable vendor parcel fingerprint, full normalized shipping address, user/guest session, currency conversion snapshot, carrier service and server-side expiration. Reject any changed basket, destination, vendor origin, customs line or expired quote before payment.
+- Prevent duplicate vendor quotes and negative/non-finite amounts; enforce all quote ownership and RLS checks on the server, never trust browser-provided `verified` or monetary fields.
+- Add idempotent server order creation and Stripe initialization; keep international and live-payment feature gates closed until independent staging end-to-end tests pass.
+- Validate applicable export tax treatment and destination duties with a qualified tax/customs professional. Maintain country-specific sanctions and restricted-goods rules with a documented update owner; a static country list is not a substitute for screening.
+
+CI: `.github/workflows/international-validation.yml` runs the international tests, full Vitest suite and TypeScript checks on PR changes; do not merge until results are visible and passing.
+
+## Authenticated Shippo DAP quote endpoint (development draft)
+
+`supabase/functions/get-international-quotes/index.ts` now has a server-only quote pipeline:
+authenticate the shopper; re-read physical product, customs and warehouse data;
+reject variants pending variant-level customs handling; validate all vendor parcels;
+request live Shippo rates; convert using a live CAD FX snapshot; persist opaque
+per-vendor DAP quote IDs with address, cart and parcel fingerprints. It fails
+closed if any vendor lacks valid quotes. Canada-origin exports only.
+
+**Not deployed or connected to checkout.** The international customs migration
+must first be security-reviewed and applied to the correct Barakaz project.
+The endpoint must be exercised against Shippo sandbox responses, including
+carrier/customs document requirements, unavailable lanes, FX failure, and
+multi-vendor partial failure. Its per-vendor insert can leave unused quotes
+if the database fails; add cleanup/idempotency and expiry before launch.
+Customer-visible quote IDs do not authorize payment: order creation must
+recompute server-side fingerprints and atomically consume each verified quote.
+Variant-specific customs, customs declaration/label purchasing, delivery
+restrictions, tax treatment and explicit DAP acknowledgement remain blockers.
+Keep the international payment gate disabled.
+
+### Atomic quote claim (draft, not applied)
+`docs/international/migrations-draft/002_atomic_quote_claim.sql` adds a
+service-role-only transactional function to claim all selected vendor quotes
+together. It locks quote rows, checks shopper, destination, cart/address/parcel
+fingerprints, expiry, provider verification, duplicate vendors, DAP consent and
+prior consumption. Any failure rolls back the entire claim.
+
+**Critical integration requirement:** trusted order creation must authenticate
+the caller, independently compute the exact vendor list, parcel fingerprints,
+cart, destination and final total, verify that the order belongs to the shopper,
+and call the claim in the *same database transaction as order creation*. Never
+accept the RPC parameters or the returned amount as a standalone payment
+authorization. Review SQL privileges, concurrency, rounding and cancellation
+semantics before applying. Current application does not call this function.

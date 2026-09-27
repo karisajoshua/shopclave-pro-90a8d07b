@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   checkInternationalEligibility, validateQuote, validateSelection, offerableModes,
-  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, type LandedCostQuote, type VendorParcel,
+  internationalPaymentAllowed, INTERNATIONAL_GATE_DEFAULT, normalizeShippoInternationalRates, prepareShippoDapQuoteRows, verifiedShippoShipmentRates, type LandedCostQuote, type VendorParcel,
 } from "../../supabase/functions/_shared/international.ts";
 
 const parcel = (over: Partial<VendorParcel> = {}): VendorParcel => ({
@@ -37,6 +37,7 @@ describe("international eligibility", () => {
 });
 
 describe("landed-cost quotes", () => {
+  it("rejects malformed expiry dates", () => expect(validateQuote(q({ expiresAt: "not-a-date" }), sel)).toBe("invalid_expiration"));
   it("rejects expired quotes", () => expect(validateQuote(q({ expiresAt: new Date(Date.now() - 1000).toISOString() }), sel)).toBe("expired"));
   it("rejects unverified and manual quotes", () => {
     expect(validateQuote(q({ verified: false }), sel)).toBe("not_verified");
@@ -61,6 +62,9 @@ describe("basket selection", () => {
     const r = validateSelection(quotes, { ...base, dapAcknowledged: true });
     expect(r).toEqual({ ok: true, totalCad: 67, hasDap: true });
   });
+  it("rejects duplicate quotes for the same vendor instead of double-charging", () => {
+    expect(validateSelection([q(), q({ id: "q-duplicate" })], sel)).toEqual({ ok: false, issue: "duplicate_vendor", vendorId: "v1" });
+  });
   it("requires a quote per vendor", () => {
     const r = validateSelection([q()], { ...sel, vendorIds: ["v1", "v2"] });
     expect(r.ok === false && r.issue).toBe("missing_vendor");
@@ -72,5 +76,81 @@ describe("payment gate", () => {
     expect(internationalPaymentAllowed(INTERNATIONAL_GATE_DEFAULT)).toBe(false);
     expect(internationalPaymentAllowed({ enabled: true, carrierIntegrationVerified: true })).toBe(false);
     expect(internationalPaymentAllowed(null)).toBe(false);
+  });
+});
+
+
+describe("Shippo international rate normalization", () => {
+  it("creates DAP-only quotes and converts USD rates to CAD", () => {
+    const rates = normalizeShippoInternationalRates([{ object_id: "rate-1", amount: "20.00", currency: "USD", provider: "UPS", servicelevel: { name: "Worldwide" } }], { USD: 0.8 });
+    expect(rates).toMatchObject([{ rateId: "rate-1", shippingCad: 25, mode: "DAP", dutiesCalculated: false, originalCurrency: "USD" }]);
+  });
+  it("rejects malformed and unconvertible carrier rates", () => {
+    expect(normalizeShippoInternationalRates([{ object_id: "r", amount: "-1", currency: "CAD" }, { object_id: "x", amount: "10", currency: "EUR" }, { amount: "15", currency: "CAD" }], {})).toEqual([]);
+  });
+});
+
+
+describe("strict quote fingerprint binding", () => {
+  const fingerprinted = q({ addressFingerprint: "addr1", itemsFingerprint: "basket1", parcelFingerprint: "parcel1" });
+  const options = { ...sel, addressFingerprint: "addr1", itemsFingerprint: "basket1", parcelFingerprint: "parcel1", requireFingerprints: true };
+  it("accepts matching server fingerprints", () => expect(validateQuote(fingerprinted, options)).toBeNull());
+  it("rejects a changed address, basket or vendor parcel", () => {
+    expect(validateQuote(fingerprinted, { ...options, addressFingerprint: "addr2" })).toBe("fingerprint_mismatch");
+    expect(validateQuote(fingerprinted, { ...options, itemsFingerprint: "basket2" })).toBe("fingerprint_mismatch");
+    expect(validateQuote(fingerprinted, { ...options, parcelFingerprint: "parcel2" })).toBe("fingerprint_mismatch");
+  });
+  it("fails closed when fingerprints are missing in strict mode", () => expect(validateQuote(q(), options)).toBe("missing_fingerprint"));
+  it("checks a separate parcel fingerprint for each vendor", () => {
+    const a = fingerprinted;
+    const b = q({ id: "q2", vendorId: "v2", mode: "DAP", parcelFingerprint: "parcel2" });
+    const base = { ...sel, vendorIds: ["v1", "v2"], dapAcknowledged: true, addressFingerprint: "addr1", itemsFingerprint: "basket1", parcelFingerprints: { v1: "parcel1", v2: "parcel2" }, requireFingerprints: true };
+    const bBound = { ...b, addressFingerprint: "addr1", itemsFingerprint: "basket1" };
+    expect(validateSelection([a, bBound], base).ok).toBe(true);
+    expect(validateSelection([a, bBound], { ...base, parcelFingerprints: { v1: "parcel1", v2: "changed" } })).toMatchObject({ ok: false, issue: "fingerprint_mismatch", vendorId: "v2" });
+  });
+});
+
+describe("server Shippo DAP quote preparation", () => {
+  const ctx = () => ({
+    userId: "u1", vendorId: "v1", originCountry: "CA", destinationCountry: "US",
+    addressFingerprint: "addr1", itemsFingerprint: "items1", parcelFingerprint: "parcel1",
+    parcel: parcel(), expiresAt: future(),
+  });
+  it("creates vendor-bound DAP persistence rows without inventing duties", () => {
+    const rows = prepareShippoDapQuoteRows(
+      [{ object_id: "shippo-rate", amount: "20", currency: "USD", provider: "UPS" }],
+      { USD: 0.8 }, ctx(),
+    );
+    expect(rows).toMatchObject([{
+      vendor_id: "v1", user_id: "u1", mode: "DAP", source: "shippo",
+      shipping_cad: 25, duties_cad: null, import_tax_cad: null,
+      address_fingerprint: "addr1", items_fingerprint: "items1",
+      parcel_fingerprint: "parcel1", rate_id: "shippo-rate",
+    }]);
+  });
+  it("rejects changed or incomplete server parcel context", () => {
+    expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), parcelFingerprint: "" })).toThrow();
+    expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), parcel: parcel({ vendorId: "other" }) })).toThrow();
+    expect(() => prepareShippoDapQuoteRows([], {}, { ...ctx(), destinationCountry: "KP" })).toThrow();
+  });
+});
+
+describe("Shippo shipment response verification", () => {
+  const valid = { object_id: "shipment-1", rates: [{
+    object_id: "rate-1", shipment: "shipment-1", amount: "20",
+    currency: "USD", provider: "UPS",
+  }] };
+  it("accepts rates bound to the returned shipment", () => {
+    expect(verifiedShippoShipmentRates(valid)).toEqual(valid.rates);
+  });
+  it("rejects a mismatched or missing shipment identifier", () => {
+    expect(verifiedShippoShipmentRates({ ...valid, object_id: "other" })).toBeNull();
+    expect(verifiedShippoShipmentRates({ rates: valid.rates })).toBeNull();
+  });
+  it("rejects malformed rate collections", () => {
+    expect(verifiedShippoShipmentRates({ ...valid, rates: {} })).toBeNull();
+    expect(verifiedShippoShipmentRates({ ...valid, rates: [null] })).toBeNull();
+    expect(verifiedShippoShipmentRates({ ...valid, rates: [{ object_id: "rate-2" }] })).toBeNull();
   });
 });
