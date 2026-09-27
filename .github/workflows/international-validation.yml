@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'supabase/functions/_shared/international.ts'
+      - 'supabase/functions/get-international-quotes/**'
+      - 'docs/international/migrations-draft/**'
       - 'src/test/international.test.ts'
       - 'src/test/**'
       - 'package.json'
@@ -30,3 +32,7 @@ jobs:
       - run: npx vitest run src/test/international.test.ts
       - run: npm test
       - run: npx tsc --noEmit -p tsconfig.app.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/get-international-quotes/index.ts
