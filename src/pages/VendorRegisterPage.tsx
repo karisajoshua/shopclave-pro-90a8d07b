@@ -35,6 +35,7 @@ const VendorRegisterPage = () => {
  const [loading, setLoading] = useState(true);
  const [status, setStatus] = useState("draft");
  const [saved, setSaved] = useState(false);
+ const [payoutStatus, setPayoutStatus] = useState("not_started");
  useEffect(() => {
    if (authLoading) return;
    if (!user) { navigate("/auth", { state: { from: "/vendor/register" } }); return; }
@@ -45,6 +46,8 @@ const VendorRegisterPage = () => {
      if (error) { toast.error("Seller onboarding is not available yet. Please try later."); setLoading(false); return; }
      if (data) {
        const a = data as any;
+       const { data: payout } = await supabase.from("seller_payout_accounts" as any).select("verification_status,payouts_enabled").eq("application_id",a.id).eq("provider","stripe").maybeSingle();
+       if (!cancelled && payout) setPayoutStatus((payout as any).payouts_enabled ? "verified" : (payout as any).verification_status);
        setStep(a.current_step || 1); setStatus(a.status);
        setDraft({ ...blank, ...(a.business_info || {}), ...(a.store_info || {}), country: a.country || "", business_type: a.business_type || "" });
      } else { setDraft(d => ({ ...d, full_name: user.user_metadata?.full_name || "" })); }
@@ -128,7 +131,7 @@ const VendorRegisterPage = () => {
           onChange={e => update(key, key === "country" ? e.target.value.toUpperCase() : e.target.value)} />}
      </div>)}
      {step === 3 && <p className="text-sm">Identity and business verification will be collected securely according to your country and business type. Do not upload identity documents until the secure verification provider is connected.</p>}
-     {step === 5 && <div className="space-y-3"><p className="text-sm">Payouts use Stripe Connect exclusively, where available. Verification is separate from Barakaz seller approval.</p><Button type="button" variant="secondary" disabled={busy} onClick={() => void connectStripe()}>Connect with Stripe</Button></div>}
+     {step === 5 && <div className="space-y-3"><p className="text-sm">Payouts use Stripe Connect exclusively, where available. Verification is separate from Barakaz seller approval.</p><p role="status" className="text-sm font-medium">Stripe payout status: {payoutStatus.replace(/_/g, " ")}</p><Button type="button" variant="secondary" disabled={busy} onClick={() => void connectStripe()}>Connect with Stripe</Button></div>}
      {step === 6 && <p className="text-sm">Final submission will require verified identity documents, eligible payout onboarding and explicit acceptance of all applicable seller agreements.</p>}
      <div className="flex flex-wrap justify-between gap-3 pt-4">
        <Button variant="outline" disabled={busy || step === 1} onClick={() => setStep(s => s - 1)}>Back</Button>
