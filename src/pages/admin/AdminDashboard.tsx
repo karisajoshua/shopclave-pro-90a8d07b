@@ -19,35 +19,40 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("30d");
 
-  const { data: vendors } = useQuery({
+  const { data: vendors, error: vendorsErr } = useQuery({
     queryKey: ["admin-vendors"],
-    queryFn: async () => (await supabase.from("vendors").select("*")).data || [],
+    queryFn: () => fetchAllRows<any>((f, t) => supabase.from("vendors").select("id, status, store_name").range(f, t)),
     enabled: !!user,
   });
 
-  const { data: allOrders } = useQuery({
+  const { data: allOrders, error: ordersErr } = useQuery({
     queryKey: ["admin-all-orders"],
-    queryFn: async () => (await supabase.from("orders").select("*").order("created_at", { ascending: false })).data || [],
+    queryFn: () => fetchAllRows<any>((f, t) => supabase.from("orders").select("id, created_at, total, payment_status, status").order("created_at", { ascending: false }).range(f, t)),
     enabled: !!user,
   });
 
-  const { data: allOrderItems } = useQuery({
+  const { data: allOrderItems, error: itemsErr } = useQuery({
     queryKey: ["admin-all-order-items"],
-    queryFn: async () => (await supabase.from("order_items").select("*, products(name, slug), vendors(store_name)")).data || [],
+    queryFn: () => fetchAllRows<any>((f, t) => supabase.from("order_items").select("order_id, created_at, price, quantity, commission_amount, vendor_payout, refunded_amount, vendor_id, product_id, products(name, slug), vendors(store_name)").order("created_at", { ascending: false }).range(f, t)),
     enabled: !!user,
   });
 
-  const { data: allProducts } = useQuery({
+  const { data: productCount, error: productsErr } = useQuery({
     queryKey: ["admin-products-count"],
-    queryFn: async () => (await supabase.from("products").select("*")).data || [],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("products").select("id", { count: "exact", head: true });
+      if (error) throw error;
+      return count || 0;
+    },
     enabled: !!user,
   });
 
-  const { data: withdrawals } = useQuery({
+  const { data: withdrawals, error: wdErr } = useQuery({
     queryKey: ["admin-withdrawals-dash"],
-    queryFn: async () => (await (supabase as any).from("withdrawal_requests").select("*").eq("status", "completed")).data || [],
+    queryFn: () => fetchAllRows<any>((f, t) => (supabase as any).from("withdrawal_requests").select("amount, processed_at, requested_at").eq("status", "completed").range(f, t)),
     enabled: !!user,
   });
+  const loadError = [vendorsErr, ordersErr, itemsErr, productsErr, wdErr].find(Boolean) as Error | undefined;
 
   const { data: riskFlags } = useQuery({
     queryKey: ["admin-risk-flags-count"],
@@ -69,26 +74,32 @@ const AdminDashboard = () => {
     return new Date(0);
   }, [timeFrame]);
 
+  const fin = useMemo(() => computeFinancials(allOrders || [], allOrderItems || [], cutoffDate), [allOrders, allOrderItems, cutoffDate]);
+
+  // Financial views use payment-confirmed orders only.
   const filteredOrders = useMemo(
-    () => allOrders?.filter((o: any) => isAfter(new Date(o.created_at), cutoffDate)) || [],
-    [allOrders, cutoffDate],
+    () => allOrders?.filter((o: any) => fin.paidIds.has(o.id)) || [],
+    [allOrders, fin],
   );
 
   const filteredItems = useMemo(
-    () => allOrderItems?.filter((i: any) => isAfter(new Date(i.created_at), cutoffDate)) || [],
-    [allOrderItems, cutoffDate],
+    () => allOrderItems?.filter((i: any) => fin.paidIds.has(i.order_id)) || [],
+    [allOrderItems, fin],
   );
 
-  const totalRevenue = filteredOrders.reduce((s: number, o: any) => s + Number(o.total), 0);
-  const totalCommission = filteredItems.reduce((s: number, i: any) => s + Number(i.commission_amount), 0);
-  const totalPayouts = withdrawals?.reduce((s: number, w: any) => s + Number(w.amount), 0) || 0;
+  const totalRevenue = fin.netSales;
+  const totalCommission = fin.commission;
+  const totalPayouts = withdrawals
+    ?.filter((w: any) => isAfter(new Date(w.processed_at || w.requested_at), cutoffDate))
+    .reduce((s: number, w: any) => s + Number(w.amount), 0) || 0;
 
-  // Today vs yesterday delta for revenue & orders
+  // Today vs yesterday delta (paid orders only)
   const { todayRevenue, yesterdayRevenue, todayOrders, yesterdayOrders } = useMemo(() => {
     const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
     const startYday = new Date(startToday); startYday.setDate(startYday.getDate() - 1);
     let tR = 0, yR = 0, tO = 0, yO = 0;
     (allOrders || []).forEach((o: any) => {
+      if (o.payment_status !== "paid") return;
       const d = new Date(o.created_at);
       if (d >= startToday) { tR += Number(o.total); tO += 1; }
       else if (d >= startYday && d < startToday) { yR += Number(o.total); yO += 1; }
