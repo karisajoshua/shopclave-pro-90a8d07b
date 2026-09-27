@@ -5,6 +5,7 @@ RETURNS public.seller_applications LANGUAGE plpgsql SECURITY DEFINER SET search_
 AS $$
 DECLARE a public.seller_applications;
  existing_vendor uuid;
+ previous_status text;
 BEGIN
  IF (SELECT auth.uid()) IS NULL OR NOT EXISTS(
   SELECT 1 FROM public.user_roles r
@@ -24,6 +25,7 @@ BEGIN
   WHERE p.application_id=a.id AND p.provider='stripe'
   AND nullif(p.provider_account_id,'') IS NOT NULL AND p.country=a.country)
  THEN RAISE EXCEPTION 'Stripe Connect account missing'; END IF;
+ previous_status:=a.status;
  -- Existing vendor accounts must not be overwritten or silently reapproved.
  SELECT id INTO existing_vendor FROM public.vendors WHERE user_id=a.user_id FOR UPDATE;
  IF existing_vendor IS NOT NULL AND a.vendor_id IS DISTINCT FROM existing_vendor THEN
@@ -40,7 +42,7 @@ BEGIN
  reviewed_by=(SELECT auth.uid()),reviewed_at=now(),updated_at=now()
  WHERE id=a.id RETURNING * INTO a;
  INSERT INTO public.seller_application_events(application_id,actor_id,previous_status,new_status)
- VALUES(a.id,(SELECT auth.uid()),'under_review','approved');
+ VALUES(a.id,(SELECT auth.uid()),previous_status,'approved');
  -- Payout status is deliberately not modified by Barakaz approval.
  RETURN a;
 END $$;
