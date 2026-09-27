@@ -85,11 +85,11 @@ const LegacyVendorRegisterPage = () => {
             </div>
             <div>
               <Label>Phone Number *</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" required />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +1 416 555 0123" required />
             </div>
             <div>
               <Label>WhatsApp Number</Label>
-              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+254 7XX XXX XXX" />
+              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="e.g. +1 416 555 0123" />
             </div>
             <div>
               <Label>Website (Optional)</Label>
