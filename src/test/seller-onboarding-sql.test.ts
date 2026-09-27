@@ -20,4 +20,13 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("TO authenticated");
   expect(s).not.toContain("reviewed_by=EXCLUDED");
  });
+ it("admin review cannot self-approve or enable payouts", () => {
+  const s=sql("003_admin_review_rpc.sql");
+  expect(s).toContain("r.role='admin'");
+  expect(s).toContain("FOR UPDATE");
+  expect(s).toContain("previous_status");
+  expect(s).toContain("seller_application_events");
+  expect(s).not.toContain("'approved'");
+  expect(s).not.toContain("payouts_enabled=");
+ });
 });
