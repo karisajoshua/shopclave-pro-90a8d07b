@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import SellerKycUpload from "@/components/vendor/SellerKycUpload";
 
 type Draft = {
   country: string; business_type: string; legal_name: string; registration_number: string;
@@ -36,6 +37,7 @@ const VendorRegisterPage = () => {
  const [status, setStatus] = useState("draft");
  const [saved, setSaved] = useState(false);
  const [payoutStatus, setPayoutStatus] = useState("not_started");
+ const [applicationId, setApplicationId] = useState("");
  useEffect(() => {
    if (authLoading) return;
    if (!user) { navigate("/auth", { state: { from: "/vendor/register" } }); return; }
@@ -46,6 +48,7 @@ const VendorRegisterPage = () => {
      if (error) { toast.error("Seller onboarding is not available yet. Please try later."); setLoading(false); return; }
      if (data) {
        const a = data as any;
+       setApplicationId(a.id);
        const { data: payout } = await supabase.from("seller_payout_accounts" as any).select("verification_status,payouts_enabled").eq("application_id",a.id).eq("provider","stripe").maybeSingle();
        if (!cancelled && payout) setPayoutStatus((payout as any).payouts_enabled ? "verified" : (payout as any).verification_status);
        setStep(a.current_step || 1); setStatus(a.status);
@@ -59,7 +62,7 @@ const VendorRegisterPage = () => {
  const save = async (nextStep: number) => {
    if (!user || status !== "draft") return false;
    setBusy(true);
-   const { error } = await supabase.rpc("save_seller_application_draft" as any, {
+   const { data: savedApplication, error } = await supabase.rpc("save_seller_application_draft" as any, {
      p_current_step: nextStep,
      p_country: draft.country || null,
      p_business_type: draft.business_type || null,
@@ -74,6 +77,7 @@ const VendorRegisterPage = () => {
    });
    setBusy(false);
    if (error) { toast.error(error.message); return false; }
+   if (savedApplication && (savedApplication as any).id) setApplicationId((savedApplication as any).id);
    setSaved(true); return true;
  };
  const connectStripe = async () => {
@@ -130,7 +134,7 @@ const VendorRegisterPage = () => {
         <Input id={key} required={required} value={draft[key]} maxLength={key === "country" ? 2 : 250}
           onChange={e => update(key, key === "country" ? e.target.value.toUpperCase() : e.target.value)} />}
      </div>)}
-     {step === 3 && <p className="text-sm">Identity and business verification will be collected securely according to your country and business type. Do not upload identity documents until the secure verification provider is connected.</p>}
+     {step === 3 && <>{applicationId ? <SellerKycUpload applicationId={applicationId} country={draft.country} businessType={draft.business_type} /> : <p className="text-sm">Save your business information first to start secure verification.</p>}</>}
      {step === 5 && <div className="space-y-3"><p className="text-sm">Payouts use Stripe Connect exclusively, where available. Verification is separate from Barakaz seller approval.</p><p role="status" className="text-sm font-medium">Stripe payout status: {payoutStatus.replace(/_/g, " ")}</p><Button type="button" variant="secondary" disabled={busy} onClick={() => void connectStripe()}>Connect with Stripe</Button></div>}
      {step === 6 && <p className="text-sm">Final submission will require verified identity documents, eligible payout onboarding and explicit acceptance of all applicable seller agreements.</p>}
      <div className="flex flex-wrap justify-between gap-3 pt-4">
