@@ -45,4 +45,17 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("last_webhook_at<=p_created_at");
   expect(s).not.toContain("TO authenticated;");
  });
+ it("approval requires KYC and does not set payout verification", () => {
+  const s=sql("009_admin_approval.sql");
+  expect(s).toContain("a.kyc_status <> 'verified'");
+  expect(s).toContain("FOR UPDATE");
+  expect(s).toContain("seller_application_events");
+  expect(s).not.toContain("payouts_enabled=");
+ });
+ it("KYC review requires admin and independently verified documents", () => {
+  const s=sql("010_kyc_review.sql");
+  expect(s).toContain("r.role='admin'");
+  expect(s).toContain("d.verification_status='verified'");
+  expect(s).toContain("previous_kyc");
+ });
 });
