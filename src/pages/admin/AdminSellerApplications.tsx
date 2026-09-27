@@ -19,6 +19,16 @@ const AdminSellerApplications = () => {
    return (data||[]) as any[];
   }
  });
+ const kycReview=useMutation({
+  mutationFn:async({id,result}:{id:string;result:string})=>{
+   const {error}=await supabase.rpc("record_seller_kyc_review" as any,{
+    p_application_id:id,p_result:result,p_reason:reasons[id]?.trim()||null
+   });
+   if(error)throw error;
+  },
+  onSuccess:()=>{toast.success("KYC decision recorded");void qc.invalidateQueries({queryKey:["admin-seller-applications"]});},
+  onError:(e:Error)=>toast.error(e.message)
+ });
  const approve=useMutation({
   mutationFn:async(id:string)=>{
    const {error}=await supabase.rpc("approve_seller_application" as any,{p_application_id:id});
@@ -56,6 +66,10 @@ const AdminSellerApplications = () => {
       placeholder="Specify missing information or reason for rejection" />
    </label>
    <AdminSellerDocuments applicationId={a.id} onReviewed={()=>void qc.invalidateQueries({queryKey:["admin-seller-applications"]})} />
+   <div className="flex flex-wrap gap-2">
+    <Button variant="outline" disabled={kycReview.isPending||!reasons[a.id]?.trim()} onClick={()=>kycReview.mutate({id:a.id,result:"verified"})}>Confirm independently verified KYC</Button>
+    <Button variant="outline" disabled={kycReview.isPending||!reasons[a.id]?.trim()} onClick={()=>kycReview.mutate({id:a.id,result:"action_required"})}>KYC action required</Button>
+   </div>
    <div className="flex flex-wrap gap-2">
     <Button disabled={approve.isPending || a.kyc_status!=="verified" || !["submitted","under_review"].includes(a.status)} onClick={()=>approve.mutate(a.id)}>Approve verified seller</Button>
     <Button disabled={review.isPending} variant="outline" onClick={()=>review.mutate({id:a.id,decision:"under_review"})}>Mark under review</Button>
