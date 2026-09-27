@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,20 @@ import { hasShipped } from "@/lib/orderTracking";
 const OrderTrackingPage = () => {
   const { orderId } = useParams();
   const { formatPrice } = useLocale();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!orderId) return;
+    const channel = supabase.channel(`customer-order-${orderId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["order-tracking", orderId] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "shipments", filter: `order_id=eq.${orderId}` }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["order-tracking", orderId] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [orderId, queryClient]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["order-tracking", orderId],
@@ -76,6 +91,12 @@ const OrderTrackingPage = () => {
             Order <span className="font-mono">#{order.id.slice(0, 8)}</span> •{" "}
             {new Date(order.created_at).toLocaleDateString()} • {formatPrice(Number(order.total))}
           </p>
+        </div>
+
+        <div className="rounded-lg border border-border p-4" role="status" aria-live="polite">
+          <p className="text-xs text-muted-foreground">Order status</p>
+          <p className="font-semibold capitalize">{String(order.status || "pending").replace(/_/g, " ")}</p>
+          <p className="text-xs text-muted-foreground mt-1">Payment: {String(order.payment_status || "pending").replace(/_/g, " ")}</p>
         </div>
 
         {shipments.length === 0 && (
