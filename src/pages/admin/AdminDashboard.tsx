@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { subDays, subMonths, format, isAfter } from "date-fns";
+import { fetchAllRows, computeFinancials } from "@/lib/adminMetrics";
 
 type TimeFrame = "24h" | "7d" | "30d" | "12m" | "all";
 
@@ -166,7 +167,14 @@ const AdminDashboard = () => {
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Operational overview of marketplace activity and platform health.
+            Operational overview of marketplace activity and platform health. Financial figures count paid orders only (CAD).
+          </p>
+          {loadError && (
+            <p role="alert" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              Some dashboard data failed to load ({loadError.message}). Figures below may be incomplete — do not rely on them.
+            </p>
+          )}
+          <p className="hidden">
           </p>
         </div>
         {!!riskFlags && riskFlags > 0 && (
@@ -210,7 +218,8 @@ const AdminDashboard = () => {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <AdminStatCard
-          label="Revenue"
+          label="Net paid sales"
+          hint={`Gross $${fin.grossPaidSales.toLocaleString()} − refunds $${fin.refunds.toLocaleString()}`}
           value={`$${totalRevenue.toLocaleString()}`}
           icon={DollarSign}
           tone="revenue"
@@ -237,15 +246,16 @@ const AdminDashboard = () => {
         />
         <AdminStatCard
           label="Products"
-          value={allProducts?.length || 0}
+          value={productCount || 0}
           icon={Package}
           tone="orders"
         />
         <AdminStatCard
-          label="Orders"
-          value={filteredOrders.length}
+          label="Paid orders"
+          value={fin.paidOrders}
           icon={ShoppingBag}
           tone="danger"
+          hint={`${fin.totalOrders} total · ${fin.pendingPaymentOrders} awaiting payment · ${fin.cancelledOrders} cancelled`}
           delta={{ value: pct(todayOrders, yesterdayOrders), label: "vs yesterday" }}
         />
       </div>
