@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/pages/VendorRegisterPage.tsx'
+      - 'src/pages/LegacyVendorRegisterPage.tsx'
+      - 'src/pages/SellerOnboardingV2Page.tsx'
       - 'src/components/vendor/SellerKycUpload.tsx'
       - 'src/components/vendor/SellerAgreements.tsx'
       - 'src/components/admin/AdminSellerDocuments.tsx'
