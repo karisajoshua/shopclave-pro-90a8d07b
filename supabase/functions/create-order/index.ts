@@ -6,7 +6,6 @@ import {
   itemsFingerprint,
   validateQuotes,
   round2,
-  toISO,
 } from "../_shared/shipping.ts";
 
 const corsHeaders = {
@@ -84,7 +83,7 @@ Deno.serve(async (req) => {
 
     // International checkout remains disabled until the separate, atomic
     // international order and quote-consumption path has passed review.
-    if (toISO(shipping_address.country) !== "CA") {
+    if (!["CA", "CANADA"].includes(shipping_address.country.trim().toUpperCase())) {
       return new Response(JSON.stringify({
         error: "International checkout is not yet enabled. No payment has been initiated.",
       }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
