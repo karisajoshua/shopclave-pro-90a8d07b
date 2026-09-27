@@ -18,6 +18,8 @@ describe("international quote claim SQL safety contract", () => {
     expect(sql).toContain("WHERE o.id = p_order_id FOR UPDATE");
     expect(sql).toContain("order_owner IS DISTINCT FROM p_user_id");
     expect(sql).toContain("ORDER BY id FOR UPDATE");
+    expect(sql).toContain("count(DISTINCT oi.vendor_id)");
+    expect(sql).toContain("International quote vendors differ from order items");
   });
   it("checks expiration, fingerprints, consent and previous use", () => {
     for (const check of [
