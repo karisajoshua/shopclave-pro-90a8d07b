@@ -30,3 +30,14 @@ describe("international quote claim SQL safety contract", () => {
     ]) expect(sql).toContain(check);
   });
 });
+
+describe("legacy order checkout international payment gate", () => {
+  const orderCode = readFileSync(resolve(process.cwd(), "supabase/functions/create-order/index.ts"), "utf8");
+  it("rejects international destinations before order or payment creation", () => {
+    const guard = orderCode.indexOf('toISO(shipping_address.country) !== "CA"');
+    const insert = orderCode.indexOf('.from("orders")');
+    expect(guard).toBeGreaterThan(0);
+    expect(insert).toBeGreaterThan(guard);
+    expect(orderCode).toContain("International checkout is not yet enabled");
+  });
+});
