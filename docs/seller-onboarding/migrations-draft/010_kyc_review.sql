@@ -18,6 +18,11 @@ BEGIN
  SELECT * INTO a FROM public.seller_applications WHERE id=p_application_id FOR UPDATE;
  IF a.id IS NULL OR a.status NOT IN ('submitted','under_review') THEN
   RAISE EXCEPTION 'Application not ready for KYC review'; END IF;
+ IF p_result='verified' AND NOT EXISTS(SELECT 1 FROM public.seller_country_requirements r
+  WHERE r.country=a.country AND r.business_type=a.business_type
+  AND r.rules_version=a.rules_version AND r.stripe_connect_enabled=true
+  AND r.reviewed_at IS NOT NULL)
+ THEN RAISE EXCEPTION 'Approved country rules required'; END IF;
  IF p_result='verified' AND EXISTS(
   SELECT 1 FROM public.seller_country_requirements r
   CROSS JOIN LATERAL unnest(r.required_documents) AS required(code)
