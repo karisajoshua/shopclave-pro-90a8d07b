@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft, Lock, ShieldCheck, RotateCcw } from "lucide-react";
+import { CheckCircle2, ChevronRight, MapPin, Truck, CreditCard, ArrowLeft, Lock, ShieldCheck, RotateCcw, Pencil, ShoppingBag } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/hooks/useLocale";
 import CheckoutLoader from "@/components/checkout/CheckoutLoader";
@@ -596,7 +596,7 @@ const CheckoutPage = () => {
           {CHECKOUT_MODE_LABEL}
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+        <div className={activeStep === "review" ? "grid grid-cols-1 gap-6" : "grid lg:grid-cols-[1fr_320px] gap-6"}>
           {/* Left: Steps */}
           <div className="space-y-4">
             {/* Step 1: Address */}
@@ -699,7 +699,7 @@ const CheckoutPage = () => {
                   </Button>
                 </div>
               )}
-              {addressConfirmed && activeStep !== "address" && (
+              {addressConfirmed && activeStep !== "address" && activeStep !== "review" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{address.fullName}</p>
                   <p>{address.addressLine} | {address.city}, {address.state} {address.zip} - {address.country} | {address.phone}</p>
@@ -797,7 +797,7 @@ const CheckoutPage = () => {
                   </Button>
                 </div>
               )}
-              {deliveryConfirmed && activeStep !== "delivery" && (
+              {deliveryConfirmed && activeStep !== "delivery" && activeStep !== "review" && (
                 <div className="px-4 pb-4 text-sm text-muted-foreground">
                   <p>{deliveryItemsLabel(items.length)}</p>
                   {Object.entries(selectedRates).map(([vid, rate]: [string, any]) => <p key={vid}>{rate.service}: {formatPrice(rate.amount_cad)} · Est. {windowFor(vid, rate.service)}</p>)}
@@ -810,51 +810,100 @@ const CheckoutPage = () => {
             <div className="bg-card rounded-lg border border-border overflow-hidden">
               <StepHeader step="review" title="Review Order" />
               {activeStep === "review" && (
-                <div className="px-4 pb-4 space-y-4 text-sm">
-                  <div className="rounded-md border border-border p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">Deliver to</p>
-                        <p className="font-medium">{address.fullName}</p>
-                        <p className="text-muted-foreground break-words">{address.addressLine}, {address.city}, {address.state} {address.zip}, {address.country}</p>
-                      </div>
-                      <button type="button" className="text-xs text-primary underline shrink-0" onClick={() => setActiveStep("address")}>Edit</button>
-                    </div>
-                  </div>
-                  {Object.entries(vendorGroups).map(([vendorId, group]) => {
-                    const rate = selectedRates[vendorId];
-                    return (
-                      <div key={vendorId} className="rounded-md border border-border p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs text-muted-foreground">Sold by <span className="font-medium text-foreground">{group.vendorName}</span></p>
-                          <button type="button" className="text-xs text-primary underline shrink-0" onClick={() => setActiveStep("delivery")}>Edit delivery</button>
+                <div className="px-4 pb-5 sm:px-6 sm:pb-6">
+                  <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+                    <div className="min-w-0 space-y-6">
+                      <section aria-labelledby="delivery-address-title">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                            <h2 id="delivery-address-title" className="font-semibold">Delivery address</h2>
+                          </div>
+                          <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-primary" onClick={() => setActiveStep("address")}>
+                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit
+                          </Button>
                         </div>
-                        {group.items.map((item) => (
-                          <div key={item.id} className="flex justify-between gap-2">
-                            <span className="min-w-0 truncate">{item.quantity} × {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ""}</span>
-                            <span className="font-medium shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                        <div className="border-l-2 border-primary/30 pl-4 text-sm leading-6">
+                          <p className="font-medium text-foreground">{address.fullName}</p>
+                          <p className="break-words text-muted-foreground">{address.addressLine}</p>
+                          <p className="break-words text-muted-foreground">{address.city}, {address.state} {address.zip}</p>
+                          <p className="text-muted-foreground">{address.country} · {address.phone}</p>
+                        </div>
+                      </section>
+
+                      <Separator />
+
+                      <section aria-labelledby="order-items-title">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <ShoppingBag className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                            <h2 id="order-items-title" className="font-semibold">Items and delivery</h2>
                           </div>
-                        ))}
-                        {rate && (
-                          <div className="flex justify-between gap-2 text-muted-foreground">
-                            <span className="min-w-0">{rate.service} · Est. {windowFor(vendorId, rate.service)}</span>
-                            <span className="shrink-0">{formatPrice(rate.amount_cad)}</span>
-                          </div>
-                        )}
+                          <Button asChild variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-primary">
+                            <Link to="/cart"><Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit items</Link>
+                          </Button>
+                        </div>
+
+                        <div className="divide-y divide-border">
+                          {Object.entries(vendorGroups).map(([vendorId, group]) => {
+                            const rate = selectedRates[vendorId];
+                            return (
+                              <div key={vendorId} className="py-5 first:pt-0 last:pb-0">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                  <p className="min-w-0 truncate text-xs text-muted-foreground">Sold by <span className="font-medium text-foreground">{group.vendorName}</span></p>
+                                  <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-primary" onClick={() => setActiveStep("delivery")}>
+                                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit delivery
+                                  </Button>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {group.items.map((item) => (
+                                    <div key={item.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-start gap-3">
+                                      <img src={item.image} alt="" className="h-14 w-14 rounded-md border border-border bg-secondary object-cover" />
+                                      <div className="min-w-0 pt-0.5">
+                                        <p className="line-clamp-2 font-medium leading-5 text-foreground">{item.name}</p>
+                                        <p className="mt-1 text-xs text-muted-foreground">Qty {item.quantity}{item.variantLabel ? ` · ${item.variantLabel}` : ""}</p>
+                                      </div>
+                                      <p className="pt-0.5 text-right font-semibold tabular-nums">{formatPrice(item.price * item.quantity)}</p>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {rate && (
+                                  <div className="mt-4 flex items-start gap-3 bg-secondary/40 px-3 py-2.5 text-xs">
+                                    <Truck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-foreground">{rate.service}</p>
+                                      <p className="mt-0.5 text-muted-foreground">Estimated arrival {windowFor(vendorId, rate.service)}</p>
+                                    </div>
+                                    <span className="shrink-0 font-medium text-foreground tabular-nums">{formatPrice(rate.amount_cad)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    </div>
+
+                    <aside className="border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" aria-labelledby="review-total-title">
+                      <h2 id="review-total-title" className="mb-4 font-semibold">Order total</h2>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Items</span><span className="font-medium tabular-nums">{formatPrice(totalPrice)}</span></div>
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Delivery</span><span className="font-medium tabular-nums">{formatPrice(shippingTotal)}</span></div>
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="text-right text-muted-foreground">Not yet calculated</span></div>
                       </div>
-                    );
-                  })}
-                  <div className="rounded-md border border-border p-3 space-y-1">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(totalPrice)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{formatPrice(shippingTotal)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Taxes</span><span className="text-muted-foreground">Not yet calculated</span></div>
-                    <Separator className="my-1" />
-                    <div className="flex justify-between font-semibold"><span>Total before applicable taxes (CAD)</span><span>{formatPrice(grandTotal)}</span></div>
-                    <p className="text-[11px] text-muted-foreground">Delivery dates are estimates, not guaranteed. <Link to="/cart" className="underline">Edit items</Link></p>
+                      <Separator className="my-4" />
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="max-w-[180px] font-semibold leading-5">Total before applicable taxes</span>
+                        <span className="text-lg font-bold tabular-nums">{formatPrice(grandTotal)}</span>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">Prices are in CAD. Delivery dates are estimates and are not guaranteed.</p>
+                      <Button className="mt-5 h-12 w-full font-semibold" onClick={() => setActiveStep("payment")}>
+                        Continue to secure payment
+                      </Button>
+                    </aside>
                   </div>
-                  <Button className="w-full h-11 font-semibold" onClick={() => setActiveStep("payment")}>
-                    Continue to secure payment
-                  </Button>
                 </div>
               )}
             </div>
@@ -928,7 +977,7 @@ const CheckoutPage = () => {
           </div>
 
           {/* Right: Order Summary */}
-          <div className="lg:sticky lg:top-20 lg:self-start">
+          <div className={activeStep === "review" ? "hidden" : "lg:sticky lg:top-20 lg:self-start"}>
             <div className="bg-card rounded-lg border border-border p-4 space-y-4">
               <h3 className="font-semibold text-base">Order Summary</h3>
               <Separator />
