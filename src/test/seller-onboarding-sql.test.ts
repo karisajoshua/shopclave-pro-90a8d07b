@@ -29,4 +29,20 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).not.toContain("'approved'");
   expect(s).not.toContain("payouts_enabled=");
  });
+ it("requires explicit Stripe country enablement and all agreements before submission", () => {
+  const s=sql("004_country_rules_and_submission.sql");
+  expect(s).toContain("stripe_connect_enabled boolean NOT NULL DEFAULT false");
+  expect(s).toContain("stripe_connect_enabled=true");
+  expect(s).toContain("seller_agreement_acceptances");
+  expect(s).toContain("seller_verification_documents");
+  expect(s).toContain("FOR UPDATE");
+  expect(s).toContain("status='submitted'");
+ });
+ it("keeps webhook updates restricted to service role and idempotent", () => {
+  const s=sql("007_stripe_account_event_rpc.sql");
+  expect(s).toContain("service_role");
+  expect(s).toContain("ON CONFLICT(event_id) DO NOTHING");
+  expect(s).toContain("last_webhook_at<=p_created_at");
+  expect(s).not.toContain("TO authenticated;");
+ });
 });
