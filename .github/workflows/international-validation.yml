@@ -29,7 +29,7 @@ jobs:
           name: repaired-package-lock
           path: package-lock.json
       - run: npm ci
-      - run: npx vitest run src/test/international.test.ts
+      - run: npx vitest run src/test/international.test.ts src/test/international-claim-sql.test.ts
       - run: npm test
       - run: npx tsc --noEmit -p tsconfig.app.json
       - uses: denoland/setup-deno@v2
