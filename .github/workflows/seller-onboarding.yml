@@ -1,0 +1,38 @@
+name: Seller onboarding validation
+on:
+  pull_request:
+    paths:
+      - 'src/pages/VendorRegisterPage.tsx'
+      - 'src/pages/LegacyVendorRegisterPage.tsx'
+      - 'src/pages/SellerOnboardingV2Page.tsx'
+      - 'src/components/vendor/SellerKycUpload.tsx'
+      - 'src/components/vendor/SellerAgreements.tsx'
+      - 'src/components/admin/AdminSellerDocuments.tsx'
+      - 'src/pages/admin/AdminSellerApplications.tsx'
+      - 'supabase/functions/seller-review-document/**'
+      - 'supabase/functions/seller-notification-worker/**'
+      - 'src/test/seller-onboarding-sql.test.ts'
+      - 'docs/seller-onboarding/**'
+      - 'supabase/functions/seller-stripe-connect/**'
+      - 'supabase/functions/seller-stripe-webhook/**'
+      - '.github/workflows/seller-onboarding.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - run: npm ci
+      - run: npx vitest run src/test/seller-onboarding-sql.test.ts
+      - run: npx tsc --noEmit -p tsconfig.app.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/seller-stripe-connect/index.ts
+      - run: deno check supabase/functions/seller-stripe-webhook/index.ts
+      - run: deno check supabase/functions/seller-review-document/index.ts
+      - run: deno check supabase/functions/seller-notification-worker/index.ts
