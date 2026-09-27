@@ -24,6 +24,8 @@ DECLARE
   order_owner uuid;
   order_status text;
   actual_vendor_count integer;
+  stored_shipping_total numeric;
+  stored_dap_ack timestamptz;
 BEGIN
   IF p_order_id IS NULL OR p_user_id IS NULL OR
      p_destination !~ '^[A-Z]{2}$' OR
@@ -37,7 +39,8 @@ BEGIN
 
   -- Bind the claim to an actual pending order owned by the authenticated shopper.
   -- The trusted caller must create that order in the SAME transaction as this call.
-  SELECT o.user_id, o.status INTO order_owner, order_status
+  SELECT o.user_id, o.status, o.shipping_total, o.dap_acknowledged_at
+    INTO order_owner, order_status, stored_shipping_total, stored_dap_ack
   FROM public.orders o WHERE o.id = p_order_id FOR UPDATE;
   IF order_owner IS DISTINCT FROM p_user_id OR order_status IS DISTINCT FROM 'pending' THEN
     RAISE EXCEPTION 'International order ownership or state invalid';
@@ -79,7 +82,7 @@ BEGIN
        q.parcel_fingerprint <> p_vendor_parcels ->> q.vendor_id::text OR
        q.consumed_order_id IS NOT NULL OR q.expires_at <= now() OR
        q.verified IS NOT TRUE OR q.source NOT IN ('shippo','dhl_express','zonos') OR
-       (q.mode = 'DAP' AND p_dap_acknowledged IS NOT TRUE) OR
+       (q.mode = 'DAP' AND (p_dap_acknowledged IS NOT TRUE OR stored_dap_ack IS NULL)) OR
        (q.mode = 'DDP' AND (q.duties_cad IS NULL OR q.import_tax_cad IS NULL))
     THEN RAISE EXCEPTION 'International quote validation failed'; END IF;
 
@@ -96,6 +99,11 @@ BEGIN
 
   IF claimed_count <> cardinality(p_quote_ids) THEN
     RAISE EXCEPTION 'Missing international quote';
+  END IF;
+  -- Never permit the quote claim to authorize an order with a different
+  -- server-recorded shipping total. Monetary arithmetic remains NUMERIC.
+  IF stored_shipping_total IS NULL OR round(stored_shipping_total,2) <> round(total_cad,2) THEN
+    RAISE EXCEPTION 'International order shipping total mismatch';
   END IF;
   RETURN round(total_cad,2);
 END;
