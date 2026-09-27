@@ -37,3 +37,9 @@ Development branch: `feature/seller-onboarding-global-v2`. No draft SQL has been
 - Admin document access is audited when a 60-second signed URL is issued; the system cannot prove a human actually inspected its contents. Human verification training and a documented decision remain necessary.
 - No country rules or policy URLs have been inserted, so the final submission flow is fail-closed until reviewed configurations exist.
 - Existing Paystack integration elsewhere in Barakaz remains unchanged. This feature only creates Stripe Connect accounts.
+
+## Safe merge gate
+- The existing seller registration implementation is preserved as `LegacyVendorRegisterPage.tsx`.
+- The new database-backed flow is isolated in `SellerOnboardingV2Page.tsx`.
+- `VendorRegisterPage.tsx` defaults to legacy unless `VITE_SELLER_ONBOARDING_V2_ENABLED` is exactly `true`. Do not set that variable in production until all database, security and integration gates pass.
+- GitHub CI is code-level validation only; SQL migrations remain drafts and are not executed by this PR.
