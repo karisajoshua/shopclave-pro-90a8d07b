@@ -780,12 +780,7 @@ const CheckoutPage = () => {
                             ))}
                           </RadioGroup>
                         )}
-                        {rates.length > 0 && selected?.is_estimate && (
-                          <p className="text-[11px] text-muted-foreground italic">
-                            Barakaz estimate — the carrier is assigned after payment and the price you
-                            pay does not change.
-                          </p>
-                        )}
+                        
                       </div>
                     );
                   })}
@@ -957,7 +952,7 @@ const CheckoutPage = () => {
 
               <Separator />
 
-              <p className="text-xs text-muted-foreground">Applicable taxes are not yet calculated. Canadian GST/HST must be verified before this checkout can accept live payments.</p>
+              
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Total before applicable taxes</span>
                 <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
