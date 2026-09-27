@@ -12,7 +12,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE a public.seller_applications;
 BEGIN
- IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+ IF (SELECT auth.uid()) IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
  IF p_current_step NOT BETWEEN 1 AND 6 OR
     (p_country IS NOT NULL AND p_country !~ '^[A-Z]{2}$') OR
     (p_business_type IS NOT NULL AND p_business_type NOT IN ('individual','sole_proprietor','company')) OR
@@ -29,7 +29,7 @@ BEGIN
  business_info=EXCLUDED.business_info,
  store_info=EXCLUDED.store_info,
  updated_at=now()
- WHERE public.seller_applications.status IN ('draft','more_information_required')
+ WHERE public.seller_applications.status = 'draft'
  RETURNING * INTO a;
  IF a.id IS NULL THEN RAISE EXCEPTION 'Application cannot be edited in its current state'; END IF;
  RETURN a;
