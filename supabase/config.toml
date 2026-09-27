@@ -58,3 +58,6 @@ verify_jwt = false
 
 [functions.seller-review-document]
 verify_jwt = true
+
+[functions.seller-notification-worker]
+verify_jwt = false
