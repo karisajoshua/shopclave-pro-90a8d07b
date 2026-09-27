@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION public.record_seller_kyc_review(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE a public.seller_applications;
+ previous_kyc text;
 BEGIN
  IF (SELECT auth.uid()) IS NULL OR NOT EXISTS(
   SELECT 1 FROM public.user_roles r
@@ -26,11 +27,12 @@ BEGIN
    WHERE d.application_id=a.id AND d.requirement_code=required.code
    AND d.verification_status='verified')
  ) THEN RAISE EXCEPTION 'Required documents not independently verified'; END IF;
+ previous_kyc:=a.kyc_status;
  UPDATE public.seller_applications SET kyc_status=p_result,reviewed_by=(SELECT auth.uid()),
  review_reason=p_reason,reviewed_at=now(),updated_at=now()
  WHERE id=a.id RETURNING * INTO a;
  INSERT INTO public.seller_application_events(application_id,actor_id,previous_status,new_status,reason)
- VALUES(a.id,(SELECT auth.uid()),'kyc:'||coalesce(a.kyc_status,'unknown'),
+ VALUES(a.id,(SELECT auth.uid()),'kyc:'||coalesce(previous_kyc,'unknown'),
  'kyc:'||p_result,p_reason);
  RETURN a;
 END $$;
