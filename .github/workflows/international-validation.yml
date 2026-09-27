@@ -16,6 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testonly
+          POSTGRES_DB: international_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd 'pg_isready -U postgres'
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,3 +49,10 @@ jobs:
         with:
           deno-version: v2.x
       - run: deno check supabase/functions/get-international-quotes/index.ts
+      - name: PostgreSQL quote claim integration
+        env:
+          PGPASSWORD: testonly
+        run: |
+          psql -h localhost -U postgres -d international_test -v ON_ERROR_STOP=1 -f src/test/sql/international-fixture.sql
+          psql -h localhost -U postgres -d international_test -v ON_ERROR_STOP=1 -f docs/international/migrations-draft/002_atomic_quote_claim.sql
+          psql -h localhost -U postgres -d international_test -v ON_ERROR_STOP=1 -f src/test/sql/international-claim-integration.sql
