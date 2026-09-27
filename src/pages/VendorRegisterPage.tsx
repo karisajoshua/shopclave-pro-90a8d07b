@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import SellerKycUpload from "@/components/vendor/SellerKycUpload";
+import SellerAgreements from "@/components/vendor/SellerAgreements";
 
 type Draft = {
   country: string; business_type: string; legal_name: string; registration_number: string;
@@ -38,6 +39,7 @@ const VendorRegisterPage = () => {
  const [saved, setSaved] = useState(false);
  const [payoutStatus, setPayoutStatus] = useState("not_started");
  const [applicationId, setApplicationId] = useState("");
+ const [agreementsAccepted, setAgreementsAccepted] = useState(false);
  useEffect(() => {
    if (authLoading) return;
    if (!user) { navigate("/auth", { state: { from: "/vendor/register" } }); return; }
@@ -102,8 +104,14 @@ const VendorRegisterPage = () => {
      toast.error("Enter a two-letter country code and valid business type."); return;
    }
    if (step === 6) {
-     toast.info("Final submission is disabled until verification and agreements are securely integrated.");
-     await save(step); return;
+     if (!agreementsAccepted) { toast.error("Accept all current seller agreements first."); return; }
+     setBusy(true);
+     const {error}=await supabase.rpc("submit_seller_application" as any);
+     setBusy(false);
+     if(error){toast.error(error.message);return;}
+     setStatus("submitted");
+     toast.success("Your seller application has been submitted for review.");
+     return;
    }
    if (step === 3 || step === 5) {
      toast.info("You can continue setting up your store. Verification and payouts must be completed before submission.");
@@ -136,12 +144,12 @@ const VendorRegisterPage = () => {
      </div>)}
      {step === 3 && <>{applicationId ? <SellerKycUpload applicationId={applicationId} country={draft.country} businessType={draft.business_type} /> : <p className="text-sm">Save your business information first to start secure verification.</p>}</>}
      {step === 5 && <div className="space-y-3"><p className="text-sm">Payouts use Stripe Connect exclusively, where available. Verification is separate from Barakaz seller approval.</p><p role="status" className="text-sm font-medium">Stripe payout status: {payoutStatus.replace(/_/g, " ")}</p><Button type="button" variant="secondary" disabled={busy} onClick={() => void connectStripe()}>Connect with Stripe</Button></div>}
-     {step === 6 && <p className="text-sm">Final submission will require verified identity documents, eligible payout onboarding and explicit acceptance of all applicable seller agreements.</p>}
+     {step === 6 && <SellerAgreements country={draft.country} businessType={draft.business_type} onAccepted={()=>setAgreementsAccepted(true)} />}
      <div className="flex flex-wrap justify-between gap-3 pt-4">
        <Button variant="outline" disabled={busy || step === 1} onClick={() => setStep(s => s - 1)}>Back</Button>
        <div className="flex gap-2">
          <Button variant="outline" disabled={busy} onClick={() => void save(step)}>{saved ? "Saved" : "Save draft"}</Button>
-         <Button disabled={busy} onClick={() => void advance()}>{step === 6 ? "Awaiting verification" : "Save & continue"}</Button>
+         <Button disabled={busy} onClick={() => void advance()}>{step === 6 ? "Submit application" : "Save & continue"}</Button>
        </div>
      </div>
    </section></>}
