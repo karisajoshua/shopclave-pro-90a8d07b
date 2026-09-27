@@ -20,6 +20,9 @@ describe("international quote claim SQL safety contract", () => {
     expect(sql).toContain("ORDER BY id FOR UPDATE");
     expect(sql).toContain("count(DISTINCT oi.vendor_id)");
     expect(sql).toContain("International quote vendors differ from order items");
+    expect(sql).toContain("o.shipping_total, o.dap_acknowledged_at");
+    expect(sql).toContain("stored_dap_ack IS NULL");
+    expect(sql).toContain("round(stored_shipping_total,2) <> round(total_cad,2)");
   });
   it("checks expiration, fingerprints, consent and previous use", () => {
     for (const check of [
