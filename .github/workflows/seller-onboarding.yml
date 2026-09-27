@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'src/pages/VendorRegisterPage.tsx'
+      - 'src/components/vendor/SellerKycUpload.tsx'
       - 'src/test/seller-onboarding-sql.test.ts'
       - 'docs/seller-onboarding/**'
       - 'supabase/functions/seller-stripe-connect/**'
