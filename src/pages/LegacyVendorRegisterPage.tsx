@@ -10,10 +10,22 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Store } from "lucide-react";
 
+const friendlyError = (err: any): string => {
+  const code = err?.code;
+  const msg = String(err?.message || "");
+  if (code === "23505" || /duplicate key/i.test(msg)) return "You've already applied to become a seller. Your application is being reviewed.";
+  if (code === "42501" || /row-level security|permission/i.test(msg)) return "Your session has expired. Please sign in again and resubmit.";
+  if (/JWT|not authenticated/i.test(msg)) return "Your session has expired. Please sign in again and resubmit.";
+  if (/network|fetch/i.test(msg)) return "Connection problem. Please check your internet and try again.";
+  return "We couldn't submit your application. Please try again.";
+};
+
 const LegacyVendorRegisterPage = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [existingStatus, setExistingStatus] = useState<string | null>(null);
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
   const [phone, setPhone] = useState("");
@@ -21,17 +33,29 @@ const LegacyVendorRegisterPage = () => {
   const [website, setWebsite] = useState("");
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       navigate("/auth", { state: { from: "/vendor/register" } });
+      return;
     }
-  }, [user, navigate]);
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("vendors").select("id,status").eq("user_id", user.id).maybeSingle();
+      if (cancelled) return;
+      if (data?.status === "approved") { navigate("/vendor"); return; }
+      setExistingStatus(data?.status ?? null);
+      setChecking(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user, authLoading, navigate]);
 
-  if (!user) {
-    return null;
+  if (authLoading || !user || checking) {
+    return <MarketplaceLayout><div className="container py-16 text-center text-muted-foreground">Loading…</div></MarketplaceLayout>;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!storeName.trim()) {
       toast.error("Store name is required");
       return;
@@ -51,16 +75,47 @@ const LegacyVendorRegisterPage = () => {
         website: website.trim() || null,
         status: "pending",
       });
-      if (vendorError) throw vendorError;
-
+      if (vendorError) {
+        if (vendorError.code === "23505") {
+          setExistingStatus("pending");
+          toast.info(friendlyError(vendorError));
+          return;
+        }
+        throw vendorError;
+      }
       toast.success("Vendor application submitted! We'll review it shortly.");
-      navigate("/account");
+      setExistingStatus("pending");
     } catch (err: any) {
-      toast.error(err.message || "Failed to register");
+      console.error("Vendor application failed:", err);
+      toast.error(friendlyError(err));
     } finally {
       setLoading(false);
     }
   };
+
+  if (existingStatus) {
+    const rejected = existingStatus === "rejected" || existingStatus === "suspended";
+    return (
+      <MarketplaceLayout>
+        <div className="container py-12 max-w-lg">
+          <div className="bg-card rounded-xl border border-border p-8 text-center space-y-4" role="status">
+            <Store className="h-10 w-10 text-primary mx-auto" />
+            <h1 className="font-display text-2xl font-bold">
+              {rejected ? `Application ${existingStatus}` : "Your application is under review"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {rejected
+                ? "Your seller application was not approved. Please contact support if you have questions."
+                : "Thanks for applying! We'll notify you once your store is approved."}
+            </p>
+            <Button onClick={() => navigate(rejected ? "/contact" : "/account")}>
+              {rejected ? "Contact support" : "Go to my account"}
+            </Button>
+          </div>
+        </div>
+      </MarketplaceLayout>
+    );
+  }
 
   return (
     <MarketplaceLayout>
