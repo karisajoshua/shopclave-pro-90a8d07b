@@ -1,0 +1,21 @@
+name: Seller onboarding validation
+on:
+  pull_request:
+    paths:
+      - 'src/pages/VendorRegisterPage.tsx'
+      - 'src/test/seller-onboarding-sql.test.ts'
+      - 'docs/seller-onboarding/**'
+      - '.github/workflows/seller-onboarding.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - run: npm ci
+      - run: npx vitest run src/test/seller-onboarding-sql.test.ts
+      - run: npx tsc --noEmit -p tsconfig.app.json
