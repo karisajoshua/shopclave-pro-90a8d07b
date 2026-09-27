@@ -1,62 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, FileUp, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-type Rule = { required_documents: string[]; rules_version: string };
-export default function SellerKycUpload({ applicationId, country, businessType }: {
- applicationId: string; country: string; businessType: string;
-}) {
- const { user }=useAuth();
- const [rules,setRules]=useState<Rule|null>(null);
+type DocumentRow={id:string;requirement_code:string;verification_status:string};
+export default function SellerKycUpload({ applicationId, userId, requirements, documents, onChanged }: { applicationId:string; userId:string; requirements:string[]; documents:DocumentRow[]; onChanged:()=>Promise<void>|void }) {
  const [busy,setBusy]=useState<string|null>(null);
- const [uploaded,setUploaded]=useState<string[]>([]);
- const [error,setError]=useState<string|null>(null);
- useEffect(()=>{
-  let active=true;
-  if(!country||!businessType||!applicationId)return;
-  (async()=>{
-   const {data,error}=await supabase.from("seller_country_requirements" as any)
-    .select("required_documents,rules_version").eq("country",country)
-    .eq("business_type",businessType).eq("stripe_connect_enabled",true)
-    .not("reviewed_at","is",null).order("reviewed_at",{ascending:false}).limit(1).maybeSingle();
-   if(!active)return;
-   if(error){setError("Unable to load country verification requirements.");return;}
-   if(!data){setError("Seller verification is not enabled for this country and business type.");return;}
-   setRules(data as unknown as Rule);setError(null);
-  })();
-  return()=>{active=false;};
- },[applicationId,country,businessType]);
- const upload=async(code:string,file:File)=>{
-  if(!user || !applicationId)return;
-  if(file.size>10*1024*1024 || !["image/jpeg","image/png","application/pdf"].includes(file.type)){
-   toast.error("Upload a JPEG, PNG or PDF under 10 MB.");return;
-  }
+ const uploaded=useMemo(()=>new Map(documents.map(d=>[d.requirement_code,d])),[documents]);
+ const upload=async(code:string,file?:File)=>{
+  if(!file)return;
+  if(!["image/jpeg","image/png","application/pdf"].includes(file.type)||file.size>10*1024*1024){toast.error("Upload a JPG, PNG, or PDF under 10 MB.");return;}
   setBusy(code);
-  const ext=file.type==="application/pdf"?"pdf":file.type==="image/png"?"png":"jpg";
-  const path=`${user.id}/${applicationId}/${crypto.randomUUID()}.${ext}`;
-  const {error:storageError}=await supabase.storage.from("seller-kyc-private").upload(path,file,{
-   upsert:false,contentType:file.type
-  });
-  if(storageError){setBusy(null);toast.error("Private upload failed.");return;}
-  const {error:registerError}=await supabase.rpc("register_seller_kyc_upload" as any,{
-   p_requirement_code:code,p_storage_path:path
-  });
-  setBusy(null);
-  if(registerError){toast.error("Document could not be registered. Contact support.");return;}
-  setUploaded(prev=>[...prev,code]);toast.success("Document received for review.");
+  const ext=file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g,"")||"bin";
+  const path=`${userId}/${applicationId}/${crypto.randomUUID()}.${ext}`;
+  const {error:uploadError}=await supabase.storage.from("seller-kyc-private").upload(path,file,{contentType:file.type,upsert:false});
+  if(uploadError){toast.error("Secure document upload failed.");setBusy(null);return;}
+  const {error}=await supabase.rpc("register_seller_kyc_upload",{p_requirement_code:code,p_storage_path:path});
+  if(error){toast.error(error.message);setBusy(null);return;}
+  toast.success("Document uploaded securely for review.");await onChanged();setBusy(null);
  };
- return <section className="space-y-4">
-  <p className="text-sm text-muted-foreground">Upload only the documents requested for your country. Files are private and are not considered verified until independently reviewed.</p>
-  {error&&<p role="alert" className="text-destructive">{error}</p>}
-  {rules?.required_documents.length===0&&<p>No additional document uploads are configured for your country. Stripe may request identity documents on its secure website.</p>}
-  {rules?.required_documents.map(code=><div key={code} className="rounded-md border p-3 space-y-2">
-   <label htmlFor={`kyc-${code}`} className="block text-sm font-medium">{code.replace(/_/g," ")}</label>
-   <input id={`kyc-${code}`} type="file" accept=".jpg,.jpeg,.png,.pdf" disabled={!!busy}
-    onChange={e=>{const file=e.target.files?.[0];if(file)void upload(code,file);e.currentTarget.value="";}} />
-   {uploaded.includes(code)&&<p role="status" className="text-sm">Uploaded — awaiting verification</p>}
-  </div>)}
-  {busy&&<p role="status">Uploading securely…</p>}
- </section>;
+ if(!requirements.length)return <Alert><AlertDescription>Verification requirements for this country and seller type have not been approved. You may save your draft, but cannot submit it yet.</AlertDescription></Alert>;
+ return <div className="space-y-3">
+  <Alert><AlertDescription>Upload only genuine, current documents. Files are private and an upload does not mean your identity is verified.</AlertDescription></Alert>
+  {requirements.map(code=>{const doc=uploaded.get(code);return <div key={code} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+   <div><p className="font-medium capitalize">{code.replace(/_/g," ")}</p><p className="text-xs text-muted-foreground">JPG, PNG, or PDF · maximum 10 MB</p></div>
+   <div className="flex items-center gap-2">{doc&&<Badge variant="secondary"><CheckCircle2 className="mr-1 h-3 w-3"/>{doc.verification_status}</Badge>}
+    <Button type="button" size="sm" variant="outline" disabled={busy===code} asChild><label className="cursor-pointer">{busy===code?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<FileUp className="mr-2 h-4 w-4"/>}{doc?"Replace":"Upload"}<input className="hidden" type="file" accept="image/jpeg,image/png,application/pdf" onChange={e=>void upload(code,e.target.files?.[0])}/></label></Button>
+   </div>
+  </div>})}
+ </div>;
 }
