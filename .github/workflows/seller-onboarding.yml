@@ -5,6 +5,8 @@ on:
       - 'src/pages/VendorRegisterPage.tsx'
       - 'src/test/seller-onboarding-sql.test.ts'
       - 'docs/seller-onboarding/**'
+      - 'supabase/functions/seller-stripe-connect/**'
+      - 'supabase/functions/seller-stripe-webhook/**'
       - '.github/workflows/seller-onboarding.yml'
   workflow_dispatch:
 jobs:
@@ -19,3 +21,8 @@ jobs:
       - run: npm ci
       - run: npx vitest run src/test/seller-onboarding-sql.test.ts
       - run: npx tsc --noEmit -p tsconfig.app.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/seller-stripe-connect/index.ts
+      - run: deno check supabase/functions/seller-stripe-webhook/index.ts
