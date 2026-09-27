@@ -89,6 +89,55 @@ export interface LandedCostQuote {
   parcelFingerprint?: string;
 }
 
+/** Prepare service-role-only persistence rows from server-fetched Shippo rates.
+ * Never accept these inputs from the browser; callers must authenticate and
+ * recompute fingerprints from current server-side address/cart/parcel data.
+ */
+export function prepareShippoDapQuoteRows(
+  rates: ShippoCarrierRate[],
+  fxPerCad: Record<string, number>,
+  context: {
+    userId: string; vendorId: string; originCountry: string; destinationCountry: string;
+    addressFingerprint: string; itemsFingerprint: string; parcelFingerprint: string;
+    parcel: VendorParcel; expiresAt: string;
+  },
+) {
+  if (!context.userId || !context.vendorId ||
+      !context.addressFingerprint || !context.itemsFingerprint || !context.parcelFingerprint ||
+      !/^[A-Z]{2}$/.test(context.originCountry) || !/^[A-Z]{2}$/.test(context.destinationCountry) ||
+      !Number.isFinite(Date.parse(context.expiresAt)) || Date.parse(context.expiresAt) <= Date.now()) {
+    throw new Error("Incomplete or expired international quote context");
+  }
+  const eligible = checkInternationalEligibility(context.destinationCountry, [context.parcel]);
+  if (!eligible.ok || context.parcel.vendorId !== context.vendorId ||
+      context.parcel.originCountry !== context.originCountry) {
+    throw new Error("International parcel is not eligible");
+  }
+  return normalizeShippoInternationalRates(rates, fxPerCad).map((rate) => ({
+    user_id: context.userId,
+    vendor_id: context.vendorId,
+    mode: "DAP" as const,
+    source: "shippo" as const,
+    verified: true,
+    origin_country: context.originCountry,
+    destination_country: context.destinationCountry,
+    shipping_cad: rate.shippingCad,
+    duties_cad: null,
+    import_tax_cad: null,
+    customs_fee_cad: null,
+    provider_currency: rate.originalCurrency,
+    provider_amount: rate.originalAmount,
+    fx_rate_to_cad: rate.fxRateToCad,
+    parcel: context.parcel,
+    customs_lines: context.parcel.lines,
+    address_fingerprint: context.addressFingerprint,
+    items_fingerprint: context.itemsFingerprint,
+    parcel_fingerprint: context.parcelFingerprint,
+    rate_id: rate.rateId,
+    expires_at: context.expiresAt,
+  }));
+}
+
 export const DDP_EXPLANATION =
   "Duties & taxes prepaid (DDP): the import duties and taxes shown were calculated by our carrier for your address and are included in your total. You should not be asked to pay more on delivery.";
 export const DAP_EXPLANATION =
