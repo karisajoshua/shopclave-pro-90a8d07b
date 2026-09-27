@@ -1,0 +1,1 @@
+CREATE POLICY seller_kyc_owner_upload ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='seller-kyc-private' AND (storage.foldername(name))[1]=(SELECT auth.uid())::text AND EXISTS(SELECT 1 FROM public.seller_applications a WHERE a.id::text=(storage.foldername(name))[2] AND a.user_id=(SELECT auth.uid()) AND a.status IN ('draft','more_information_required')));

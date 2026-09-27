@@ -78,6 +78,13 @@
       "when": 1790550479242,
       "tag": "0010_complete_seller_onboarding_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790550498267,
+      "tag": "0011_secure_seller_kyc_uploads",
+      "breakpoints": true
     }
   ]
 }
