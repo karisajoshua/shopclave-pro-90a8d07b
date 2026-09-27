@@ -68,3 +68,5 @@ Status: **development only**. Checkout blocks non-Canadian destinations; no inte
 - Prevent duplicate vendor quotes and negative/non-finite amounts; enforce all quote ownership and RLS checks on the server, never trust browser-provided `verified` or monetary fields.
 - Add idempotent server order creation and Stripe initialization; keep international and live-payment feature gates closed until independent staging end-to-end tests pass.
 - Validate applicable export tax treatment and destination duties with a qualified tax/customs professional. Maintain country-specific sanctions and restricted-goods rules with a documented update owner; a static country list is not a substitute for screening.
+
+CI: `.github/workflows/international-validation.yml` runs the international tests, full Vitest suite and TypeScript checks on PR changes; do not merge until results are visible and passing.
