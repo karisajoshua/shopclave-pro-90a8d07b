@@ -60,7 +60,7 @@ const VendorRegisterPage = () => {
    })();
    return () => { cancelled = true; };
  }, [user, authLoading, navigate]);
- const update = (key: keyof Draft, value: string) => { setDraft(d => ({ ...d, [key]: value })); setSaved(false); };
+ const update = (key: keyof Draft, value: string) => { setDraft(d => ({ ...d, [key]: value })); if (key === "country" || key === "business_type") setAgreementsAccepted(false); setSaved(false); };
  const save = async (nextStep: number) => {
    if (!user || status !== "draft") return false;
    setBusy(true);
