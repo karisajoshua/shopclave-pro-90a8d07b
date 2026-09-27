@@ -190,7 +190,7 @@ export function validateQuote(q: LandedCostQuote, o: { userId: string; destinati
 /** Validate the full basket selection: one verified quote per vendor, mixed DDP/DAP allowed. */
 export function validateSelection(
   selected: LandedCostQuote[],
-  o: { userId: string; destination: string; vendorIds: string[]; dapAcknowledged: boolean; now?: Date; addressFingerprint?: string; itemsFingerprint?: string; parcelFingerprint?: string; requireFingerprints?: boolean },
+  o: { userId: string; destination: string; vendorIds: string[]; dapAcknowledged: boolean; now?: Date; addressFingerprint?: string; itemsFingerprint?: string; parcelFingerprints?: Record<string, string>; requireFingerprints?: boolean },
 ): { ok: true; totalCad: number; hasDap: boolean } | { ok: false; issue: QuoteIssue; vendorId?: string } {
   const seen = new Set<string>();
   let total = 0;
