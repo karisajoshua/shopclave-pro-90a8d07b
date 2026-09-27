@@ -1,0 +1,67 @@
+\set ON_ERROR_STOP on
+INSERT INTO public.orders VALUES
+('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000011','pending',12.50,now()),
+('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000011','pending',12.50,NULL),
+('00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000011','pending',99.00,now()),
+('00000000-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000011','pending',12.50,now());
+INSERT INTO public.order_items VALUES
+('00000000-0000-4000-8000-000000000101','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000021'),
+('00000000-0000-4000-8000-000000000102','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000021'),
+('00000000-0000-4000-8000-000000000103','00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000021'),
+('00000000-0000-4000-8000-000000000104','00000000-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000021');
+INSERT INTO public.international_quotes
+(id,user_id,vendor_id,destination_country,address_fingerprint,items_fingerprint,parcel_fingerprint,expires_at,verified,source,mode,shipping_cad)
+SELECT ('00000000-0000-4000-8000-' || lpad(n::text,12,'0'))::uuid,
+'00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000021',
+'US','address','cart','parcel',now()+interval '30 minutes',true,'shippo','DAP',12.50
+FROM generate_series(201,204) n;
+DO $$
+DECLARE amount numeric;
+BEGIN
+ SELECT public.claim_international_quotes(
+ '00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000011',
+ 'US','address','cart','{"00000000-0000-4000-8000-000000000021":"parcel"}'::jsonb,
+ ARRAY['00000000-0000-4000-8000-000000000201']::uuid[],true) INTO amount;
+ IF amount <> 12.50 THEN RAISE EXCEPTION 'Wrong claimed amount'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.international_quotes WHERE id='00000000-0000-4000-8000-000000000201' AND consumed_order_id='00000000-0000-4000-8000-000000000001')
+ THEN RAISE EXCEPTION 'Quote was not consumed'; END IF;
+ BEGIN
+  PERFORM public.claim_international_quotes(
+  '00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000011',
+  'US','address','cart','{"00000000-0000-4000-8000-000000000021":"parcel"}'::jsonb,
+  ARRAY['00000000-0000-4000-8000-000000000201']::uuid[],true);
+  RAISE EXCEPTION 'Replay unexpectedly accepted';
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM='Replay unexpectedly accepted' THEN RAISE; END IF;
+ END;
+END $$;
+DO $$
+DECLARE oid uuid; qid uuid; expected text;
+BEGIN
+ FOR oid,qid,expected IN SELECT * FROM (VALUES
+ ('00000000-0000-4000-8000-000000000002'::uuid,'00000000-0000-4000-8000-000000000202'::uuid,'consent'),
+ ('00000000-0000-4000-8000-000000000003'::uuid,'00000000-0000-4000-8000-000000000203'::uuid,'total')
+ ) v LOOP
+  BEGIN
+   PERFORM public.claim_international_quotes(oid,'00000000-0000-4000-8000-000000000011',
+   'US','address','cart','{"00000000-0000-4000-8000-000000000021":"parcel"}'::jsonb,ARRAY[qid],true);
+   RAISE EXCEPTION 'Unexpected acceptance: %',expected;
+  EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM LIKE 'Unexpected acceptance:%' THEN RAISE; END IF;
+  END;
+  IF EXISTS(SELECT 1 FROM public.international_quotes WHERE id=qid AND consumed_order_id IS NOT NULL)
+  THEN RAISE EXCEPTION 'Failed claim consumed quote: %',expected; END IF;
+ END LOOP;
+ UPDATE public.international_quotes SET expires_at=now()-interval '1 minute'
+ WHERE id='00000000-0000-4000-8000-000000000204';
+ BEGIN
+  PERFORM public.claim_international_quotes('00000000-0000-4000-8000-000000000004',
+  '00000000-0000-4000-8000-000000000011','US','address','cart',
+  '{"00000000-0000-4000-8000-000000000021":"parcel"}'::jsonb,
+  ARRAY['00000000-0000-4000-8000-000000000204']::uuid[],true);
+  RAISE EXCEPTION 'Expired quote accepted';
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM='Expired quote accepted' THEN RAISE; END IF;
+ END;
+END $$;
+SELECT 'PASS: claim, replay rejection, consent, total and expiry' AS result;
