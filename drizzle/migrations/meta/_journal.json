@@ -85,6 +85,13 @@
       "when": 1790550498267,
       "tag": "0011_secure_seller_kyc_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790550712030,
+      "tag": "0012_protect_existing_vendor_on_seller_approval",
+      "breakpoints": true
     }
   ]
 }
