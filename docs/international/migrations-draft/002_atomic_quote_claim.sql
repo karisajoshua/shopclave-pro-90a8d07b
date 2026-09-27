@@ -21,6 +21,8 @@ DECLARE
   total_cad numeric := 0;
   claimed_count integer := 0;
   vendor_count integer;
+  order_owner uuid;
+  order_status text;
 BEGIN
   IF p_order_id IS NULL OR p_user_id IS NULL OR
      p_destination !~ '^[A-Z]{2}$' OR
@@ -31,6 +33,14 @@ BEGIN
      EXISTS (SELECT 1 FROM unnest(p_quote_ids) x WHERE x IS NULL) OR
      cardinality(p_quote_ids) <> (SELECT count(DISTINCT x) FROM unnest(p_quote_ids) x)
   THEN RAISE EXCEPTION 'Invalid international quote selection'; END IF;
+
+  -- Bind the claim to an actual pending order owned by the authenticated shopper.
+  -- The trusted caller must create that order in the SAME transaction as this call.
+  SELECT o.user_id, o.status INTO order_owner, order_status
+  FROM public.orders o WHERE o.id = p_order_id FOR UPDATE;
+  IF order_owner IS DISTINCT FROM p_user_id OR order_status IS DISTINCT FROM 'pending' THEN
+    RAISE EXCEPTION 'International order ownership or state invalid';
+  END IF;
 
   SELECT count(*) INTO vendor_count FROM jsonb_object_keys(p_vendor_parcels);
   IF vendor_count <> cardinality(p_quote_ids) THEN
