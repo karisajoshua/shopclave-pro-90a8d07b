@@ -770,10 +770,6 @@ const CheckoutPage = () => {
                                   <p className="font-medium truncate">
                                     {r.service}
                                   </p>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {r.service === "Express Shipping" ? "Estimated delivery: 1–3 business days" : "Estimated delivery: 3–7 business days"}
-                                  </p>
-                                  <p className="text-[11px] text-muted-foreground">Est. arrival {windowFor(vendorId, r.service)} (not guaranteed)</p>
                                 </div>
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
                               </label>
