@@ -91,3 +91,18 @@ recompute server-side fingerprints and atomically consume each verified quote.
 Variant-specific customs, customs declaration/label purchasing, delivery
 restrictions, tax treatment and explicit DAP acknowledgement remain blockers.
 Keep the international payment gate disabled.
+
+### Atomic quote claim (draft, not applied)
+`docs/international/migrations-draft/002_atomic_quote_claim.sql` adds a
+service-role-only transactional function to claim all selected vendor quotes
+together. It locks quote rows, checks shopper, destination, cart/address/parcel
+fingerprints, expiry, provider verification, duplicate vendors, DAP consent and
+prior consumption. Any failure rolls back the entire claim.
+
+**Critical integration requirement:** trusted order creation must authenticate
+the caller, independently compute the exact vendor list, parcel fingerprints,
+cart, destination and final total, verify that the order belongs to the shopper,
+and call the claim in the *same database transaction as order creation*. Never
+accept the RPC parameters or the returned amount as a standalone payment
+authorization. Review SQL privileges, concurrency, rounding and cancellation
+semantics before applying. Current application does not call this function.
