@@ -9,7 +9,7 @@ import {
   QUOTE_TTL_MINUTES, toISO, validateWarehouse,
 } from "../_shared/shipping.ts";
 import {
-  checkInternationalEligibility, prepareShippoDapQuoteRows, type VendorParcel,
+  checkInternationalEligibility, prepareShippoDapQuoteRows, verifiedShippoShipmentRates, type VendorParcel,
 } from "../_shared/international.ts";
 
 const cors = {
@@ -129,13 +129,9 @@ Deno.serve(async (req) => {
       });
       if (!shipmentResponse.ok) return reply({ error: "Carrier quote unavailable", vendor_id: vendorId }, 503);
       const shipment = await shipmentResponse.json();
-      if (!shipment || typeof shipment.object_id !== "string" || !shipment.object_id ||
-          !Array.isArray(shipment.rates) || shipment.rates.some((rate: unknown) =>
-            !rate || typeof rate !== "object" ||
-            (rate as Record<string, unknown>).shipment !== shipment.object_id)) {
-        return reply({ error: "Carrier shipment response could not be verified", vendor_id: vendorId }, 503);
-      }
-      const rows = prepareShippoDapQuoteRows(shipment.rates ?? [], fx as Record<string, number>, {
+      const verifiedRates = verifiedShippoShipmentRates(shipment);
+      if (!verifiedRates) return reply({ error: "Carrier shipment response could not be verified", vendor_id: vendorId }, 503);
+      const rows = prepareShippoDapQuoteRows(verifiedRates, fx as Record<string, number>, {
         userId: user.id, vendorId, originCountry: origin, destinationCountry: destination,
         addressFingerprint: addrFp, itemsFingerprint: cartFp,
         parcelFingerprint: parcelFp, parcel: p, expiresAt,
