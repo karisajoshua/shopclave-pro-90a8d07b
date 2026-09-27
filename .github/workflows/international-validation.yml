@@ -1,0 +1,26 @@
+name: International quote validation
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/_shared/international.ts'
+      - 'src/test/international.test.ts'
+      - 'src/test/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/international-validation.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run src/test/international.test.ts
+      - run: npm test
+      - run: npx tsc --noEmit -p tsconfig.app.json
