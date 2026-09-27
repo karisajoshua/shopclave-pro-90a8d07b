@@ -4,6 +4,10 @@ on:
     paths:
       - 'src/pages/VendorRegisterPage.tsx'
       - 'src/components/vendor/SellerKycUpload.tsx'
+      - 'src/components/vendor/SellerAgreements.tsx'
+      - 'src/components/admin/AdminSellerDocuments.tsx'
+      - 'src/pages/admin/AdminSellerApplications.tsx'
+      - 'supabase/functions/seller-review-document/**'
       - 'src/test/seller-onboarding-sql.test.ts'
       - 'docs/seller-onboarding/**'
       - 'supabase/functions/seller-stripe-connect/**'
@@ -27,3 +31,4 @@ jobs:
           deno-version: v2.x
       - run: deno check supabase/functions/seller-stripe-connect/index.ts
       - run: deno check supabase/functions/seller-stripe-webhook/index.ts
+      - run: deno check supabase/functions/seller-review-document/index.ts
