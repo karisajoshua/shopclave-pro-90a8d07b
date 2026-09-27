@@ -79,8 +79,11 @@ const AdminDashboard = () => {
     [allOrderItems, cutoffDate],
   );
 
-  const totalRevenue = filteredOrders.reduce((s: number, o: any) => s + Number(o.total), 0);
-  const totalCommission = filteredItems.reduce((s: number, i: any) => s + Number(i.commission_amount), 0);
+  const paidOrders = filteredOrders.filter((o: any) => o.payment_status === "paid");
+  const paidOrderIds = new Set(paidOrders.map((o: any) => o.id));
+  const paidItems = filteredItems.filter((i: any) => paidOrderIds.has(i.order_id));
+  const totalRevenue = paidOrders.reduce((s: number, o: any) => s + Number(o.total || 0), 0);
+  const totalCommission = paidItems.reduce((s: number, i: any) => s + Number(i.commission_amount || 0), 0);
   const totalPayouts = withdrawals?.reduce((s: number, w: any) => s + Number(w.amount), 0) || 0;
 
   // Today vs yesterday delta for revenue & orders
@@ -90,8 +93,8 @@ const AdminDashboard = () => {
     let tR = 0, yR = 0, tO = 0, yO = 0;
     (allOrders || []).forEach((o: any) => {
       const d = new Date(o.created_at);
-      if (d >= startToday) { tR += Number(o.total); tO += 1; }
-      else if (d >= startYday && d < startToday) { yR += Number(o.total); yO += 1; }
+      if (d >= startToday) { if (o.payment_status === "paid") tR += Number(o.total || 0); tO += 1; }
+      else if (d >= startYday && d < startToday) { if (o.payment_status === "paid") yR += Number(o.total || 0); yO += 1; }
     });
     return { todayRevenue: tR, yesterdayRevenue: yR, todayOrders: tO, yesterdayOrders: yO };
   }, [allOrders]);
@@ -106,17 +109,17 @@ const AdminDashboard = () => {
   const chartData = useMemo(() => {
     const buckets: Record<string, number> = {};
     const fmt = timeFrame === "24h" ? "HH:00" : timeFrame === "12m" ? "MMM yyyy" : "MMM dd";
-    filteredOrders.forEach((o: any) => {
+    paidOrders.forEach((o: any) => {
       const key = format(new Date(o.created_at), fmt);
       buckets[key] = (buckets[key] || 0) + Number(o.total);
     });
     return Object.entries(buckets).map(([name, revenue]) => ({ name, revenue }));
-  }, [filteredOrders, timeFrame]);
+  }, [paidOrders, timeFrame]);
 
   // Top vendors
   const topVendors = useMemo(() => {
     const map: Record<string, { name: string; sales: number; commission: number; orders: number }> = {};
-    filteredItems.forEach((i: any) => {
+    paidItems.forEach((i: any) => {
       const vid = i.vendor_id;
       if (!vid) return;
       if (!map[vid]) map[vid] = { name: (i.vendors as any)?.store_name || "Unknown", sales: 0, commission: 0, orders: 0 };
@@ -125,7 +128,7 @@ const AdminDashboard = () => {
       map[vid].orders += 1;
     });
     return Object.values(map).sort((a, b) => b.sales - a.sales).slice(0, 10);
-  }, [filteredItems]);
+  }, [paidItems]);
 
   // Top products
   const topProducts = useMemo(() => {
