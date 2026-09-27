@@ -58,4 +58,13 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("d.verification_status='verified'");
   expect(s).toContain("previous_kyc");
  });
+ it("only registers actual private owner uploads required by country rules", () => {
+  const s=sql("012_register_private_kyc_upload.sql");
+  expect(s).toContain("auth.uid()");
+  expect(s).toContain("r.required_documents");
+  expect(s).toContain("storage.objects");
+  expect(s).toContain("seller-kyc-private");
+  expect(s).toContain("'pending'");
+  expect(s).not.toContain("'verified')");
+ });
 });
