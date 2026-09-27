@@ -17,6 +17,20 @@ export interface ShippoCarrierRate {
   provider?: unknown;
   servicelevel?: { name?: unknown } | null;
 }
+/** Reject rates not belonging to the exact newly created Shippo shipment.
+ * Never treat a rate returned by a different shipment as an authorized quote.
+ */
+export function verifiedShippoShipmentRates(response: unknown): ShippoCarrierRate[] | null {
+  if (!response || typeof response !== "object") return null;
+  const shipment = response as Record<string, unknown>;
+  if (typeof shipment.object_id !== "string" || !shipment.object_id ||
+      !Array.isArray(shipment.rates)) return null;
+  if (!shipment.rates.every((rate: unknown) =>
+    rate !== null && typeof rate === "object" &&
+    (rate as Record<string, unknown>).shipment === shipment.object_id)) return null;
+  return shipment.rates as ShippoCarrierRate[];
+}
+
 export function normalizeShippoInternationalRates(
   rates: ShippoCarrierRate[],
   fxPerCad: Record<string, number>,
