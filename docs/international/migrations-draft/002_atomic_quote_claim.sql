@@ -47,6 +47,13 @@ BEGIN
     RAISE EXCEPTION 'Vendor and quote counts differ';
   END IF;
 
+  -- Every provided vendor must have a nonempty fingerprint. Reject unrelated
+  -- vendor keys as well as missing quote IDs before any quote is consumed.
+  IF EXISTS (
+    SELECT 1 FROM jsonb_each_text(p_vendor_parcels) AS e(vendor_id, fingerprint)
+    WHERE NULLIF(e.fingerprint, '') IS NULL
+  ) THEN RAISE EXCEPTION 'Missing vendor parcel fingerprint'; END IF;
+
   -- Sorted row locking makes concurrent attempts deterministic.
   FOR q IN
     SELECT * FROM public.international_quotes
