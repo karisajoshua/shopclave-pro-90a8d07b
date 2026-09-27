@@ -40,6 +40,10 @@ Deno.serve(async (req) => {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return reply({ error: "Invalid input" }, 400);
     const { items, shipping_address: address } = parsed.data;
+    // Fail closed on duplicate product/variant lines until canonical cart merging is implemented.
+    const itemKeys = items.map((i) => `${i.product_id}:${i.variant_id ?? ""}`);
+    if (new Set(itemKeys).size !== itemKeys.length)
+      return reply({ error: "Duplicate cart lines are not supported" }, 422);
     // Variant-specific parcel/customs data must be resolved before enabling variants.
     if (items.some((i) => i.variant_id)) return reply({ error: "Variant customs data is not yet supported" }, 422);
     const destination = toISO(address.country);
@@ -125,6 +129,12 @@ Deno.serve(async (req) => {
       });
       if (!shipmentResponse.ok) return reply({ error: "Carrier quote unavailable", vendor_id: vendorId }, 503);
       const shipment = await shipmentResponse.json();
+      if (!shipment || typeof shipment.object_id !== "string" || !shipment.object_id ||
+          !Array.isArray(shipment.rates) || shipment.rates.some((rate: unknown) =>
+            !rate || typeof rate !== "object" ||
+            (rate as Record<string, unknown>).shipment !== shipment.object_id)) {
+        return reply({ error: "Carrier shipment response could not be verified", vendor_id: vendorId }, 503);
+      }
       const rows = prepareShippoDapQuoteRows(shipment.rates ?? [], fx as Record<string, number>, {
         userId: user.id, vendorId, originCountry: origin, destinationCountry: destination,
         addressFingerprint: addrFp, itemsFingerprint: cartFp,
