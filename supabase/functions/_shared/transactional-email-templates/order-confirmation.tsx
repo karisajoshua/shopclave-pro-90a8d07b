@@ -40,6 +40,9 @@ interface OrderConfirmationProps {
   items?: OrderItem[]
   subtotal?: number
   deliveryFee?: number
+  tax?: number
+  taxProvince?: string | null
+  taxComponents?: Array<{ component: string; ratePercent: number; amount: number }>
   total?: number
   shippingAddress?: ShippingAddress
   paymentMethodLabel?: string
