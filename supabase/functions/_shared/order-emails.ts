@@ -23,7 +23,7 @@ export async function sendOrderEmails(
 ): Promise<void> {
   const { data: order } = await admin
     .from("orders")
-    .select("id,user_id,created_at,currency,total,shipping_total,payment_method,payment_status,payment_provider,charged_amount,charged_currency,shipping_address")
+    .select("id,user_id,created_at,currency,total,shipping_total,tax_amount,tax_province,tax_breakdown,payment_method,payment_status,payment_provider,charged_amount,charged_currency,shipping_address")
     .eq("id", orderId)
     .maybeSingle();
   if (!order) return;
