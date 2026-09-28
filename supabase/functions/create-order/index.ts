@@ -7,6 +7,8 @@ import {
   validateQuotes,
   round2,
 } from "../_shared/shipping.ts";
+import { calculateTax, type TaxCategory } from "../_shared/tax.ts";
+import { loadTaxConfig, taxErrorMessage, TAX_ENGINE_VERSION } from "../_shared/taxConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
