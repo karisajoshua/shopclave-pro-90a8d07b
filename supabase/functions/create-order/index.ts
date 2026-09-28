@@ -81,6 +81,15 @@ Deno.serve(async (req) => {
 
     const { items, shipping_address, payment_method, shipping_quote_ids } = parsed.data;
 
+    // International checkout remains disabled until the separate, atomic
+    // international order and quote-consumption path has passed review.
+    if (!["CA", "CANADA"].includes(shipping_address.country.trim().toUpperCase())) {
+      return new Response(JSON.stringify({
+        error: "International checkout is not yet enabled. No payment has been initiated.",
+      }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+
 
     // Use service role client for trusted operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
