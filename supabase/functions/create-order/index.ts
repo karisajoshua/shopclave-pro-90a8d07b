@@ -316,7 +316,8 @@ Deno.serve(async (req) => {
     // in public.shipments.
     const quoteByVendor = new Map(quotes.map((q) => [q.vendor_id, q]));
     const usedVendor = new Set<string>();
-    const itemsToInsert = orderItems.map((oi) => {
+    const itemsToInsert = orderItems.map((oi, index) => {
+      const lineTax = taxResult.lines[index];
       const q = quoteByVendor.get(oi.vendor_id);
       const base: any = { ...oi, order_id: order.id };
       if (q && !usedVendor.has(oi.vendor_id)) {
