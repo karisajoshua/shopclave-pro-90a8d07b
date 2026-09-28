@@ -35,8 +35,12 @@ describe("checkout review step", () => {
     expect(src).toMatch(/"address" \| "delivery" \| "review" \| "payment"/);
     expect(src).toContain('setActiveStep("review")');
   });
-  it("never labels a tax-inclusive final total", () => {
-    expect(src).not.toMatch(/Total \(incl/i);
-    expect(src).toContain("Total before applicable taxes");
+  it("shows a server-calculated tax total and blocks payment until it is available", () => {
+    expect(src).toContain("Order total (incl. taxes)");
+    expect(src).toContain('supabase.functions\n      .invoke("tax-quote"');
+    expect(src).toMatch(/disabled=\{taxLoading \|\| !taxQuote\?\.ok\}/);
+  });
+  it("never computes tax in the browser", () => {
+    expect(src).not.toMatch(/0\.13|0\.05|ratePpm/);
   });
 });
