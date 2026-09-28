@@ -1,6 +1,6 @@
 # Barakaz Tax Activation Checklist
 
-Status: **NOT ACTIVE.** Engine at `supabase/functions/_shared/tax.ts` is code-only; checkout, create-order and Stripe are unchanged. Draft SQL in `docs/tax/migrations-draft/` is not applied.
+Status: **ACTIVE for GST/HST (test mode).** Migration `0013_canadian_tax_foundation` is applied; rates seeded for all 13 provinces/territories; `tax_registrations` holds GST and HST effective 2026-09-25 (registration_number still NULL — add the CRA number before live). `create-order` computes tax server-side and fails closed, writes `orders.tax_amount/tax_province/tax_breakdown` plus an immutable `order_tax_snapshots` row; `stripe-initialize` adds tax as its own Stripe line item; `tax-quote` powers the read-only checkout review preview. BC/QC/MB/SK remain blocked (no provincial registration) — checkout returns a fail-closed message there. Live card payments stay gated behind `STRIPE_LIVE_CHECKOUT_ENABLED`.
 
 Policy decision: Barakaz collects and remits tax as the marketplace operator for all marketplace orders.
 

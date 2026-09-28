@@ -7,6 +7,8 @@ import {
   validateQuotes,
   round2,
 } from "../_shared/shipping.ts";
+import { calculateTax, type TaxCategory } from "../_shared/tax.ts";
+import { loadTaxConfig, taxErrorMessage, TAX_ENGINE_VERSION } from "../_shared/taxConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
     const productIds = items.map((i) => i.product_id);
     const { data: products, error: prodError } = await adminClient
       .from("products")
-      .select("id, price, vendor_id, stock, status, name, is_physical")
+      .select("id, price, vendor_id, stock, status, name, is_physical, tax_category")
       .in("id", productIds);
 
     if (prodError || !products) {
@@ -258,13 +260,41 @@ Deno.serve(async (req) => {
       shippingTotal = check.totalCad;
     }
 
+    // ---- Canadian sales tax: server-authoritative, fails closed ----
+    const taxPoint = new Date().toISOString().slice(0, 10);
+    const taxRequest = {
+      province: shipping_address.state || "",
+      country: shipping_address.country,
+      date: taxPoint,
+      lines: orderItems.map((oi, index) => ({
+        id: String(index),
+        amountCents: Math.round(oi.price * oi.quantity * 100),
+        category: ((productMap.get(oi.product_id) as any)?.tax_category ?? "unknown") as TaxCategory,
+      })),
+      shippingCents: Math.round(shippingTotal * 100),
+    };
+    const taxConfig = await loadTaxConfig(adminClient);
+    const taxResult = calculateTax(taxRequest, taxConfig);
+    if (!taxResult.ok) {
+      console.error(`create-order tax rejected: ${taxResult.reason}`);
+      return new Response(JSON.stringify({ error: taxErrorMessage(taxResult.reason) }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const taxTotal = round2(taxResult.totalTaxCents / 100);
+
     // Insert order
     const { data: order, error: orderError } = await adminClient
       .from("orders")
       .insert({
         user_id: user.id,
-        total: round2(total + shippingTotal),
+        total: round2(total + shippingTotal + taxTotal),
         shipping_total: shippingTotal,
+        tax_amount: taxTotal,
+        tax_province: taxResult.province,
+        tax_breakdown: { components: taxResult.components, shipping: taxResult.shipping },
+        tax_engine_version: TAX_ENGINE_VERSION,
         shipping_address,
         payment_method,
         currency: "CAD",
@@ -286,9 +316,16 @@ Deno.serve(async (req) => {
     // in public.shipments.
     const quoteByVendor = new Map(quotes.map((q) => [q.vendor_id, q]));
     const usedVendor = new Set<string>();
-    const itemsToInsert = orderItems.map((oi) => {
+    const itemsToInsert = orderItems.map((oi, index) => {
+      const lineTax = taxResult.lines[index];
       const q = quoteByVendor.get(oi.vendor_id);
-      const base: any = { ...oi, order_id: order.id };
+      const base: any = {
+        ...oi,
+        order_id: order.id,
+        tax_category: lineTax?.category ?? null,
+        tax_amount: lineTax ? round2(lineTax.taxCents / 100) : null,
+        tax_breakdown: lineTax ? { components: lineTax.components } : null,
+      };
       if (q && !usedVendor.has(oi.vendor_id)) {
         base.shipping_rate_id = q.rate_id;
         base.shipping_amount = Number(q.amount_cad);
@@ -308,6 +345,17 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Immutable audit snapshot of the exact tax calculation (CRA evidence).
+    const { error: snapshotErr } = await adminClient.from("order_tax_snapshots").insert({
+      order_id: order.id,
+      tax_point: taxPoint,
+      province: taxResult.province,
+      request: taxRequest,
+      result: taxResult,
+      engine_version: TAX_ENGINE_VERSION,
+    });
+    if (snapshotErr) console.error(`[order ${order.id}] tax snapshot failed:`, snapshotErr);
 
     // One fulfilment/shipment per vendor, with its own items.
     if (quotes.length > 0) {

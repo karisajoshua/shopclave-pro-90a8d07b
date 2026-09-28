@@ -92,6 +92,13 @@
       "when": 1790550712030,
       "tag": "0012_protect_existing_vendor_on_seller_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790596284976,
+      "tag": "0013_canadian_tax_foundation",
+      "breakpoints": true
     }
   ]
 }

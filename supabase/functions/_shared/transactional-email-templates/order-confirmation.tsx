@@ -40,6 +40,9 @@ interface OrderConfirmationProps {
   items?: OrderItem[]
   subtotal?: number
   deliveryFee?: number
+  tax?: number
+  taxProvince?: string | null
+  taxComponents?: Array<{ component: string; ratePercent: number; amount: number }>
   total?: number
   shippingAddress?: ShippingAddress
   paymentMethodLabel?: string
@@ -66,6 +69,8 @@ const OrderConfirmationEmail = ({
   items = [],
   subtotal = 0,
   deliveryFee = 0,
+  tax = 0,
+  taxComponents = [],
   total = 0,
   shippingAddress,
   paymentMethodLabel = 'Pay on Delivery',
@@ -150,6 +155,16 @@ const OrderConfirmationEmail = ({
           <Section style={totalsBox}>
             <SumRow style={totalRow} label={<>Subtotal</>} value={money(subtotal)} />
             <SumRow style={totalRow} label={<>Delivery</>} value={money(deliveryFee)} />
+            {taxComponents.length > 0
+              ? taxComponents.map((c) => (
+                  <SumRow
+                    key={c.component}
+                    style={totalRow}
+                    label={<>{c.component} ({c.ratePercent}%)</>}
+                    value={money(c.amount)}
+                  />
+                ))
+              : tax > 0 && <SumRow style={totalRow} label={<>Sales tax</>} value={money(tax)} />}
             <Hr style={hr} />
             <SumRow style={grandTotalRow} label={<>Total</>} value={money(total)} />
           </Section>

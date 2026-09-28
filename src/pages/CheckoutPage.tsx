@@ -242,11 +242,19 @@ const CheckoutPage = () => {
   const [selectedRates, setSelectedRates] = useState<Record<string, any>>({});
   const [ratesLoading, setRatesLoading] = useState(false);
 
+  // Server-calculated Canadian sales tax (never computed in the browser).
+  type TaxQuote =
+    | { ok: true; province: string; total_tax_cad: number; components: Array<{ component: string; rate_percent: number; tax_cad: number }> }
+    | { ok: false; message: string };
+  const [taxQuote, setTaxQuote] = useState<TaxQuote | null>(null);
+  const [taxLoading, setTaxLoading] = useState(false);
+
   const shippingTotal = Object.values(selectedRates).reduce(
     (s: number, r: any) => s + Number(r?.amount_cad || 0),
     0
   );
-  const grandTotal = totalPrice + shippingTotal;
+  const taxTotal = taxQuote?.ok ? Number(taxQuote.total_tax_cad) : 0;
+  const grandTotal = totalPrice + shippingTotal + taxTotal;
 
   const etaLabel = (days: number | null | undefined) => {
     if (!days || days <= 0) return "Carrier ETA unavailable";
@@ -259,6 +267,38 @@ const CheckoutPage = () => {
   const deliveryEnd = new Date();
   deliveryEnd.setDate(deliveryEnd.getDate() + 7);
   const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { day: "2-digit", month: "short" });
+
+  // Ask the server for the sales tax owed on this cart when the review step opens.
+  const quoteIdSignature = Object.values(selectedRates).map((r: any) => r?.quote_id).filter(Boolean).join(",");
+  useEffect(() => {
+    if (activeStep !== "review" || !deliveryConfirmed || items.length === 0) return;
+    let cancelled = false;
+    setTaxLoading(true);
+    supabase.functions
+      .invoke("tax-quote", {
+        body: {
+          province: address.state,
+          country: address.country,
+          items: items.map((it) => ({
+            product_id: it.productId,
+            quantity: it.quantity,
+            variant_id: it.variantId || null,
+          })),
+          shipping_quote_ids: Object.values(selectedRates).map((r: any) => r.quote_id).filter(Boolean),
+        },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) {
+          setTaxQuote({ ok: false, message: "We couldn't calculate sales tax right now. Please try again." });
+          return;
+        }
+        setTaxQuote(data as TaxQuote);
+      })
+      .finally(() => { if (!cancelled) setTaxLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep, deliveryConfirmed, address.state, address.country, quoteIdSignature, items.length]);
 
   // Fetch live shipping rates when entering delivery step
   useEffect(() => {
@@ -889,16 +929,36 @@ const CheckoutPage = () => {
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between gap-4"><span className="text-muted-foreground">Items</span><span className="font-medium tabular-nums">{formatPrice(totalPrice)}</span></div>
                         <div className="flex justify-between gap-4"><span className="text-muted-foreground">Delivery</span><span className="font-medium tabular-nums">{formatPrice(shippingTotal)}</span></div>
-                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="text-right text-muted-foreground">Not yet calculated</span></div>
+                        {taxLoading && (
+                          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="text-right text-muted-foreground">Calculating…</span></div>
+                        )}
+                        {!taxLoading && taxQuote?.ok && taxQuote.components.map((c) => (
+                          <div key={c.component} className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">{c.component} ({c.rate_percent}%)</span>
+                            <span className="font-medium tabular-nums">{formatPrice(c.tax_cad)}</span>
+                          </div>
+                        ))}
+                        {!taxLoading && taxQuote?.ok && taxQuote.components.length === 0 && (
+                          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="font-medium tabular-nums">{formatPrice(0)}</span></div>
+                        )}
                       </div>
+                      {!taxLoading && taxQuote && !taxQuote.ok && (
+                        <div className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs leading-5 text-foreground">
+                          {(taxQuote as { ok: false; message: string }).message}
+                        </div>
+                      )}
                       <Separator className="my-4" />
                       <div className="flex items-start justify-between gap-4">
-                        <span className="max-w-[180px] font-semibold leading-5">Total before applicable taxes</span>
+                        <span className="max-w-[180px] font-semibold leading-5">Order total (incl. taxes)</span>
                         <span className="text-lg font-bold tabular-nums">{formatPrice(grandTotal)}</span>
                       </div>
                       <p className="mt-3 text-xs leading-5 text-muted-foreground">Prices are in CAD. Delivery dates are estimates and are not guaranteed.</p>
-                      <Button className="mt-5 h-12 w-full font-semibold" onClick={() => setActiveStep("payment")}>
-                        Continue to secure payment
+                      <Button
+                        className="mt-5 h-12 w-full font-semibold"
+                        disabled={taxLoading || !taxQuote?.ok}
+                        onClick={() => setActiveStep("payment")}
+                      >
+                        {taxLoading ? "Calculating taxes…" : "Continue to secure payment"}
                       </Button>
                     </aside>
                   </div>
@@ -995,13 +1055,19 @@ const CheckoutPage = () => {
                         : addressConfirmed ? "—" : "Enter address"}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Taxes</span>
+                  <span className="font-medium">
+                    {taxLoading ? "Calculating…" : taxQuote?.ok ? formatPrice(taxTotal) : "Calculated at review"}
+                  </span>
+                </div>
               </div>
 
               <Separator />
 
               
               <div className="flex justify-between items-center">
-                <span className="font-semibold">Total before applicable taxes</span>
+                <span className="font-semibold">{taxQuote?.ok ? "Order total (incl. taxes)" : "Order total"}</span>
                 <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
               </div>
 
