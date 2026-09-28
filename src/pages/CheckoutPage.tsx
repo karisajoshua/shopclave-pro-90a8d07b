@@ -770,7 +770,9 @@ const CheckoutPage = () => {
                                   <p className="font-medium truncate">
                                     {r.service}
                                   </p>
+                                  <p className="text-[11px] text-muted-foreground">Est. arrival {windowFor(vendorId, r.service)}</p>
                                 </div>
+
                                 <p className="font-semibold">{formatPrice(r.amount_cad)}</p>
                               </label>
                             ))}
