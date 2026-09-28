@@ -619,6 +619,9 @@ export type Database = {
           status: string
           stripe_destination_account: string | null
           stripe_transfer_id: string | null
+          tax_amount: number | null
+          tax_breakdown: Json | null
+          tax_category: string | null
           tracking_number: string | null
           variant_id: string | null
           variant_options: Json | null
@@ -647,6 +650,9 @@ export type Database = {
           status?: string
           stripe_destination_account?: string | null
           stripe_transfer_id?: string | null
+          tax_amount?: number | null
+          tax_breakdown?: Json | null
+          tax_category?: string | null
           tracking_number?: string | null
           variant_id?: string | null
           variant_options?: Json | null
@@ -675,6 +681,9 @@ export type Database = {
           status?: string
           stripe_destination_account?: string | null
           stripe_transfer_id?: string | null
+          tax_amount?: number | null
+          tax_breakdown?: Json | null
+          tax_category?: string | null
           tracking_number?: string | null
           variant_id?: string | null
           variant_options?: Json | null
@@ -719,6 +728,47 @@ export type Database = {
           },
         ]
       }
+      order_tax_snapshots: {
+        Row: {
+          created_at: string
+          engine_version: string
+          id: string
+          order_id: string
+          province: string
+          request: Json
+          result: Json
+          tax_point: string
+        }
+        Insert: {
+          created_at?: string
+          engine_version: string
+          id?: string
+          order_id: string
+          province: string
+          request: Json
+          result: Json
+          tax_point: string
+        }
+        Update: {
+          created_at?: string
+          engine_version?: string
+          id?: string
+          order_id?: string
+          province?: string
+          request?: Json
+          result?: Json
+          tax_point?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tax_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           charged_amount: number | null
@@ -735,6 +785,10 @@ export type Database = {
           status: string
           stripe_checkout_session_id: string | null
           stripe_payment_intent_id: string | null
+          tax_amount: number | null
+          tax_breakdown: Json | null
+          tax_engine_version: string | null
+          tax_province: string | null
           tax_total: number
           total: number
           updated_at: string
@@ -755,6 +809,10 @@ export type Database = {
           status?: string
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
+          tax_amount?: number | null
+          tax_breakdown?: Json | null
+          tax_engine_version?: string | null
+          tax_province?: string | null
           tax_total?: number
           total?: number
           updated_at?: string
@@ -775,6 +833,10 @@ export type Database = {
           status?: string
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
+          tax_amount?: number | null
+          tax_breakdown?: Json | null
+          tax_engine_version?: string | null
+          tax_province?: string | null
           tax_total?: number
           total?: number
           updated_at?: string
@@ -1017,6 +1079,7 @@ export type Database = {
           slug: string
           status: string
           stock: number
+          tax_category: string
           updated_at: string
           vendor_featured: boolean
           vendor_id: string
@@ -1049,6 +1112,7 @@ export type Database = {
           slug: string
           status?: string
           stock?: number
+          tax_category?: string
           updated_at?: string
           vendor_featured?: boolean
           vendor_id: string
@@ -1081,6 +1145,7 @@ export type Database = {
           slug?: string
           status?: string
           stock?: number
+          tax_category?: string
           updated_at?: string
           vendor_featured?: boolean
           vendor_id?: string
@@ -2317,6 +2382,69 @@ export type Database = {
         }
         Relationships: []
       }
+      tax_rates: {
+        Row: {
+          component: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          province: string
+          rate_ppm: number
+          shipping_taxable: boolean
+        }
+        Insert: {
+          component: string
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          province: string
+          rate_ppm: number
+          shipping_taxable?: boolean
+        }
+        Update: {
+          component?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          province?: string
+          rate_ppm?: number
+          shipping_taxable?: boolean
+        }
+        Relationships: []
+      }
+      tax_registrations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          key: string
+          registration_number: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          key: string
+          registration_number?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          key?: string
+          registration_number?: string | null
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           assigned_by: string | null
@@ -3116,6 +3244,16 @@ export type Database = {
       }
     }
     Views: {
+      tax_remittance_report: {
+        Row: {
+          base_cents: number | null
+          component: string | null
+          period: string | null
+          province: string | null
+          tax_cents: number | null
+        }
+        Relationships: []
+      }
       vendors_public: {
         Row: {
           banner_url: string | null
