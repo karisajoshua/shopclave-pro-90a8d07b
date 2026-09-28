@@ -260,13 +260,41 @@ Deno.serve(async (req) => {
       shippingTotal = check.totalCad;
     }
 
+    // ---- Canadian sales tax: server-authoritative, fails closed ----
+    const taxPoint = new Date().toISOString().slice(0, 10);
+    const taxRequest = {
+      province: shipping_address.state || "",
+      country: shipping_address.country,
+      date: taxPoint,
+      lines: orderItems.map((oi, index) => ({
+        id: String(index),
+        amountCents: Math.round(oi.price * oi.quantity * 100),
+        category: ((productMap.get(oi.product_id) as any)?.tax_category ?? "unknown") as TaxCategory,
+      })),
+      shippingCents: Math.round(shippingTotal * 100),
+    };
+    const taxConfig = await loadTaxConfig(adminClient);
+    const taxResult = calculateTax(taxRequest, taxConfig);
+    if (!taxResult.ok) {
+      console.error(`create-order tax rejected: ${taxResult.reason}`);
+      return new Response(JSON.stringify({ error: taxErrorMessage(taxResult.reason) }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const taxTotal = round2(taxResult.totalTaxCents / 100);
+
     // Insert order
     const { data: order, error: orderError } = await adminClient
       .from("orders")
       .insert({
         user_id: user.id,
-        total: round2(total + shippingTotal),
+        total: round2(total + shippingTotal + taxTotal),
         shipping_total: shippingTotal,
+        tax_amount: taxTotal,
+        tax_province: taxResult.province,
+        tax_breakdown: { components: taxResult.components, shipping: taxResult.shipping },
+        tax_engine_version: TAX_ENGINE_VERSION,
         shipping_address,
         payment_method,
         currency: "CAD",
