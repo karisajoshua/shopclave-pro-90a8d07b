@@ -69,6 +69,8 @@ const OrderConfirmationEmail = ({
   items = [],
   subtotal = 0,
   deliveryFee = 0,
+  tax = 0,
+  taxComponents = [],
   total = 0,
   shippingAddress,
   paymentMethodLabel = 'Pay on Delivery',
