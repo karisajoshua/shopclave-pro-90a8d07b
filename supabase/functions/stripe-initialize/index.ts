@@ -106,6 +106,13 @@ Deno.serve(async (req) => {
     params.set("line_items[0][price_data][product_data][name]", `Barakaz order ${order.id.slice(0, 8).toUpperCase()}`);
     params.set("line_items[0][price_data][unit_amount]", String(amount));
     params.set("line_items[0][quantity]", "1");
+    if (taxCents > 0) {
+      const label = order.tax_province ? `Sales tax (${order.tax_province})` : "Sales tax";
+      params.set("line_items[1][price_data][currency]", "cad");
+      params.set("line_items[1][price_data][product_data][name]", label);
+      params.set("line_items[1][price_data][unit_amount]", String(taxCents));
+      params.set("line_items[1][quantity]", "1");
+    }
 
     const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
