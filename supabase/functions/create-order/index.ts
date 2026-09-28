@@ -346,6 +346,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Immutable audit snapshot of the exact tax calculation (CRA evidence).
+    const { error: snapshotErr } = await adminClient.from("order_tax_snapshots").insert({
+      order_id: order.id,
+      tax_point: taxPoint,
+      province: taxResult.province,
+      request: taxRequest,
+      result: taxResult,
+      engine_version: TAX_ENGINE_VERSION,
+    });
+    if (snapshotErr) console.error(`[order ${order.id}] tax snapshot failed:`, snapshotErr);
+
     // One fulfilment/shipment per vendor, with its own items.
     if (quotes.length > 0) {
       const { data: shipments, error: shipErr } = await adminClient
