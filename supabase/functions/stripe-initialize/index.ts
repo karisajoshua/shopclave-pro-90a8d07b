@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: order } = await admin.from("orders")
-      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id")
+      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id,tax_amount,tax_province")
       .eq("id", parsed.data.order_id).maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
     if (order.user_id !== user.id) return json({ error: "Forbidden" }, 403);
