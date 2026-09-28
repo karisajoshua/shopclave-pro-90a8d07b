@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     const productIds = items.map((i) => i.product_id);
     const { data: products, error: prodError } = await adminClient
       .from("products")
-      .select("id, price, vendor_id, stock, status, name, is_physical")
+      .select("id, price, vendor_id, stock, status, name, is_physical, tax_category")
       .in("id", productIds);
 
     if (prodError || !products) {
