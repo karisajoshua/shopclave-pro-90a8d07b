@@ -1055,13 +1055,19 @@ const CheckoutPage = () => {
                         : addressConfirmed ? "—" : "Enter address"}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Taxes</span>
+                  <span className="font-medium">
+                    {taxLoading ? "Calculating…" : taxQuote?.ok ? formatPrice(taxTotal) : "Calculated at review"}
+                  </span>
+                </div>
               </div>
 
               <Separator />
 
               
               <div className="flex justify-between items-center">
-                <span className="font-semibold">Total before applicable taxes</span>
+                <span className="font-semibold">{taxQuote?.ok ? "Order total (incl. taxes)" : "Order total"}</span>
                 <span className="font-bold text-lg">{formatPrice(grandTotal)}</span>
               </div>
 
