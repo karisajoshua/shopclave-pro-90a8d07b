@@ -319,7 +319,13 @@ Deno.serve(async (req) => {
     const itemsToInsert = orderItems.map((oi, index) => {
       const lineTax = taxResult.lines[index];
       const q = quoteByVendor.get(oi.vendor_id);
-      const base: any = { ...oi, order_id: order.id };
+      const base: any = {
+        ...oi,
+        order_id: order.id,
+        tax_category: lineTax?.category ?? null,
+        tax_amount: lineTax ? round2(lineTax.taxCents / 100) : null,
+        tax_breakdown: lineTax ? { components: lineTax.components } : null,
+      };
       if (q && !usedVendor.has(oi.vendor_id)) {
         base.shipping_rate_id = q.rate_id;
         base.shipping_amount = Number(q.amount_cad);
