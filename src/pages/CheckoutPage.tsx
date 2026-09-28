@@ -268,6 +268,38 @@ const CheckoutPage = () => {
   deliveryEnd.setDate(deliveryEnd.getDate() + 7);
   const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { day: "2-digit", month: "short" });
 
+  // Ask the server for the sales tax owed on this cart when the review step opens.
+  const quoteIdSignature = Object.values(selectedRates).map((r: any) => r?.quote_id).filter(Boolean).join(",");
+  useEffect(() => {
+    if (activeStep !== "review" || !deliveryConfirmed || items.length === 0) return;
+    let cancelled = false;
+    setTaxLoading(true);
+    supabase.functions
+      .invoke("tax-quote", {
+        body: {
+          province: address.state,
+          country: address.country,
+          items: items.map((it) => ({
+            product_id: it.productId,
+            quantity: it.quantity,
+            variant_id: it.variantId || null,
+          })),
+          shipping_quote_ids: Object.values(selectedRates).map((r: any) => r.quote_id).filter(Boolean),
+        },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) {
+          setTaxQuote({ ok: false, message: "We couldn't calculate sales tax right now. Please try again." });
+          return;
+        }
+        setTaxQuote(data as TaxQuote);
+      })
+      .finally(() => { if (!cancelled) setTaxLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep, deliveryConfirmed, address.state, address.country, quoteIdSignature, items.length]);
+
   // Fetch live shipping rates when entering delivery step
   useEffect(() => {
     if (activeStep !== "delivery" || !addressConfirmed) return;
