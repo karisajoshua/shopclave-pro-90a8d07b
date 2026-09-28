@@ -60,14 +60,15 @@ Deno.serve(async (req) => {
     statusObj?.object_id ||
     `${trackingNumber ?? transactionId ?? "unknown"}-${statusObj?.status ?? ""}-${statusObj?.status_date ?? ""}`;
 
-  // Whole-delivery idempotency: a replayed webhook is acknowledged, not reprocessed.
-  const { error: dupErr } = await admin
+  // Do not claim an event as completed before shipment updates succeed.
+  const { data: existingEvent, error: lookupError } = await admin
     .from("webhook_events")
-    .insert({ provider: "shippo", event_key: eventKey, payload: event });
-  if (dupErr) {
-    if (dupErr.code === "23505") return json({ ok: true, duplicate: true });
-    console.error("webhook_events insert failed:", dupErr);
-  }
+    .select("event_key")
+    .eq("provider", "shippo")
+    .eq("event_key", eventKey)
+    .maybeSingle();
+  if (lookupError) return json({ error: "Event lookup failed; retry" }, 500);
+  if (existingEvent) return json({ ok: true, duplicate: true });
 
   // Resolve the shipment.
   let shipment: { id: string; order_id: string } | null = null;
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
     .join(", ");
 
   // Append history — never overwrite it.
-  await admin.from("tracking_events").insert({
+  const { error: historyError } = await admin.from("tracking_events").upsert({
     shipment_id: shipment.id,
     status: canonical,
     provider_status: statusObj?.status ?? null,
@@ -112,12 +113,14 @@ Deno.serve(async (req) => {
     occurred_at: occurredAt,
     provider_event_key: eventKey,
     raw: data ?? {},
-  });
+  }, { onConflict: "shipment_id,provider_event_key", ignoreDuplicates: true });
+  if (historyError) return json({ error: "Tracking history update failed; retry" }, 500);
 
   const patch: Record<string, unknown> = { status: canonical };
   if (data?.eta) patch.estimated_delivery = data.eta;
   if (canonical === "delivered") patch.delivered_at = occurredAt;
-  await admin.from("shipments").update(patch).eq("id", shipment.id);
+  const { error: shipmentError } = await admin.from("shipments").update(patch).eq("id", shipment.id);
+  if (shipmentError) return json({ error: "Shipment update failed; retry" }, 500);
 
   // Reflect delivery on the order lines for this vendor's fulfilment.
   if (canonical === "delivered" || canonical === "in_transit") {
@@ -127,12 +130,18 @@ Deno.serve(async (req) => {
       .eq("shipment_id", shipment.id);
     const ids = (si ?? []).map((r) => r.order_item_id);
     if (ids.length > 0) {
-      await admin
+      const { error: itemError } = await admin
         .from("order_items")
         .update({ status: canonical === "delivered" ? "delivered" : "shipped" })
         .in("id", ids);
+      if (itemError) return json({ error: "Order items update failed; retry" }, 500);
     }
   }
 
+  const { error: markError } = await admin.from("webhook_events").upsert(
+    { provider: "shippo", event_key: eventKey, payload: event },
+    { onConflict: "provider,event_key", ignoreDuplicates: true },
+  );
+  if (markError) return json({ error: "Event completion failed; retry" }, 500);
   return json({ ok: true, status: canonical });
 });
