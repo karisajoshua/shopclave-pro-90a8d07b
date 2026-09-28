@@ -242,11 +242,19 @@ const CheckoutPage = () => {
   const [selectedRates, setSelectedRates] = useState<Record<string, any>>({});
   const [ratesLoading, setRatesLoading] = useState(false);
 
+  // Server-calculated Canadian sales tax (never computed in the browser).
+  type TaxQuote =
+    | { ok: true; province: string; total_tax_cad: number; components: Array<{ component: string; rate_percent: number; tax_cad: number }> }
+    | { ok: false; message: string };
+  const [taxQuote, setTaxQuote] = useState<TaxQuote | null>(null);
+  const [taxLoading, setTaxLoading] = useState(false);
+
   const shippingTotal = Object.values(selectedRates).reduce(
     (s: number, r: any) => s + Number(r?.amount_cad || 0),
     0
   );
-  const grandTotal = totalPrice + shippingTotal;
+  const taxTotal = taxQuote?.ok ? Number(taxQuote.total_tax_cad) : 0;
+  const grandTotal = totalPrice + shippingTotal + taxTotal;
 
   const etaLabel = (days: number | null | undefined) => {
     if (!days || days <= 0) return "Carrier ETA unavailable";
