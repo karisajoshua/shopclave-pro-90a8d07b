@@ -929,16 +929,36 @@ const CheckoutPage = () => {
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between gap-4"><span className="text-muted-foreground">Items</span><span className="font-medium tabular-nums">{formatPrice(totalPrice)}</span></div>
                         <div className="flex justify-between gap-4"><span className="text-muted-foreground">Delivery</span><span className="font-medium tabular-nums">{formatPrice(shippingTotal)}</span></div>
-                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="text-right text-muted-foreground">Not yet calculated</span></div>
+                        {taxLoading && (
+                          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="text-right text-muted-foreground">Calculating…</span></div>
+                        )}
+                        {!taxLoading && taxQuote?.ok && taxQuote.components.map((c) => (
+                          <div key={c.component} className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">{c.component} ({c.rate_percent}%)</span>
+                            <span className="font-medium tabular-nums">{formatPrice(c.tax_cad)}</span>
+                          </div>
+                        ))}
+                        {!taxLoading && taxQuote?.ok && taxQuote.components.length === 0 && (
+                          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Taxes</span><span className="font-medium tabular-nums">{formatPrice(0)}</span></div>
+                        )}
                       </div>
+                      {!taxLoading && taxQuote && !taxQuote.ok && (
+                        <div className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs leading-5 text-foreground">
+                          {taxQuote.message}
+                        </div>
+                      )}
                       <Separator className="my-4" />
                       <div className="flex items-start justify-between gap-4">
-                        <span className="max-w-[180px] font-semibold leading-5">Total before applicable taxes</span>
+                        <span className="max-w-[180px] font-semibold leading-5">Order total (incl. taxes)</span>
                         <span className="text-lg font-bold tabular-nums">{formatPrice(grandTotal)}</span>
                       </div>
                       <p className="mt-3 text-xs leading-5 text-muted-foreground">Prices are in CAD. Delivery dates are estimates and are not guaranteed.</p>
-                      <Button className="mt-5 h-12 w-full font-semibold" onClick={() => setActiveStep("payment")}>
-                        Continue to secure payment
+                      <Button
+                        className="mt-5 h-12 w-full font-semibold"
+                        disabled={taxLoading || !taxQuote?.ok}
+                        onClick={() => setActiveStep("payment")}
+                      >
+                        {taxLoading ? "Calculating taxes…" : "Continue to secure payment"}
                       </Button>
                     </aside>
                   </div>
