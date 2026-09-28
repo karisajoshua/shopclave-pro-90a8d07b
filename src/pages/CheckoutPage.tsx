@@ -944,7 +944,7 @@ const CheckoutPage = () => {
                       </div>
                       {!taxLoading && taxQuote && !taxQuote.ok && (
                         <div className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs leading-5 text-foreground">
-                          {taxQuote.message}
+                          {(taxQuote as { ok: false; message: string }).message}
                         </div>
                       )}
                       <Separator className="my-4" />
