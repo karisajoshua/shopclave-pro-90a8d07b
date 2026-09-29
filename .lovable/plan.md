@@ -42,3 +42,16 @@ How the function behaves (verified from the code):
 
 ## Next step if approved
 Nothing is run automatically. After you send the harmless test event, I'll check the logs and the processed-events table read-only to confirm it arrived with livemode true.
+
+## 5. Seller onboarding return URL (read-only check, 00:45 UTC)
+
+**Recommended value:** `https://barakaz.com/vendor/register`
+
+- Live routing checked: `barakaz.com/vendor/register` returns 200. `www.barakaz.com` and `shopclave-pro.lovable.app` both redirect (302) to `https://barakaz.com/vendor/register`, so barakaz.com is the primary domain.
+- That address shows the new seller onboarding flow (the old signup page is no longer used). It is the same page that starts Stripe onboarding, and `seller-stripe-connect` uses the same URL for both return and refresh.
+- Return is partly handled: when the page loads, it reloads the saved application and payout-account status, so a seller who comes back sees their draft again. It does not read any return or refresh markers from the address, and it shows no "welcome back / verifying" message.
+- Refresh isn't handled on its own: if Stripe's link expires, the seller lands on the same page and has to click "Start secure payout onboarding" again to get a fresh link. That works, but it isn't automatic.
+- Payout status only updates when a signed Connect `account.updated` event reaches `seller-stripe-webhook`. The Connect webhook secret is now set, but that endpoint hasn't been verified with a real event.
+- Signed-out sellers get sent to sign in and then back to this page.
+
+**Setting it:** my tools can store this value as a backend secret without showing any existing secret (it's a fixed, non-sensitive URL). I haven't set it. Optional later improvement: add a `?stripe=return` / `?stripe=refresh` marker so the page can show a confirmation or open a fresh link automatically.
