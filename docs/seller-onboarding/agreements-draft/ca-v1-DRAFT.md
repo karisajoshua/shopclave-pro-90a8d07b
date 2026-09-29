@@ -1,6 +1,7 @@
 # Barakaz Canadian Seller Agreements — version ca-v1 — DRAFT
 
-**STATUS: UNREVIEWED DRAFT. NOT LEGAL ADVICE. NOT PUBLISHED. NOT APPROVED.**
+**STATUS: BUSINESS TERMS PARTIALLY OWNER-CONFIRMED; LEGAL DRAFT, NOT PUBLISHED.**
+Owner confirmed on 2026-09-29: retain the listed category commission rates (8–15%, 12% default) and the 7-day return window. All other [VERIFY] items remain unresolved. This confirmation is not legal review.
 Must be reviewed by a qualified Canadian lawyer before it is published in `seller_policy_documents`.
 Items marked **[VERIFY]** are unconfirmed facts or legal choices the owner/counsel must decide.
 Numbers marked **[FROM SETTINGS]** are copied from current production settings, read on 2026-09-29.
@@ -23,7 +24,7 @@ Support: support@barakaz.com [FROM SETTINGS].
 
 ## 2. commission_payout — Commission & Payout Terms
 
-1. **Commission by category** [FROM SETTINGS — VERIFY that these are the intended launch rates]:
+1. **Commission by category** [FROM SETTINGS — OWNER CONFIRMED 2026-09-29; calculation basis still requires verification]:
    Electronics 8%, Phones & Tablets 8%, Automotive 10%, Health & Beauty 12%, Home & Garden 12%, Sports & Fitness 12%, Books 15%, all other categories 12% (default).
 2. **Payment processing fee** [FROM SETTINGS — VERIFY who pays it]: 2.9% + CA$0.30 per order.
 3. **What commission is calculated on.** [VERIFY: item price only, or item price plus shipping; and whether tax is excluded (it should be)]
@@ -44,7 +45,7 @@ Support: support@barakaz.com [FROM SETTINGS].
 
 ## 4. returns_refunds — Returns & Refunds Policy
 
-1. **Return window:** 7 days after delivery [FROM the published buyer Return Policy page — VERIFY; also check consumer protection rules in Quebec and other provinces].
+1. **Return window:** 7 days after delivery [OWNER CONFIRMED 2026-09-29; subject to applicable mandatory consumer-protection rights and legal review, including Quebec].
 2. **Refund timing:** 5–10 business days after the return is received and inspected, to the original payment method [FROM the Return Policy page].
 3. **Who pays return shipping:** [VERIFY — the seller if the item is faulty or not as described; otherwise the buyer?]
 4. **Non-returnable items:** [VERIFY list, e.g. hygiene products, perishables]
