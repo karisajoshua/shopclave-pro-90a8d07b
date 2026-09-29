@@ -4,10 +4,12 @@ Nothing was changed. No secrets, database, code, settings or deployments were to
 
 ## 1. Has a real signed LIVE event from we_1UKohID9RzF0xESf1MnFnbNd passed validation?
 
-**No — not yet tested.**
-- Backend logs for `stripe-webhook`: only a boot entry (00:26 UTC today). There are no request records in the last 14 days.
-- Processed-events table: 2 Stripe events total, both **test mode** (livemode false), latest about 27 Sep 2026. **0 live events.**
-- Note: the function doesn't record the endpoint ID (we_...). The live signing secret has to match the one stored in the backend, and that can only be confirmed by a real delivery.
+**Yes — verified at 00:30:55 UTC, 29 Sep 2026.**
+- Processed-events row: event `evt_1UKowdD9RzF0xESfcOUNaDJJ`, type `customer.created`, **livemode true**, customer `cus_VLVyzfigd62jRl`.
+- A row is only written after the signature check passes and processing finishes, and the code then returns 200.
+- The function started up at 00:30:55. No errors were logged.
+- The HTTP status log came back empty, so our side doesn't directly show the 200. Stripe's delivery log for this event will show it.
+- No orders, labels or emails were affected. That event type is only recorded.
 
 ## 2. Safe test method (no orders, labels or emails)
 
