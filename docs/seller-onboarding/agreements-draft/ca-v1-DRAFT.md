@@ -6,7 +6,7 @@ Must be reviewed by a qualified Canadian lawyer before it is published in `selle
 Items marked **[VERIFY]** are unconfirmed facts or legal choices the owner/counsel must decide.
 Numbers marked **[FROM SETTINGS]** are copied from current production settings, read on 2026-09-29.
 
-Operator: **[VERIFY: full legal corporate name, "Inc.", registered office address, incorporation jurisdiction]**, operating as "Barakaz" (barakaz.com). GST/HST registration: 784144644RT0001.
+Operator: **Barakaz Inc**, incorporated in **Alberta, Canada** [OWNER CONFIRMED 2026-09-29]; registered office address **[VERIFY]**, operating as "Barakaz" (barakaz.com). GST/HST registration: 784144644RT0001.
 Support: support@barakaz.com [FROM SETTINGS].
 
 ---
@@ -96,7 +96,7 @@ Owner confirmed category commissions (8–15%, default 12%) and a seven-day volu
 - Shipping: Canadian domestic origins and destinations only; disclose actual delivery estimates and seller handling times. Fixed customer shipping fees require operational cost validation.
 
 ### Outstanding non-delegable facts and approvals
-1. Confirm Barakaz's exact registered legal entity, Canadian registered address, incorporation jurisdiction and governing law with counsel.
+1. Owner confirms legal entity **Barakaz Inc** and incorporation in **Alberta, Canada**. Confirm its registered office address and governing-law/dispute clauses with counsel.
 2. Confirm payment processing fee allocation, chargeback allocation, commission refund treatment and payout holds against actual Stripe integration.
 3. Confirm handling-time limits, return exclusions and notice/termination periods; have counsel prepare liability, indemnity, disputes and Quebec language/privacy provisions.
 4. Confirm tax registration and marketplace tax responsibility with a Canadian tax professional. Do not assert automatic GST/HST collection/remittance obligations without review.
