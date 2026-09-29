@@ -81,3 +81,25 @@ By accepting, the seller confirms that:
 - Replace every [VERIFY] item and get legal approval.
 - Host the final documents at stable URLs, for example barakaz.com/seller-policies/<code>.
 - Then ask for them to be published as rows in `seller_policy_documents` (policy_code, policy_version = `ca-v1`, title, document_url, published_at).
+
+
+## Launch finalization decisions — 2026-09-29
+
+Owner confirmed category commissions (8–15%, default 12%) and a seven-day voluntary return window. These decisions are merged into main. **No legal sign-off or publication is recorded.**
+
+### Proposed operational clauses requiring owner approval and legal review
+- Commission calculation: item subtotal excluding sales tax and shipping; verify actual code before adoption.
+- Return shipping: seller covers verified defective, incorrect or materially misdescribed goods; buyer covers voluntary change-of-mind returns where legally permitted. Mandatory consumer rights override voluntary restrictions.
+- Refund processing: communicate the existing stated 5–10 business day processing target, subject to payment-provider timing and any mandatory statutory deadlines.
+- Seller verification: require accurate identity and business registration information appropriate to business type; let Stripe collect its own regulated verification details; avoid unnecessary local storage of government ID images.
+- Payout timing: disclose the actual Stripe payout schedule and any platform reserve after checking the connected account configuration. Do not promise an unverified schedule.
+- Shipping: Canadian domestic origins and destinations only; disclose actual delivery estimates and seller handling times. Fixed customer shipping fees require operational cost validation.
+
+### Outstanding non-delegable facts and approvals
+1. Confirm Barakaz's exact registered legal entity, Canadian registered address, incorporation jurisdiction and governing law with counsel.
+2. Confirm payment processing fee allocation, chargeback allocation, commission refund treatment and payout holds against actual Stripe integration.
+3. Confirm handling-time limits, return exclusions and notice/termination periods; have counsel prepare liability, indemnity, disputes and Quebec language/privacy provisions.
+4. Confirm tax registration and marketplace tax responsibility with a Canadian tax professional. Do not assert automatic GST/HST collection/remittance obligations without review.
+5. After approved wording is published to stable HTTPS URLs, record exact policy versions and URLs in seller_policy_documents and test acceptance.
+
+Official background: https://ised-isde.canada.ca/site/office-consumer-affairs/en/business-practices-and-consumer-concerns/refund-and-exchange ; https://www.opc.gouv.qc.ca/en/consumer/topic/purchase/online-purchase/advice/ .
