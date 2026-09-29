@@ -16,6 +16,7 @@ import {
   round2,
   toISO,
   validateWarehouse,
+  isLaunchOrigin,
   type DefaultPackagePolicy,
 } from "../_shared/shipping.ts";
 
@@ -180,6 +181,14 @@ Deno.serve(async (req) => {
         continue;
       }
       const originISO = toISO(String(wh.country ?? ""));
+      // Canada-only launch: sellers must ship from a Canadian origin.
+      if (!isLaunchOrigin(wh.country as string)) {
+        pushBlocked(
+          "vendor_origin_not_canada",
+          `${storeName} ships from outside Canada. Barakaz currently only supports sellers shipping from Canada.`,
+        );
+        continue;
+      }
 
       // International eligibility
       if (originISO !== destISO) {
