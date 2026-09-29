@@ -26,15 +26,15 @@ How the function behaves (verified from the code):
 
 ## 3. Seller Connect functions
 
-- **seller-stripe-webhook** needs the secret `STRIPE_CONNECT_WEBHOOK_SECRET`. **It is missing**, so the function returns 503 "Not configured". It handles only the `account.updated` event: charges_enabled, payouts_enabled and details_submitted go to `record_seller_stripe_account_event`. Other events are ignored with 200. In Stripe, register it as a **Connect** endpoint ("Events on connected accounts") at `.../functions/v1/seller-stripe-webhook`, with its own signing secret.
-- **seller-stripe-connect** needs `STRIPE_SECRET_KEY`. Live keys also need `STRIPE_LIVE_CONNECT_ENABLED="true"`, which is not set, so it's blocked. It also needs `SELLER_ONBOARDING_RETURN_URL` (https), which is **missing**. On top of that, a reviewed `seller_country_requirements` row with `stripe_connect_enabled=true` must exist for the seller's country and business type.
+- **seller-stripe-webhook** needs the secret `STRIPE_CONNECT_WEBHOOK_SECRET`. **Now present** (verified 00:42 UTC, 29 Sep 2026 — 10 backend secrets in total). The secret's value was not read or shown. It handles only the `account.updated` event: charges_enabled, payouts_enabled and details_submitted go to `record_seller_stripe_account_event`. Other events are ignored with 200. In Stripe, register it as a **Connect** endpoint ("Events on connected accounts") at `.../functions/v1/seller-stripe-webhook`, with its own signing secret.
+- **seller-stripe-connect** needs `STRIPE_SECRET_KEY`. Live keys also need `STRIPE_LIVE_CONNECT_ENABLED="true"`, which is not set, so it's blocked. It also needs `SELLER_ONBOARDING_RETURN_URL` (https), which is **still missing** (re-verified 00:42 UTC). On top of that, a reviewed `seller_country_requirements` row with `stripe_connect_enabled=true` must exist for the seller's country and business type.
 
 ## 4. Remaining blockers before real live checkout
 
 1. `STRIPE_LIVE_CHECKOUT_ENABLED` is not set, so live charges stay blocked (by design until you approve).
-2. The live webhook signature hasn't been proven yet. Send the harmless test event above.
+2. Live webhook signature proven (customer.created, livemode true, 00:30:55 UTC 29 Sep 2026). Now re-subscribe the endpoint to the real order events (checkout.session.completed / async_payment_succeeded / async_payment_failed).
 3. The `STRIPE_SECRET_KEY` mode (test or live) must match the endpoint's mode. I did not reveal or check the prefix.
-4. Connect: `STRIPE_CONNECT_WEBHOOK_SECRET` and `SELLER_ONBOARDING_RETURN_URL` are missing, the live Connect flag is off, and seller country rules haven't been reviewed.
+4. Connect: `STRIPE_CONNECT_WEBHOOK_SECRET` is now set; `SELLER_ONBOARDING_RETURN_URL` is still missing, the live Connect flag is off, and seller country rules haven't been reviewed.
 5. No Shippo tracking webhook secret. After the first live paid order, labels will be bought for real, so sellers need real weights/dimensions and addresses.
 6. Stock reservations are not yet part of order creation, so overselling is possible.
 7. BC, QC, MB and SK are still blocked for tax. GST/HST collection starts 2026-09-25 (now in effect).
