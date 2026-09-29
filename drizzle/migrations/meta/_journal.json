@@ -113,6 +113,13 @@
       "when": 1790619498074,
       "tag": "0015_vendor_product_images_owner_select",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790643596857,
+      "tag": "0016_canada_only_seller_submission_guard",
+      "breakpoints": true
     }
   ]
 }
