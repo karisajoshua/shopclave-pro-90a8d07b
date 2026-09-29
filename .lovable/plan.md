@@ -26,8 +26,8 @@ How the function behaves (verified from the code):
 
 ## 3. Seller Connect functions
 
-- **seller-stripe-webhook** needs the secret `STRIPE_CONNECT_WEBHOOK_SECRET`. **It is missing**, so the function returns 503 "Not configured". It handles only the `account.updated` event: charges_enabled, payouts_enabled and details_submitted go to `record_seller_stripe_account_event`. Other events are ignored with 200. In Stripe, register it as a **Connect** endpoint ("Events on connected accounts") at `.../functions/v1/seller-stripe-webhook`, with its own signing secret.
-- **seller-stripe-connect** needs `STRIPE_SECRET_KEY`. Live keys also need `STRIPE_LIVE_CONNECT_ENABLED="true"`, which is not set, so it's blocked. It also needs `SELLER_ONBOARDING_RETURN_URL` (https), which is **missing**. On top of that, a reviewed `seller_country_requirements` row with `stripe_connect_enabled=true` must exist for the seller's country and business type.
+- **seller-stripe-webhook** needs the secret `STRIPE_CONNECT_WEBHOOK_SECRET`. **Now present** (verified 00:42 UTC, 29 Sep 2026 — 10 backend secrets in total). The secret's value was not read or shown. It handles only the `account.updated` event: charges_enabled, payouts_enabled and details_submitted go to `record_seller_stripe_account_event`. Other events are ignored with 200. In Stripe, register it as a **Connect** endpoint ("Events on connected accounts") at `.../functions/v1/seller-stripe-webhook`, with its own signing secret.
+- **seller-stripe-connect** needs `STRIPE_SECRET_KEY`. Live keys also need `STRIPE_LIVE_CONNECT_ENABLED="true"`, which is not set, so it's blocked. It also needs `SELLER_ONBOARDING_RETURN_URL` (https), which is **still missing** (re-verified 00:42 UTC). On top of that, a reviewed `seller_country_requirements` row with `stripe_connect_enabled=true` must exist for the seller's country and business type.
 
 ## 4. Remaining blockers before real live checkout
 
