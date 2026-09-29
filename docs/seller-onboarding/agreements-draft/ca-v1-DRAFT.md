@@ -1,0 +1,82 @@
+# Barakaz Canadian Seller Agreements — version ca-v1 — DRAFT
+
+**STATUS: UNREVIEWED DRAFT. NOT LEGAL ADVICE. NOT PUBLISHED. NOT APPROVED.**
+Must be reviewed by a qualified Canadian lawyer before it is published in `seller_policy_documents`.
+Items marked **[VERIFY]** are unconfirmed facts or legal choices the owner/counsel must decide.
+Numbers marked **[FROM SETTINGS]** are copied from current production settings, read on 2026-09-29.
+
+Operator: **[VERIFY: full legal corporate name, "Inc.", registered office address, incorporation jurisdiction]**, operating as "Barakaz" (barakaz.com). GST/HST registration: 784144644RT0001.
+Support: support@barakaz.com [FROM SETTINGS].
+
+---
+
+## 1. seller_terms — Barakaz Seller Terms & Conditions
+
+1. **Eligibility.** At launch, only sellers resident in or incorporated in Canada, shipping from a Canadian address, can sell. Seller types: individual, sole proprietor, company. [VERIFY: minimum age 18 / age of majority by province]
+2. **Account and verification.** Sellers submit accurate business, identity and payout information. Barakaz reviews every application; sellers can't list products until approved and until Stripe confirms their payout account. [VERIFY: which identity documents are required]
+3. **Barakaz's role.** Barakaz runs the marketplace, collects payment from buyers through Stripe, and collects and remits GST/HST as the marketplace operator. The seller is the seller of record of the goods. [VERIFY with counsel/accountant: marketplace-facilitator wording]
+4. **Listings.** Sellers must describe products accurately, including real price, condition, weight and package dimensions. Barakaz may remove listings that break its policies.
+5. **Suspension and termination.** Barakaz may suspend or close a seller account for policy breaches, fraud, or legal risk. Pending payouts may be held to cover refunds and chargebacks. [VERIFY: notice period, hold duration]
+6. **Liability, indemnity, governing law.** [VERIFY — counsel must draft: limitation of liability, indemnity, governing province (e.g. Ontario), dispute resolution]
+7. **Changes.** Barakaz may update these terms with notice; a new version needs to be accepted again. [VERIFY: notice period]
+8. **Privacy.** Seller data is handled under the Barakaz Privacy Policy and PIPEDA. [VERIFY: Quebec Law 25 obligations if sellers or buyers are in Quebec]
+
+## 2. commission_payout — Commission & Payout Terms
+
+1. **Commission by category** [FROM SETTINGS — VERIFY that these are the intended launch rates]:
+   Electronics 8%, Phones & Tablets 8%, Automotive 10%, Health & Beauty 12%, Home & Garden 12%, Sports & Fitness 12%, Books 15%, all other categories 12% (default).
+2. **Payment processing fee** [FROM SETTINGS — VERIFY who pays it]: 2.9% + CA$0.30 per order.
+3. **What commission is calculated on.** [VERIFY: item price only, or item price plus shipping; and whether tax is excluded (it should be)]
+4. **Currency.** Sales and payouts are in Canadian dollars (CAD).
+   Note: the platform setting `currency` still reads "KES" and `free_shipping_threshold` reads 5000. Both are legacy values, not used by CAD checkout. Correct them before launch. [VERIFY]
+5. **Payouts.** Paid through Stripe Connect Express to the seller's Canadian bank account, once Stripe marks payouts as enabled. [VERIFY: payout schedule, and any reserve or hold period after delivery]
+6. **Deductions.** Refunds, chargebacks and chargeback fees may be deducted from the seller's balance. [VERIFY: chargeback fee policy]
+7. **Taxes on commission.** GST/HST applies to Barakaz's commission if the seller is registered. [VERIFY with accountant]
+
+## 3. shipping_fulfillment — Shipping & Fulfilment Policy
+
+1. Sellers must ship from a Canadian address (street, city, province, postal code and phone are required). At launch, orders only go to Canadian addresses.
+2. Every product must have its real weight and package dimensions. Checkout blocks products that are missing them.
+3. **Handling time:** the seller's own stated handling time. [VERIFY: maximum allowed, e.g. 3 business days]
+4. **Labels:** when a carrier rate is available, Barakaz buys the label only after payment is confirmed. Otherwise the seller books shipping manually and must enter the carrier name and a tracking number or reference.
+5. **Shipping rates.** Buyers are shown Standard CA$12.50 and Express CA$19.99 per seller, or live carrier quotes. [FROM EARLIER QA — VERIFY current rates, and who keeps the shipping fee]
+6. Late or missing shipments may lead to cancellation, a refund and account action. [VERIFY thresholds]
+
+## 4. returns_refunds — Returns & Refunds Policy
+
+1. **Return window:** 7 days after delivery [FROM the published buyer Return Policy page — VERIFY; also check consumer protection rules in Quebec and other provinces].
+2. **Refund timing:** 5–10 business days after the return is received and inspected, to the original payment method [FROM the Return Policy page].
+3. **Who pays return shipping:** [VERIFY — the seller if the item is faulty or not as described; otherwise the buyer?]
+4. **Non-returnable items:** [VERIFY list, e.g. hygiene products, perishables]
+5. **Commission on refunds:** [VERIFY — refunded or kept]
+6. Refunds are issued through Barakaz and taken from the seller's balance. Disputes are decided by Barakaz admins.
+
+## 5. prohibited_products — Prohibited Products Policy
+
+The following are not allowed. [VERIFY with counsel; this list is not complete]
+- Anything illegal to sell in Canada or the buyer's province.
+- Weapons, firearms and parts, ammunition, explosives.
+- Cannabis, tobacco, vaping products, alcohol, prescription drugs, controlled substances.
+- Counterfeit or infringing goods.
+- Recalled products (Health Canada recalls), unsafe children's products (CCPSA).
+- Hazardous materials that carriers won't accept.
+- Live animals, human remains or body parts.
+- Stolen goods; personal data; adult content.
+- Items breaching sanctions or export controls.
+
+Barakaz may remove listings and suspend sellers who break this policy.
+
+## 6. product_authenticity — Product Authenticity & Legal-Sale Confirmation
+
+By accepting, the seller confirms that:
+1. Every product they list is genuine and legally obtained, and they have the right to sell it in Canada.
+2. The products meet Canadian labelling requirements (bilingual where required), safety rules and product standards. [VERIFY which apply]
+3. They will provide proof of authenticity or supply records (for example invoices) within **[VERIFY: e.g. 5 business days]** when Barakaz asks.
+4. They accept that listings may be removed, orders refunded, and accounts suspended if authenticity can't be proven.
+
+---
+
+## Before publishing (owner and counsel)
+- Replace every [VERIFY] item and get legal approval.
+- Host the final documents at stable URLs, for example barakaz.com/seller-policies/<code>.
+- Then ask for them to be published as rows in `seller_policy_documents` (policy_code, policy_version = `ca-v1`, title, document_url, published_at).
