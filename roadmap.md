@@ -7,6 +7,9 @@
 - [x] Add and run focused onboarding tests
 - [x] Verify database security, types, and server behavior
 - [x] Canada-only seller submission, Connect and shipping-origin guards
-- [ ] Human compliance review of CA rules (reviewed_at, stripe_connect_enabled)
-- [ ] Publish 6 seller agreements (ca-v1)
-- [ ] Deploy get-shipping-rates, shippo-purchase-label, seller-stripe-connect (needs authorization)
+- [x] Deploy get-shipping-rates, shippo-purchase-label, seller-stripe-connect
+- [x] CA eligibility rows exist for all 3 business types (unreviewed, Connect disabled) + eligibility tests
+- [ ] Human compliance review of CA rules (set reviewed_at, stripe_connect_enabled) — needs a person
+- [ ] Publish 6 seller agreements (ca-v1) — needs legal text from user
+- [ ] Stripe: activate Connect Express (CA) + restricted key permissions (Accounts/Account Links: Write) — user, in Stripe
+- [ ] Test-mode seller run-through before any live flag
