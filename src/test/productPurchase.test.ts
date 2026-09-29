@@ -30,7 +30,7 @@ describe("variant selection", () => {
     const v = resolveVariant(variants, keys, sel);
     expect(getPurchaseState({ hasVariants: true, optionKeys: keys, selected: sel, variant: v, productStock: 99 })).toMatchObject({ canBuy: false, reason: "out_of_stock" });
     const sel2 = { Color: "Red", Size: "M" };
-    expect(getPurchaseState({ hasVariants: true, optionKeys: keys, selected: sel2, variant: resolveVariant(variants, keys, sel2), productStock: 99 })).toEqual({ canBuy: true, maxQty: 3 });
+    expect(getPurchaseState({ hasVariants: true, optionKeys: keys, selected: sel2, variant: resolveVariant(variants, keys, sel2), productStock: 99 })).toEqual({ canBuy: true, maxQty: 3, reason: null });
   });
 });
 

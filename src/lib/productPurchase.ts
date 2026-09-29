@@ -27,9 +27,8 @@ export function isOptionValueAvailable(variants: VariantLike[], selected: Record
   });
 }
 
-export type PurchaseState =
-  | { canBuy: true; maxQty: number }
-  | { canBuy: false; reason: "select_options" | "unavailable" | "out_of_stock"; maxQty: 0 };
+export type PurchaseReason = "select_options" | "unavailable" | "out_of_stock";
+export type PurchaseState = { canBuy: boolean; maxQty: number; reason: PurchaseReason | null };
 
 export function getPurchaseState(opts: {
   hasVariants: boolean; optionKeys: string[]; selected: Record<string, string>;
@@ -39,10 +38,10 @@ export function getPurchaseState(opts: {
     if (!opts.optionKeys.every((k) => opts.selected[k] != null)) return { canBuy: false, reason: "select_options", maxQty: 0 };
     if (!opts.variant) return { canBuy: false, reason: "unavailable", maxQty: 0 };
     const s = opts.variant.stock ?? 0;
-    return s > 0 ? { canBuy: true, maxQty: s } : { canBuy: false, reason: "out_of_stock", maxQty: 0 };
+    return s > 0 ? { canBuy: true, maxQty: s, reason: null } : { canBuy: false, reason: "out_of_stock", maxQty: 0 };
   }
   const s = opts.productStock ?? 0;
-  return s > 0 ? { canBuy: true, maxQty: s } : { canBuy: false, reason: "out_of_stock", maxQty: 0 };
+  return s > 0 ? { canBuy: true, maxQty: s, reason: null } : { canBuy: false, reason: "out_of_stock", maxQty: 0 };
 }
 
 export function clampQuantity(qty: number, maxQty: number) {
@@ -56,8 +55,10 @@ export function remainingForCart(maxQty: number, inCart: number) {
   return Math.max(0, maxQty - inCart);
 }
 
-export const PURCHASE_REASON_TEXT: Record<"select_options" | "unavailable" | "out_of_stock", string> = {
+export const PURCHASE_REASON_TEXT: Record<PurchaseReason, string> = {
   select_options: "Choose your options",
   unavailable: "This combination isn't available",
   out_of_stock: "Out of stock",
 };
+
+export const purchaseMessage = (p: PurchaseState) => (p.reason ? PURCHASE_REASON_TEXT[p.reason] : "");

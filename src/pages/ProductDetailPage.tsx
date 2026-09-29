@@ -25,7 +25,7 @@ import ChatDialog from "@/components/shared/ChatDialog";
 import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
-import { normalizeSelection, isOptionValueAvailable, getPurchaseState, clampQuantity, remainingForCart, PURCHASE_REASON_TEXT } from "@/lib/productPurchase";
+import { normalizeSelection, isOptionValueAvailable, getPurchaseState, clampQuantity, remainingForCart, purchaseMessage } from "@/lib/productPurchase";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -448,7 +448,7 @@ const ProductDetailPage = () => {
 
   // Single guarded handler shared by desktop and mobile buttons.
   const handlePurchase = (mode: "cart" | "buy") => {
-    if (!purchase.canBuy) { toast.error(PURCHASE_REASON_TEXT[purchase.reason]); return; }
+    if (!purchase.canBuy) { toast.error(purchaseMessage(purchase)); return; }
     const inCart = cartItems
       .filter((i) => i.productId === product.id && (i.variantId ?? null) === (selectedVariant?.id ?? null))
       .reduce((s, i) => s + i.quantity, 0);
@@ -769,7 +769,7 @@ const ProductDetailPage = () => {
               <p className={`text-sm font-medium ${purchase.canBuy ? "text-success" : "text-destructive"}`}>
                 {purchase.canBuy
                   ? purchase.maxQty <= 5 ? `Only ${purchase.maxQty} left` : "In stock"
-                  : PURCHASE_REASON_TEXT[purchase.reason]}
+                  : purchaseMessage(purchase)}
               </p>
               <div className="flex items-center rounded-lg border border-border" role="group" aria-label="Quantity">
                 <button type="button" aria-label="Decrease quantity" className="h-9 w-9 text-lg disabled:opacity-40" disabled={!purchase.canBuy || qty <= 1} onClick={() => setQty((q) => clampQuantity(q - 1, purchase.maxQty))}>−</button>
@@ -866,7 +866,7 @@ const ProductDetailPage = () => {
         <div className="flex items-center justify-between text-xs mb-1.5">
           <span className="font-bold text-foreground text-sm">{formatPrice(Number(displayPrice) * qty)}</span>
           <span className="text-muted-foreground">
-            {purchase.canBuy ? `Qty ${qty}${selectionLabel ? ` · ${selectionLabel}` : ""}` : PURCHASE_REASON_TEXT[purchase.reason]}
+            {purchase.canBuy ? `Qty ${qty}${selectionLabel ? ` · ${selectionLabel}` : ""}` : purchaseMessage(purchase)}
           </span>
         </div>
         <div className="flex gap-2">
