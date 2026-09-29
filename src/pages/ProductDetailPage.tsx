@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Flame, Ruler, ChevronDown, Crown } from "lucide-react";
+import { Star, Phone, Globe, MapPin, ChevronRight, ShieldCheck, RotateCcw, Share2, Heart, Users, MessageCircle, ShoppingCart, Eye, Truck, Ruler, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const FASHION_CATEGORY_ID = "a0000001-0000-0000-0000-000000000002";
@@ -25,7 +25,7 @@ import ChatDialog from "@/components/shared/ChatDialog";
 import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
-import { getDisplayProductRating, seededRandom, getDisplayVendorPerformance } from "@/lib/product-rating-fallback";
+import { normalizeSelection, isOptionValueAvailable, getPurchaseState, clampQuantity, remainingForCart, PURCHASE_REASON_TEXT } from "@/lib/productPurchase";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -221,73 +221,13 @@ const SellerInfoSidebar = ({ vendor, productId, onChatOpen }: { vendor: any; pro
         </div>
       </div>
 
-      {/* Seller Performance */}
-      {(() => {
-        const perf = getDisplayVendorPerformance(vendor.id);
-        const isVerified = vendor.status === "approved";
-        const stats = [
-          { label: "Response Rate", value: `${perf.responseRate}%` },
-          { label: "Response Time", value: `${perf.responseTime} mins` },
-          { label: "On-time Delivery", value: `${perf.onTimeDelivery}%` },
-          { label: "Order Completion", value: `${perf.orderCompletion}%` },
-        ];
-        return (
-          <div className="bg-card rounded-lg border border-border p-4 space-y-3">
-            <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">Seller Performance</h4>
-
-            {(isVerified || perf.isTopRated) && (
-              <div className="space-y-1.5">
-                {isVerified && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <ShieldCheck className="h-4 w-4 text-success fill-success/20" />
-                    <span className="font-medium text-foreground">Verified Seller</span>
-                  </div>
-                )}
-                {perf.isTopRated && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Crown className="h-4 w-4 text-[hsl(265_85%_60%)]" />
-                    <span className="font-medium text-foreground">Top Rated Seller</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Separator />
-
-            <div className="space-y-2">
-              {stats.map((s) => (
-                <div key={s.label} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{s.label}</span>
-                  <span className="font-semibold text-foreground">{s.value}</span>
-                </div>
-              ))}
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Quality Score</span>
-                <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                  <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                  {perf.qualityScore} / 5
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Customer Rating</span>
-                <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                  <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                  {perf.customerRating} / 5
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground text-center pt-1">
-              (Based on {perf.ratingsCount.toLocaleString()} ratings)
-            </p>
-          </div>
-        );
-      })()}
+      {/* Only real, verifiable seller status is shown */}
+      {vendor.status === "approved" && (
+        <div className="bg-card rounded-lg border border-border p-4 flex items-center gap-2 text-sm">
+          <ShieldCheck className="h-4 w-4 text-success" />
+          <span className="font-medium text-foreground">Verified seller</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -297,10 +237,10 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [chatOpen, setChatOpen] = useState(false);
-  const [viewingCount, setViewingCount] = useState(0);
+  const [qty, setQty] = useState(1);
   const { t } = useTranslation();
   const { country, formatPrice } = useLocale();
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
   const { user } = useAuth();
   const { data: wishlistIds } = useWishlist();
   const toggleWishlist = useToggleWishlist();
@@ -317,15 +257,6 @@ const ProductDetailPage = () => {
     },
     enabled: !!slug,
   });
-
-  // Dynamic viewing count
-  useEffect(() => {
-    if (!product?.id) return;
-    const calcViewers = () => seededRandom(product.id + String(Math.floor(Date.now() / 150000)), 5, 30);
-    setViewingCount(calcViewers());
-    const interval = setInterval(() => setViewingCount(calcViewers()), 35000);
-    return () => clearInterval(interval);
-  }, [product?.id]);
 
   // Track product view
   useEffect(() => {
@@ -381,21 +312,14 @@ const ProductDetailPage = () => {
   // Reset/normalize selected options whenever the product (or its variants) changes,
   // so stale selections from a previous product with similar option names (e.g. "Size")
   // never leak across products and break per-variant pricing resolution.
+  // Never silently default a multi-value option (prevents buying the wrong size).
   useEffect(() => {
-    if (!hasVariants) {
-      setSelectedOptions({});
-      return;
-    }
-    const next: Record<string, string> = {};
-    Object.entries(optionTypes).forEach(([key, values]) => {
-      const current = selectedOptions[key];
-      next[key] = current && values.includes(current) ? current : values[0];
-    });
-    // Drop any option keys that don't belong to this product
-    const keysMatch =
+    const next = hasVariants ? normalizeSelection(optionTypes, selectedOptions) : {};
+    const same =
       Object.keys(next).length === Object.keys(selectedOptions).length &&
       Object.entries(next).every(([k, v]) => selectedOptions[k] === v);
-    if (!keysMatch) setSelectedOptions(next);
+    if (!same) setSelectedOptions(next);
+    setQty(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, variants]);
 
@@ -421,6 +345,17 @@ const ProductDetailPage = () => {
   const discountPct = displayCompare && Number(displayCompare) > Number(displayPrice)
     ? Math.round(((Number(displayCompare) - Number(displayPrice)) / Number(displayCompare)) * 100)
     : null;
+
+  const purchase = getPurchaseState({
+    hasVariants,
+    optionKeys: Object.keys(optionTypes),
+    selected: selectedOptions,
+    variant: selectedVariant as any,
+    productStock: product?.stock,
+  });
+  useEffect(() => {
+    setQty((q) => clampQuantity(q, purchase.maxQty));
+  }, [purchase.maxQty]);
 
   const galleryImages = useMemo(() => {
     if (!product) return [barakazIcon];
@@ -509,6 +444,35 @@ const ProductDetailPage = () => {
     action();
   };
 
+  const selectionLabel = selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : "";
+
+  // Single guarded handler shared by desktop and mobile buttons.
+  const handlePurchase = (mode: "cart" | "buy") => {
+    if (!purchase.canBuy) { toast.error(PURCHASE_REASON_TEXT[purchase.reason]); return; }
+    const inCart = cartItems
+      .filter((i) => i.productId === product.id && (i.variantId ?? null) === (selectedVariant?.id ?? null))
+      .reduce((s, i) => s + i.quantity, 0);
+    const room = remainingForCart(purchase.maxQty, inCart);
+    if (room <= 0) {
+      if (mode === "buy") { navigate("/checkout"); return; }
+      toast.error("You already have all available stock in your cart");
+      return;
+    }
+    const qtyToAdd = Math.min(qty, room);
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: Number(displayPrice),
+      image: galleryImages[0] || barakazIcon,
+      vendorId: product.vendor_id,
+      vendorName: vendor?.store_name || "",
+      variantId: selectedVariant?.id,
+      variantLabel: selectionLabel || undefined,
+    }, qtyToAdd);
+    if (mode === "buy") navigate("/checkout");
+    else toast.success(qtyToAdd < qty ? `Added ${qtyToAdd} (stock limit)` : "Added to cart");
+  };
+
   const handleCallMobile = () => {
     if (vendor?.phone) {
       trackEvent(vendor.id, product.id, "call_click");
@@ -543,7 +507,7 @@ const ProductDetailPage = () => {
           offers: {
             "@type": "Offer",
             url: `${SITE_URL}/product/${product.slug}`,
-            priceCurrency: "KES",
+            priceCurrency: "CAD",
             price: Number(displayPrice ?? product.price),
             availability:
               (displayStock ?? 0) > 0
@@ -604,40 +568,25 @@ const ProductDetailPage = () => {
 
           {/* CENTER: Product Info */}
           <div className="order-2 lg:order-none space-y-4">
-            {/* Viewing now banner */}
-            <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2 text-sm">
-              <Flame className="h-4 w-4 text-orange-500 animate-pulse" />
-              <span className="text-orange-700 dark:text-orange-300 font-medium">
-                {viewingCount} people are viewing this right now
-              </span>
-            </div>
-
             <h1 className="font-display text-lg md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
               {product.name}
             </h1>
 
-            {/* Rating */}
-            {(() => {
-              const displayReviewStats = getDisplayProductRating(product.id, reviewStats?.avg ?? 0, reviewStats?.count ?? 0);
-              const soldCount = seededRandom(product.id + "sold", 50, 500);
-              return (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${i <= Math.round(displayReviewStats.rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
-                      />
-                    ))}
-                  </div>
-                  <button onClick={scrollToReviews} className="text-sm text-primary hover:underline">
-                    {displayReviewStats.rating.toFixed(1)} ({displayReviewStats.reviewCount} {displayReviewStats.reviewCount === 1 ? "rating" : "ratings"})
-                  </button>
-                  <span className="text-sm text-muted-foreground">•</span>
-                  <span className="text-sm text-muted-foreground">{soldCount} sold</span>
+            {/* Rating — real reviews only */}
+            {reviewStats && reviewStats.count > 0 ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className={`h-4 w-4 ${i <= Math.round(reviewStats.avg) ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
+                  ))}
                 </div>
-              );
-            })()}
+                <button onClick={scrollToReviews} className="text-sm text-primary hover:underline">
+                  {reviewStats.avg.toFixed(1)} ({reviewStats.count} {reviewStats.count === 1 ? "review" : "reviews"})
+                </button>
+              </div>
+            ) : (
+              <button onClick={scrollToReviews} className="text-sm text-muted-foreground hover:underline text-left">No reviews yet</button>
+            )}
 
             <Separator />
 
@@ -669,17 +618,20 @@ const ProductDetailPage = () => {
                 {Object.entries(optionTypes).map(([optName, values]) => (
                   <div key={optName}>
                     <p className="text-sm font-medium mb-2">
-                      {optName}: <span className="font-normal text-muted-foreground">{selectedOptions[optName]}</span>
+                      {optName}: <span className="font-normal text-muted-foreground">{selectedOptions[optName] ?? "Select"}</span>
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {values.map((val) => {
                         const selected = selectedOptions[optName] === val;
+                        const available = isOptionValueAvailable((variants || []) as any, selectedOptions, optName, val);
                         return (
                           <button
                             key={val}
                             type="button"
+                            disabled={!available}
+                            aria-pressed={selected}
                             onClick={() => setSelectedOptions((prev) => ({ ...prev, [optName]: val }))}
-                            className={`px-3 py-1.5 text-sm rounded-lg border-2 transition-all ${
+                            className={`min-w-11 px-3 py-1.5 text-sm rounded-full border-2 transition-all disabled:opacity-40 disabled:line-through disabled:cursor-not-allowed ${
                               selected
                                 ? "border-primary bg-primary/5 text-primary font-medium shadow-sm"
                                 : "border-border text-muted-foreground hover:border-foreground/30"
@@ -812,79 +764,75 @@ const ProductDetailPage = () => {
 
             <Separator />
 
-            {/* Stock */}
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-success" />
-              <p className={`text-sm font-medium ${(displayStock ?? 0) > 0 ? "text-success" : "text-destructive"}`}>
-                {(displayStock ?? 0) > 0
-                  ? `In Stock (${displayStock} available)`
-                  : "Out of Stock"}
+            {/* Stock + quantity */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className={`text-sm font-medium ${purchase.canBuy ? "text-success" : "text-destructive"}`}>
+                {purchase.canBuy
+                  ? purchase.maxQty <= 5 ? `Only ${purchase.maxQty} left` : "In stock"
+                  : PURCHASE_REASON_TEXT[purchase.reason]}
               </p>
+              <div className="flex items-center rounded-lg border border-border" role="group" aria-label="Quantity">
+                <button type="button" aria-label="Decrease quantity" className="h-9 w-9 text-lg disabled:opacity-40" disabled={!purchase.canBuy || qty <= 1} onClick={() => setQty((q) => clampQuantity(q - 1, purchase.maxQty))}>−</button>
+                <span className="w-10 text-center text-sm font-semibold" aria-live="polite">{qty}</span>
+                <button type="button" aria-label="Increase quantity" className="h-9 w-9 text-lg disabled:opacity-40" disabled={!purchase.canBuy || qty >= purchase.maxQty} onClick={() => setQty((q) => clampQuantity(q + 1, purchase.maxQty))}>+</button>
+              </div>
             </div>
 
-            <Separator />
-
             {/* Add to Cart / Buy Now */}
-            {(displayStock === undefined || displayStock === null || displayStock > 0) && (
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1 gap-2 font-semibold h-11"
-                  onClick={() => {
-                    const img = galleryImages[0] || barakazIcon;
-                    addItem({
-                      productId: product.id,
-                      name: product.name,
-                      price: Number(displayPrice),
-                      image: img,
-                      vendorId: product.vendor_id,
-                      vendorName: vendor?.store_name || "",
-                      variantId: selectedVariant?.id,
-                      variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
-                    });
-                    toast.success("Added to cart!");
-                  }}
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Add to Cart
-                </Button>
-                <Button
-                  className="flex-1 font-semibold h-11"
-                  onClick={() => {
-                    const img = galleryImages[0] || barakazIcon;
-                    addItem({
-                      productId: product.id,
-                      name: product.name,
-                      price: Number(displayPrice),
-                      image: img,
-                      vendorId: product.vendor_id,
-                      vendorName: vendor?.store_name || "",
-                      variantId: selectedVariant?.id,
-                      variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
-                    });
-                    navigate("/checkout");
-                  }}
-                >
-                  Buy Now
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-11 w-11 shrink-0"
-                  aria-label={wishlistIds?.has(product.id) ? "Remove from wishlist" : "Add to wishlist"}
-                  onClick={() => toggleWishlist.mutate(product.id)}
-                >
-                  <Heart
-                    className={`h-5 w-5 ${wishlistIds?.has(product.id) ? "fill-[hsl(var(--marketplace-orange))] text-[hsl(var(--marketplace-orange))]" : ""}`}
-                  />
-                </Button>
+            <div className="hidden md:flex gap-3">
+              <Button variant="outline" className="flex-1 gap-2 font-semibold h-11" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
+                <ShoppingCart className="h-4 w-4" />
+                Add to cart
+              </Button>
+              <Button className="flex-1 font-semibold h-11" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>
+                Buy now
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                aria-label={wishlistIds?.has(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                onClick={() => toggleWishlist.mutate(product.id)}
+              >
+                <Heart className={`h-5 w-5 ${wishlistIds?.has(product.id) ? "fill-primary text-primary" : ""}`} />
+              </Button>
+            </div>
+
+            {/* Delivery & returns */}
+            <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+              <div className="p-3 flex gap-3">
+                <Truck className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-semibold text-foreground">Shipping within Canada</p>
+                  <p className="text-muted-foreground">Standard CA$12.50 · Express CA$19.99 per seller. Your arrival date is shown at checkout.</p>
+                  <Link to="/delivery" className="text-primary hover:underline text-xs">Delivery details</Link>
+                </div>
               </div>
-            )}
+              <div className="p-3 flex gap-3">
+                <RotateCcw className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-semibold text-foreground">7-day returns</p>
+                  <Link to="/return-policy" className="text-primary hover:underline text-xs">Return policy</Link>
+                </div>
+              </div>
+              <div className="p-3 flex gap-3">
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+                <p className="text-muted-foreground">Payment is completed securely at checkout.</p>
+              </div>
+            </div>
 
-            <Separator />
-
-            {/* Social Share */}
-            <SocialShare url={shareUrl} title={product.name} />
+            <div className="flex items-center justify-between">
+              <SocialShare url={shareUrl} title={product.name} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label={wishlistIds?.has(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                onClick={() => toggleWishlist.mutate(product.id)}
+              >
+                <Heart className={`h-5 w-5 ${wishlistIds?.has(product.id) ? "fill-primary text-primary" : ""}`} />
+              </Button>
+            </div>
           </div>
 
           {/* Mobile: Seller info + Description tabs */}
@@ -913,51 +861,26 @@ const ProductDetailPage = () => {
         <div className="h-20 md:hidden" />
       </div>
 
-      {/* Floating bar on mobile - Add to Cart + Buy Now */}
-      <div className="fixed bottom-14 left-0 right-0 z-40 md:hidden bg-card border-t border-border px-4 py-2 flex gap-2 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-        <Button
-          variant="outline"
-          className="flex-1 font-semibold gap-1.5 h-11 text-xs"
-          onClick={() => {
-            const img = galleryImages[0] || barakazIcon;
-            addItem({
-              productId: product.id,
-              name: product.name,
-              price: Number(displayPrice),
-              image: img,
-              vendorId: product.vendor_id,
-              vendorName: vendor?.store_name || "",
-              variantId: selectedVariant?.id,
-              variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
-            });
-            toast.success("Added to cart!");
-          }}
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Cart
-        </Button>
-        <Button
-          className="flex-1 font-semibold h-11 text-xs"
-          onClick={() => {
-            const img = galleryImages[0] || barakazIcon;
-            addItem({
-              productId: product.id,
-              name: product.name,
-              price: Number(displayPrice),
-              image: img,
-              vendorId: product.vendor_id,
-              vendorName: vendor?.store_name || "",
-              variantId: selectedVariant?.id,
-              variantLabel: selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : undefined,
-            });
-            navigate("/checkout");
-          }}
-        >
-          Buy Now
-        </Button>
-        <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => requireAuthMain(() => setChatOpen(true))}>
-          <MessageCircle className="h-4 w-4" />
-        </Button>
+      {/* Floating bar on mobile - Add to Cart + Buy Now (same guarded handler as desktop) */}
+      <div className="fixed bottom-14 left-0 right-0 z-40 md:hidden bg-card/95 backdrop-blur border-t border-border px-4 py-2 shadow-lg">
+        <div className="flex items-center justify-between text-xs mb-1.5">
+          <span className="font-bold text-foreground text-sm">{formatPrice(Number(displayPrice) * qty)}</span>
+          <span className="text-muted-foreground">
+            {purchase.canBuy ? `Qty ${qty}${selectionLabel ? ` · ${selectionLabel}` : ""}` : PURCHASE_REASON_TEXT[purchase.reason]}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1 font-semibold gap-1.5 h-11" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
+            <ShoppingCart className="h-4 w-4" />
+            Add to cart
+          </Button>
+          <Button className="flex-1 font-semibold h-11" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>
+            Buy now
+          </Button>
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Message seller" onClick={() => requireAuthMain(() => setChatOpen(true))}>
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Chat Dialog */}
