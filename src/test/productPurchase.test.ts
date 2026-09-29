@@ -49,7 +49,7 @@ describe("product page wiring", () => {
   it("desktop and mobile actions share one guarded handler with quantity", () => {
     expect(src.match(/handlePurchase\("cart"\)/g)?.length).toBe(2);
     expect(src.match(/handlePurchase\("buy"\)/g)?.length).toBe(2);
-    expect(src).toMatch(/addItem\(\{[\s\S]*?\}, qty\)/);
+    expect(src).toMatch(/\}, qtyToAdd\);/);
   });
   it("removes fabricated social proof and uses CAD schema", () => {
     expect(src).not.toMatch(/seededRandom|getDisplayVendorPerformance|getDisplayProductRating|viewing this right now/);
