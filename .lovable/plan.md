@@ -45,3 +45,9 @@ Read-only audit. Nothing changed. Launch scope confirmed: **Canadian vendors onl
 3. Try to submit without published agreements and confirm the "not fully published" block shows. Then publish them and submit.
 4. Admin approve/reject in the queue. Confirm no vendor is created before identity approval and payout eligibility.
 5. Confirm `STRIPE_LIVE_CONNECT_ENABLED` and `STRIPE_LIVE_CHECKOUT_ENABLED` both stay unset throughout.
+
+## Stripe restricted key permission check (safe, no secret exposure)
+- The secret value never needs to be shown. The key's permissions are visible in the Stripe Dashboard: Developers → API keys → click the `rk_...` key → its permission list is shown without revealing the key itself.
+- Minimum needed for seller onboarding: Connect → Accounts: Write, and Connect → Account Links: Write. Checkout keeps its own permissions (Checkout Sessions: Write; PaymentIntents: Read and Refunds: Write if refunds use this key).
+- Alternative runtime check (test mode only, if ever wanted): call `GET /v1/accounts/{acct_id}` or create a throwaway **test** Express account with a test restricted key — a missing permission returns a clear `permission` error. Not needed now; the dashboard check is enough.
+- From my side I can only confirm the secret name exists, never its value or permissions — the dashboard check is yours to do.
