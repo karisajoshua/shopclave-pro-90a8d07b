@@ -32,3 +32,16 @@ Read-only audit. Nothing changed. Launch scope confirmed: **Canadian vendors onl
 - Inserts go through the data tool (not a schema migration): `INSERT INTO public.seller_country_requirements (country,business_type,rules_version,stripe_connect_enabled,required_documents,required_fields,reviewed_at) VALUES ...`
 - `seller_policy_documents` inserts: policy_code, policy_version `ca-v1`, title, document_url, published_at
 - No code changes needed; gates already fail closed
+
+## Canadian seller shipping and tax checks (verified)
+- **Shipping origin:** the seller warehouse check requires a street, city, country, phone, and province and postal code for CA. It does **not** require the origin country to be CA, so a non-Canadian origin would pass. For a Canada-only launch, add a small server check at checkout: vendor origin country must be CA (a code change, needs approval).
+- **Buyers:** checkout only accepts Canadian shipping addresses (already enforced on the server).
+- **Tax:** GST/HST registration 784144644RT0001 has been in effect since 2026-09-25. **Buyers** in BC, QC, MB and SK are blocked (no provincial registration). The seller's province doesn't change tax, because Barakaz collects as the marketplace.
+- **Shipping rates:** Shippo quotes need the seller's real package weight and dimensions. Products without them fail closed at checkout.
+
+## Safe tests (no charges, no live accounts)
+1. Unit tests for rule lookup: CA plus each seller type is allowed; a non-CA country or an unreviewed row is blocked.
+2. Signup check in test mode (`sk_test_` key): one test seller account goes through the draft, the Stripe **test** Express link, the return to `/vendor/register`, and the signed test `account.updated` event updating the payout status.
+3. Try to submit without published agreements and confirm the "not fully published" block shows. Then publish them and submit.
+4. Admin approve/reject in the queue. Confirm no vendor is created before identity approval and payout eligibility.
+5. Confirm `STRIPE_LIVE_CONNECT_ENABLED` and `STRIPE_LIVE_CHECKOUT_ENABLED` both stay unset throughout.
