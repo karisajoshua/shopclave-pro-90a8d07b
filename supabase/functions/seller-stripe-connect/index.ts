@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { connectKeyAllowed } from "../_shared/stripeLiveGuard.ts";
 const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization,apikey,x-client-info,content-type" };
 const respond = (body: unknown, status=200) => new Response(JSON.stringify(body), { status, headers });
 const stripeRequest = async (path: string, params: URLSearchParams, secret: string, idempotency?: string) => {
@@ -29,11 +30,11 @@ Deno.serve(async req => {
    .eq("stripe_connect_enabled",true).not("reviewed_at","is",null).limit(1).maybeSingle();
   if (!rules) return respond({error:"Stripe Connect onboarding is not enabled for this seller country/type"},422);
   const secret=Deno.env.get("STRIPE_SECRET_KEY") || "";
-  // Separate explicit flag: existing live-checkout configuration does not enable live Connect.
-  if (!secret.startsWith("sk_test_") && Deno.env.get("STRIPE_LIVE_CONNECT_ENABLED")!=="true")
+  // Accepts sk_/rk_ test or live keys. Live requires the separate STRIPE_LIVE_CONNECT_ENABLED flag.
+  const keyCheck=connectKeyAllowed(secret,Deno.env.get("STRIPE_LIVE_CONNECT_ENABLED"));
+  if (!keyCheck.ok && keyCheck.reason==="live_disabled")
    return respond({error:"Live Stripe Connect onboarding is disabled"},503);
-  if (!secret.startsWith("sk_test_") && !secret.startsWith("sk_live_"))
-   return respond({error:"Stripe configuration unavailable"},503);
+  if (!keyCheck.ok) return respond({error:"Stripe configuration unavailable"},503);
   const base=Deno.env.get("SELLER_ONBOARDING_RETURN_URL") || "";
   if (!base.startsWith("https://")) return respond({error:"Secure onboarding return URL not configured"},503);
   const {data:existing}=await admin.from("seller_payout_accounts")
