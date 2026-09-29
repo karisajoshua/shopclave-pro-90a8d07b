@@ -5,7 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
-import { toISO, validateWarehouse } from "../_shared/shipping.ts";
+import { toISO, validateWarehouse, isLaunchOrigin } from "../_shared/shipping.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,6 +121,10 @@ Deno.serve(async (req) => {
     const check = validateWarehouse((vendor?.warehouse_address ?? {}) as never);
     if (!check.valid) {
       await fail(`Vendor fulfilment address incomplete: ${check.missing.join(", ")}`);
+      continue;
+    }
+    if (!isLaunchOrigin(((vendor?.warehouse_address ?? {}) as { country?: string }).country)) {
+      await fail("Vendor ships from outside Canada; Canada-only launch");
       continue;
     }
 

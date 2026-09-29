@@ -25,6 +25,8 @@ Deno.serve(async req => {
    .select("id,user_id,status,country,business_type").eq("user_id",user.id).maybeSingle();
    if (appError || !a || !["draft","more_information_required"].includes(a.status))
     return respond({error:"No eligible seller draft"},403);
+  // Canada-only launch: never create Connect accounts for other countries, whatever the rules table says.
+  if (a.country!=="CA") return respond({error:"Stripe Connect onboarding is not enabled for this seller country/type"},422);
   const {data:rules}=await admin.from("seller_country_requirements")
    .select("stripe_connect_enabled").eq("country",a.country).eq("business_type",a.business_type)
    .eq("stripe_connect_enabled",true).not("reviewed_at","is",null).limit(1).maybeSingle();

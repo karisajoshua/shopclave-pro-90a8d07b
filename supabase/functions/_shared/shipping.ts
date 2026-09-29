@@ -323,6 +323,16 @@ export function toISO(c: string): string {
   return COUNTRY_TO_ISO[t.toLowerCase()] ?? t.slice(0, 2).toUpperCase();
 }
 
+/** Canada-only launch: countries sellers may register and ship from. */
+export const LAUNCH_SELLER_COUNTRIES: ReadonlySet<string> = new Set(["CA"]);
+
+/** Strict: accepts only "CA" or "Canada" (any case). No prefix guessing. */
+export function isLaunchOrigin(country: string | undefined | null): boolean {
+  const t = String(country ?? "").trim().toLowerCase();
+  if (t === "ca" || t === "canada") return LAUNCH_SELLER_COUNTRIES.has("CA");
+  return false;
+}
+
 export interface AddressLike {
   fullName?: string;
   addressLine?: string;
