@@ -1,0 +1,42 @@
+# Stripe live webhook verification — read-only findings
+
+Nothing was changed. No secrets, database, code, settings or deployments were touched.
+
+## 1. Has a real signed LIVE event from we_1UKohID9RzF0xESf1MnFnbNd passed validation?
+
+**No — not yet tested.**
+- Backend logs for `stripe-webhook`: only a boot entry (00:26 UTC today). There are no request records in the last 14 days.
+- Processed-events table: 2 Stripe events total, both **test mode** (livemode false), latest about 27 Sep 2026. **0 live events.**
+- Note: the function doesn't record the endpoint ID (we_...). The live signing secret has to match the one stored in the backend, and that can only be confirmed by a real delivery.
+
+## 2. Safe test method (no orders, labels or emails)
+
+How the function behaves (verified from the code):
+- It verifies the signature (HMAC-SHA256, 5-minute tolerance). A bad signature returns 400 and nothing is written.
+- It only acts on `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed`. It also needs an `order_id` that matches a real Stripe order, with the same session ID and amount. Any other event type is just recorded as received and returns 200.
+- Shippo labels are only bought when `livemode === true` and a real paid order matches.
+
+**Safe method:** in the Stripe Dashboard (Live mode), open Developers → Webhooks → this endpoint → **Send test event**. Pick a harmless type such as `customer.created` or `product.created`, NOT `checkout.session.*`. Expected result: 200 `{"received":true}`. That proves the live signing secret matches. The only side effect is one row in the processed-events table.
+- Don't use `stripe trigger checkout.session.completed` in live mode. It creates a real charge.
+- If the response is 400 "Invalid signature", the stored `STRIPE_WEBHOOK_SECRET` doesn't match this live endpoint's signing secret.
+
+**Where to check delivery:** Stripe Dashboard → Webhooks → endpoint → Event deliveries (response code and body). On our side: backend function logs for `stripe-webhook`, plus the processed-events table (I can query this read-only on request).
+
+## 3. Seller Connect functions
+
+- **seller-stripe-webhook** needs the secret `STRIPE_CONNECT_WEBHOOK_SECRET`. **It is missing**, so the function returns 503 "Not configured". It handles only the `account.updated` event: charges_enabled, payouts_enabled and details_submitted go to `record_seller_stripe_account_event`. Other events are ignored with 200. In Stripe, register it as a **Connect** endpoint ("Events on connected accounts") at `.../functions/v1/seller-stripe-webhook`, with its own signing secret.
+- **seller-stripe-connect** needs `STRIPE_SECRET_KEY`. Live keys also need `STRIPE_LIVE_CONNECT_ENABLED="true"`, which is not set, so it's blocked. It also needs `SELLER_ONBOARDING_RETURN_URL` (https), which is **missing**. On top of that, a reviewed `seller_country_requirements` row with `stripe_connect_enabled=true` must exist for the seller's country and business type.
+
+## 4. Remaining blockers before real live checkout
+
+1. `STRIPE_LIVE_CHECKOUT_ENABLED` is not set, so live charges stay blocked (by design until you approve).
+2. The live webhook signature hasn't been proven yet. Send the harmless test event above.
+3. The `STRIPE_SECRET_KEY` mode (test or live) must match the endpoint's mode. I did not reveal or check the prefix.
+4. Connect: `STRIPE_CONNECT_WEBHOOK_SECRET` and `SELLER_ONBOARDING_RETURN_URL` are missing, the live Connect flag is off, and seller country rules haven't been reviewed.
+5. No Shippo tracking webhook secret. After the first live paid order, labels will be bought for real, so sellers need real weights/dimensions and addresses.
+6. Stock reservations are not yet part of order creation, so overselling is possible.
+7. BC, QC, MB and SK are still blocked for tax. GST/HST collection starts 2026-09-25 (now in effect).
+8. The frontend hasn't been published with the latest checkout/tax changes. That needs your explicit authorization.
+
+## Next step if approved
+Nothing is run automatically. After you send the harmless test event, I'll check the logs and the processed-events table read-only to confirm it arrived with livemode true.
