@@ -1,0 +1,22 @@
+name: Notify documentation on marketplace changes
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch documentation synchronization
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_SYNC_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Set DOCS_SYNC_TOKEN in marketplace repository secrets with access to dispatch events in the private barakaz-docs repository."
+            exit 1
+          fi
+          gh api --method POST repos/karisajoshua/barakaz-docs/dispatches \
+            -f event_type=marketplace-changed \
+            -f client_payload[marketplace_sha]="$GITHUB_SHA"
