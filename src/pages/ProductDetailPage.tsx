@@ -85,60 +85,13 @@ const RatingStars = ({ rating }: { rating: number }) => (
   </span>
 );
 
-const SellerCard = ({ vendor, productId, onMessage }: { vendor: any; productId: string; onMessage: () => void }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
+const SellerCard = ({ vendor }: { vendor: any }) => {
   const { data: followerCount = 0 } = useQuery({
     queryKey: ["vendor-followers", vendor.id],
     queryFn: async () => {
       const { data } = await supabase.rpc("get_vendor_follower_count", { v_id: vendor.id });
       return data || 0;
     },
-  });
-
-  const { data: isFollowing = false } = useQuery({
-    queryKey: ["is-following", vendor.id, user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data } = await supabase
-        .from("vendor_follows")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("vendor_id", vendor.id)
-        .maybeSingle();
-      return Boolean(data);
-    },
-    enabled: Boolean(user),
-  });
-
-  const requireAuth = (action: () => void) => {
-    if (!user) {
-      toast.info("Please sign in to contact this seller");
-      navigate("/auth");
-      return;
-    }
-    action();
-  };
-
-  const followMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) return;
-      if (isFollowing) {
-        const { error } = await supabase.from("vendor_follows").delete().eq("user_id", user.id).eq("vendor_id", vendor.id);
-        if (error) throw error;
-        return;
-      }
-      const { error } = await supabase.from("vendor_follows").insert({ user_id: user.id, vendor_id: vendor.id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendor-followers", vendor.id] });
-      queryClient.invalidateQueries({ queryKey: ["is-following", vendor.id] });
-      toast.success(isFollowing ? "Store unfollowed" : "Store followed");
-    },
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const storePath = `/store/${vendor.slug ?? vendor.id}`;
@@ -154,31 +107,29 @@ const SellerCard = ({ vendor, productId, onMessage }: { vendor: any; productId: 
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <Link id="seller-heading" to={storePath} className="block truncate font-bold hover:text-primary">
-            {vendor.store_name}
-          </Link>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-xs text-muted-foreground">Sold by</span>
+            <Link id="seller-heading" to={storePath} className="truncate font-bold hover:text-primary">
+              {vendor.store_name}
+            </Link>
             {vendor.status === "approved" ? (
-              <span className="flex items-center gap-1 text-success"><CheckCircle2 className="h-3.5 w-3.5" /> Verified seller</span>
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                <CheckCircle2 className="h-3 w-3" /> Verified
+              </span>
             ) : null}
-            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {followerCount} followers</span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" /> {followerCount} {followerCount === 1 ? "follower" : "followers"}
+            </span>
           </div>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => requireAuth(() => followMutation.mutate())}
-          disabled={followMutation.isPending}
+        <Link
+          to={storePath}
+          className="flex shrink-0 items-center gap-0.5 text-sm font-semibold text-primary hover:underline"
         >
-          {isFollowing ? "Following" : "Follow"}
-        </Button>
-      </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button asChild variant="outline"><Link to={storePath}>Visit store</Link></Button>
-        <Button type="button" variant="outline" onClick={() => requireAuth(onMessage)}>
-          <MessageCircle className="h-4 w-4" /> Message seller
-        </Button>
+          Visit store <ChevronRight className="h-4 w-4" />
+        </Link>
       </div>
     </section>
   );
