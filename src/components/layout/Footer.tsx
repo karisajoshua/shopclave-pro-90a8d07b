@@ -5,28 +5,28 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazLogo from "@/assets/barakaz-logo.webp";
 import appBadges from "@/assets/app-store-badges.webp";
-import jcbLogo from "@/assets/payment-methods/IMG-20260930-WA0116.jpg.asset.json";
-import bankTransferLogo from "@/assets/payment-methods/IMG-20260930-WA0113.jpg.asset.json";
-import shopPayLogo from "@/assets/payment-methods/IMG-20260930-WA0112.jpg.asset.json";
-import afterpayLogo from "@/assets/payment-methods/IMG-20260930-WA0111.jpg.asset.json";
-import klarnaLogo from "@/assets/payment-methods/IMG-20260930-WA0110.jpg.asset.json";
-import mastercardLogo from "@/assets/payment-methods/IMG-20260930-WA0109.jpg.asset.json";
-import stripeLogo from "@/assets/payment-methods/IMG-20260930-WA0108.jpg.asset.json";
-import googlePayLogo from "@/assets/payment-methods/IMG-20260930-WA0107.jpg.asset.json";
-import applePayLogo from "@/assets/payment-methods/IMG-20260930-WA0106.jpg.asset.json";
-import paypalLogo from "@/assets/payment-methods/IMG-20260930-WA0105.jpg.asset.json";
+import jcbLogo from "@/assets/payment-methods/jcb.webp";
+import bankTransferLogo from "@/assets/payment-methods/bank-transfer.webp";
+import shopPayLogo from "@/assets/payment-methods/shop-pay.webp";
+import afterpayLogo from "@/assets/payment-methods/afterpay.webp";
+import klarnaLogo from "@/assets/payment-methods/klarna.webp";
+import mastercardLogo from "@/assets/payment-methods/mastercard.webp";
+import stripeLogo from "@/assets/payment-methods/stripe.webp";
+import googlePayLogo from "@/assets/payment-methods/google-pay.webp";
+import applePayLogo from "@/assets/payment-methods/apple-pay.webp";
+import paypalLogo from "@/assets/payment-methods/paypal.webp";
 
 const paymentMethods = [
-  { name: "Mastercard", logo: mastercardLogo.url },
-  { name: "Visa and JCB", logo: jcbLogo.url },
-  { name: "Apple Pay", logo: applePayLogo.url },
-  { name: "Google Pay", logo: googlePayLogo.url },
-  { name: "PayPal", logo: paypalLogo.url },
-  { name: "Stripe", logo: stripeLogo.url },
-  { name: "Shop Pay", logo: shopPayLogo.url },
-  { name: "Klarna", logo: klarnaLogo.url },
-  { name: "Afterpay", logo: afterpayLogo.url },
-  { name: "Bank transfer", logo: bankTransferLogo.url },
+  { name: "Mastercard", logo: mastercardLogo },
+  { name: "JCB", logo: jcbLogo },
+  { name: "Apple Pay", logo: applePayLogo },
+  { name: "Google Pay", logo: googlePayLogo },
+  { name: "PayPal", logo: paypalLogo },
+  { name: "Stripe", logo: stripeLogo },
+  { name: "Shop Pay", logo: shopPayLogo },
+  { name: "Klarna", logo: klarnaLogo },
+  { name: "Afterpay", logo: afterpayLogo },
+  { name: "Bank transfer", logo: bankTransferLogo },
 ];
 
 const assuranceItems = [
