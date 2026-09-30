@@ -615,17 +615,6 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {vendor ? (
-        <ChatDialog
-          open={chatOpen}
-          onOpenChange={setChatOpen}
-          vendorId={vendor.id}
-          vendorName={vendor.store_name}
-          productId={product.id}
-          productName={product.name}
-          productSlug={product.slug}
-        />
-      ) : null}
     </MarketplaceLayout>
   );
 };
