@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, Truck, RotateCcw, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check } from "lucide-react";
 import ProductReviews from "./ProductReviews";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface ProductMeta {
   name?: string;
@@ -18,207 +17,93 @@ export interface ProductMeta {
 interface ProductDescriptionTabsProps {
   description: string | null;
   productId: string;
+  reviewCount?: number;
   meta?: ProductMeta;
 }
 
-const SectionBox = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="border border-border rounded-lg bg-card">
-    <div className="px-4 py-3">
-      <h3 className="font-display font-bold text-base">{title}</h3>
-    </div>
-    <Separator />
-    <div className="p-4">{children}</div>
-  </div>
-);
-
 const SpecRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
-  <div className="flex border-t border-border py-2.5 text-sm">
-    <span className="w-1/3 text-muted-foreground font-medium">{label}</span>
+  <div className="grid grid-cols-[minmax(110px,32%)_1fr] border-b border-border py-3 text-sm last:border-0">
+    <span className="font-medium text-muted-foreground">{label}</span>
     <span className="text-foreground">{value || "—"}</span>
   </div>
 );
 
-const COLLAPSED_LIST_COUNT = 4;
+const FeatureList = ({ items }: { items: string[] }) => (
+  <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
+    {items.map((item) => (
+      <li key={item} className="flex items-start gap-2">
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" strokeWidth={3} />
+        <span>{item}</span>
+      </li>
+    ))}
+  </ul>
+);
 
-const ExpandableList = ({ items }: { items: string[] }) => {
-  const [open, setOpen] = useState(false);
-  const hasMore = items.length > COLLAPSED_LIST_COUNT;
-  const visible = open || !hasMore ? items : items.slice(0, COLLAPSED_LIST_COUNT);
+const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta }: ProductDescriptionTabsProps) => {
+  const parsedFeatures = (() => {
+    if (meta?.key_features?.length) return meta.key_features;
+    if (!description) return [];
+    return description
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => /^[-•*]\s*/.test(line))
+      .map((line) => line.replace(/^[-•*]\s*/, ""));
+  })();
+
   return (
-    <>
-      <ul className="space-y-2 text-sm text-foreground">
-        {visible.map((item, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" strokeWidth={3} />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-        >
-          {open ? (
-            <>
-              Read less <ChevronUp className="h-4 w-4" />
-            </>
+    <section className="border border-border bg-card" aria-label="Product information">
+      <Tabs defaultValue="description">
+        <div className="overflow-x-auto border-b border-border">
+          <TabsList className="h-12 w-max min-w-full justify-start rounded-none bg-transparent p-0">
+            <TabsTrigger value="description" className="h-12 rounded-none border-b-2 border-transparent px-5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">
+              Description
+            </TabsTrigger>
+            <TabsTrigger value="specifications" className="h-12 rounded-none border-b-2 border-transparent px-5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">
+              Specifications
+            </TabsTrigger>
+            <TabsTrigger value="reviews" className="h-12 rounded-none border-b-2 border-transparent px-5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">
+              Reviews ({reviewCount})
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="description" className="m-0 p-5 md:p-6">
+          <h2 className="mb-3 text-lg font-bold">Product description</h2>
+          {description ? (
+            <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{description}</p>
           ) : (
-            <>
-              Read more <ChevronDown className="h-4 w-4" />
-            </>
+            <p className="text-sm italic text-muted-foreground">No description available.</p>
           )}
-        </button>
-      )}
-    </>
-  );
-};
-
-const ProductDescriptionTabs = ({ description, productId, meta }: ProductDescriptionTabsProps) => {
-  const [expanded, setExpanded] = useState(false);
-
-  // Split description into first paragraph + rest
-  const { firstParagraph, restParagraphs, hasMore } = (() => {
-    if (!description) return { firstParagraph: "", restParagraphs: "", hasMore: false };
-    const parts = description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 1) {
-      return { firstParagraph: parts[0], restParagraphs: parts.slice(1).join("\n\n"), hasMore: true };
-    }
-    // Fallback: long single paragraph — split by character length (~300 chars)
-    if (description.length > 300) {
-      const cutoff = description.lastIndexOf(" ", 300);
-      const idx = cutoff > 0 ? cutoff : 300;
-      return { firstParagraph: description.slice(0, idx), restParagraphs: description.slice(idx).trim(), hasMore: true };
-    }
-    return { firstParagraph: description, restParagraphs: "", hasMore: false };
-  })();
-
-  // Use key_features from meta (independent field) — fallback to parsing description for legacy products
-  const features: string[] = meta?.key_features?.length ? meta.key_features : (() => {
-    const parsed: string[] = [];
-    if (description) {
-      const lines = description.split("\n").map((l) => l.trim()).filter(Boolean);
-      for (const line of lines) {
-        if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*")) {
-          parsed.push(line.replace(/^[-•*]\s*/, ""));
-        }
-      }
-    }
-    return parsed;
-  })();
-
-  const whatsInBoxItems: string[] = meta?.whats_in_box?.length ? meta.whats_in_box : [`1 x ${meta?.name || "Product"}`];
-
-  return (
-    <div className="space-y-6">
-      {/* Product Details */}
-      <SectionBox title="Product Details">
-        {description ? (
-          <div>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {firstParagraph}
-              {hasMore && expanded && (
-                <>
-                  {"\n\n"}
-                  {restParagraphs}
-                </>
-              )}
-            </p>
-            {hasMore && (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-              >
-                {expanded ? (
-                  <>
-                    Read less <ChevronUp className="h-4 w-4" />
-                  </>
-                ) : (
-                  <>
-                    Read more <ChevronDown className="h-4 w-4" />
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">No description available.</p>
-        )}
-      </SectionBox>
-
-      {/* Specifications */}
-      <SectionBox title="Specifications">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="border border-border rounded-lg p-4">
-            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
-              Key Features
-            </h4>
-            {features.length > 0 ? (
-              <ExpandableList items={features} />
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                No key features listed yet.
-              </p>
-            )}
-          </div>
-          <div className="border border-border rounded-lg p-4">
-            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
-              What's in the Box
-            </h4>
-            <ExpandableList items={whatsInBoxItems} />
-          </div>
-        </div>
-        <div className="space-y-0">
-          <SpecRow label="SKU" value={meta?.sku} />
-          <SpecRow label="Category" value={meta?.category} />
-          <SpecRow label="Condition" value={meta?.condition ? (meta.condition === "new" ? "New" : "Used") : undefined} />
-          <SpecRow label="Stock" value={meta?.stock !== undefined ? String(meta.stock) : undefined} />
-          <SpecRow label="Sold by" value={meta?.vendor_name} />
-        </div>
-      </SectionBox>
-
-      {/* Reviews */}
-      <SectionBox title="Customer Reviews">
-        <ProductReviews productId={productId} embedded />
-      </SectionBox>
-
-      {/* Shipping & Returns */}
-      <SectionBox title="Shipping & Returns">
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <Truck className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <h4 className="text-sm font-medium">Delivery</h4>
-              <p className="text-sm text-muted-foreground">
-                Standard delivery within 3-7 business days. Express delivery options may be available at checkout.
-              </p>
+          {parsedFeatures.length > 0 ? (
+            <div className="mt-6 border-t border-border pt-5">
+              <h3 className="mb-3 font-bold">Key features</h3>
+              <FeatureList items={parsedFeatures} />
             </div>
-          </div>
-          <Separator />
-          <div className="flex items-start gap-3">
-            <RotateCcw className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <h4 className="text-sm font-medium">Returns</h4>
-              <p className="text-sm text-muted-foreground">
-                Returns accepted within 7 days of delivery. Items must be in original condition with packaging intact.
-              </p>
+          ) : null}
+          {meta?.whats_in_box?.length ? (
+            <div className="mt-6 border-t border-border pt-5">
+              <h3 className="mb-3 font-bold">What's in the box</h3>
+              <FeatureList items={meta.whats_in_box} />
             </div>
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="specifications" className="m-0 p-5 md:p-6">
+          <h2 className="mb-3 text-lg font-bold">Specifications</h2>
+          <div className="max-w-3xl border-y border-border">
+            <SpecRow label="SKU" value={meta?.sku} />
+            <SpecRow label="Category" value={meta?.category} />
+            <SpecRow label="Condition" value={meta?.condition ? (meta.condition === "new" ? "New" : "Used") : undefined} />
+            <SpecRow label="Available stock" value={meta?.stock !== undefined ? String(meta.stock) : undefined} />
+            <SpecRow label="Sold by" value={meta?.vendor_name} />
           </div>
-          <Separator />
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <h4 className="text-sm font-medium">Buyer Protection</h4>
-              <p className="text-sm text-muted-foreground">
-                Full refund if the item is not as described or not received.
-              </p>
-            </div>
-          </div>
-        </div>
-      </SectionBox>
-    </div>
+        </TabsContent>
+
+        <TabsContent value="reviews" className="m-0 p-1 md:p-2">
+          <ProductReviews productId={productId} embedded showHeading={false} />
+        </TabsContent>
+      </Tabs>
+    </section>
   );
 };
 
