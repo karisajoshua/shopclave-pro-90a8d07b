@@ -17,4 +17,4 @@
 ## Product detail page redesign
 - [x] Rebuild the product purchase layout, gallery, delivery, seller, trust, tabs, and mobile actions without changing purchase flows.
 - [x] Verify desktop and mobile rendering, tests, types, and preview build.
-- [ ] Add temporary deterministic review/sold fallbacks, real card signals, and default product images.
+- [x] Add temporary deterministic review/sold fallbacks, real card signals, and default product images.

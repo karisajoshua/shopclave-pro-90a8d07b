@@ -43,6 +43,7 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { useLocale } from "@/hooks/useLocale";
+import { useProductRatings } from "@/hooks/useProductRatings";
 import { useToggleWishlist, useWishlist } from "@/hooks/useWishlist";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -679,7 +680,7 @@ const RelatedProducts = ({ categoryId, currentProductId }: { categoryId: string 
       if (!categoryId) return [];
       const { data, error } = await supabase
         .from("products")
-        .select("*, product_images(url, position), vendors(store_name)")
+        .select("*, product_images(url, position), vendors(store_name, status)")
         .eq("status", "active")
         .eq("category_id", categoryId)
         .neq("id", currentProductId)
@@ -709,6 +710,9 @@ const RelatedProducts = ({ categoryId, currentProductId }: { categoryId: string 
               vendorId={item.vendor_id}
               vendorName={item.vendors?.store_name || ""}
               dealEndsAt={item.deal_ends_at}
+              stock={item.stock}
+              handlingTimeDays={item.handling_time_days}
+              verifiedSeller={item.vendors?.status === "approved"}
             />
           );
         })}
