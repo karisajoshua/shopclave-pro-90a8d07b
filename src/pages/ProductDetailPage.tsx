@@ -358,7 +358,7 @@ const ProductDetailPage = () => {
       else toast.error("You already have all available stock in your cart");
       return;
     }
-    const quantity = Math.min(qty, room);
+    const qtyToAdd = Math.min(qty, room);
     addItem({
       productId: product.id,
       name: product.name,
@@ -368,9 +368,9 @@ const ProductDetailPage = () => {
       vendorName: vendor?.store_name || "",
       variantId: selectedVariant?.id,
       variantLabel: selectionLabel || undefined,
-    }, quantity);
+    }, qtyToAdd);
     if (mode === "buy") navigate("/checkout");
-    else toast.success(quantity < qty ? `Added ${quantity} (stock limit)` : "Added to cart");
+    else toast.success(qtyToAdd < qty ? `Added ${qtyToAdd} (stock limit)` : "Added to cart");
   };
 
   const shareProduct = async () => {
