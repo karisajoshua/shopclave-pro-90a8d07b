@@ -291,7 +291,7 @@ const ProductDetailPage = () => {
     hasVariants,
     optionKeys: Object.keys(optionTypes),
     selected: selectedOptions,
-    variant: selectedVariant,
+    variant: selectedVariant as any,
     productStock: product?.stock,
   });
 
