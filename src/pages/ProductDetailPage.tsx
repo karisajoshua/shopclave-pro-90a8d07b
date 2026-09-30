@@ -136,7 +136,7 @@ const SellerCard = ({ vendor, productId, onMessage }: { vendor: any; productId: 
   const storePath = `/store/${vendor.slug ?? vendor.id}`;
 
   return (
-    <section className="border border-border bg-card p-4" aria-labelledby="seller-heading">
+    <section className="border border-border bg-card p-3" aria-labelledby="seller-heading">
       <div className="flex items-center gap-3">
         {vendor.logo_url ? (
           <img src={vendor.logo_url} alt="" className="h-12 w-12 shrink-0 rounded-full border border-border object-cover" loading="lazy" />
@@ -166,7 +166,7 @@ const SellerCard = ({ vendor, productId, onMessage }: { vendor: any; productId: 
           {isFollowing ? "Following" : "Follow"}
         </Button>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
         <Button asChild variant="outline"><Link to={storePath}>Visit store</Link></Button>
         <Button type="button" variant="outline" onClick={() => requireAuth(onMessage)}>
           <MessageCircle className="h-4 w-4" /> Message seller
@@ -186,7 +186,7 @@ const TrustStrip = () => {
   return (
     <div className="grid grid-cols-2 border border-border bg-card sm:grid-cols-4">
       {items.map(({ icon: Icon, title, detail }) => (
-        <div key={title} className="flex min-w-0 items-center gap-2 border-b border-r border-border p-3 last:border-r-0 sm:border-b-0">
+        <div key={title} className="flex min-w-0 items-center gap-2 border-b border-r border-border p-2.5 last:border-r-0 sm:border-b-0 md:p-3">
           <Icon className="h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0">
             <p className="text-xs font-bold text-foreground">{title}</p>
@@ -440,9 +440,9 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      <main className="bg-muted/30 pb-8 pt-3 md:pt-5">
-        <div className="container space-y-5">
-          <section className="grid gap-5 bg-card p-3 md:p-5 lg:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] lg:gap-7" aria-label="Product purchase information">
+      <main className="bg-muted/30 pb-8 pt-2 md:pt-4">
+        <div className="container space-y-3">
+          <section className="grid gap-3 bg-card p-2.5 md:p-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] lg:gap-6" aria-label="Product purchase information">
             <ProductGallery
               images={galleryImages}
               videoUrl={product.video_url}
@@ -452,13 +452,13 @@ const ProductDetailPage = () => {
               onToggleWishlist={() => toggleWishlist.mutate(product.id)}
             />
 
-            <div className="min-w-0 space-y-4">
+            <div className="min-w-0 space-y-3">
               {vendor ? (
-                <Link to={`/store/${vendor.slug ?? vendor.id}`} className="text-sm font-semibold text-primary hover:underline">
-                  {vendor.store_name}
+                <Link to={`/store/${vendor.slug ?? vendor.id}`} className="text-xs font-semibold text-primary hover:underline md:text-sm">
+                  Sold by {vendor.store_name}
                 </Link>
               ) : null}
-              <h1 className="text-xl font-bold leading-snug text-foreground md:text-2xl">{product.name}</h1>
+              <h1 className="text-lg font-bold leading-snug text-foreground md:text-2xl">{product.name}</h1>
 
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {reviewStats.count > 0 ? (
@@ -471,7 +471,7 @@ const ProductDetailPage = () => {
                 ) : (
                   <span className="text-muted-foreground">No reviews yet</span>
                 )}
-                <Button type="button" size="sm" variant="ghost" className="ml-auto h-8 px-2" onClick={() => void shareProduct()}>
+                <Button type="button" size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => void shareProduct()}>
                   <Share2 className="h-4 w-4" /> Share
                 </Button>
               </div>
@@ -496,7 +496,7 @@ const ProductDetailPage = () => {
               </p>
 
               {hasVariants ? (
-                <div className="space-y-4 border-y border-border py-4">
+                <div className="space-y-3 border-y border-border py-3">
                   {Object.entries(optionTypes).map(([optionName, values]) => (
                     <fieldset key={optionName}>
                       <legend className="mb-2 text-sm font-bold">
@@ -515,13 +515,13 @@ const ProductDetailPage = () => {
                               disabled={!available}
                               aria-pressed={selected}
                               onClick={() => setSelectedOptions((current) => ({ ...current, [optionName]: value }))}
-                              className={cn(
-                                "h-auto min-h-10 rounded-sm px-3 py-2",
+                               className={cn(
+                                 "h-auto min-h-9 rounded-sm px-2.5 py-1.5 text-xs md:text-sm",
                                 selected && "border-2 border-primary bg-primary/5 text-primary",
                                 !available && "line-through",
                               )}
                             >
-                              {image ? <img src={image} alt="" className="h-8 w-8 border border-border object-cover" /> : null}
+                               {image ? <img src={image} alt="" className="h-8 w-8 border border-border object-cover" /> : null}
                               {value}
                             </Button>
                           );
@@ -543,7 +543,7 @@ const ProductDetailPage = () => {
                 </div>
               ) : null}
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <span className="text-sm font-bold">Quantity</span>
                 <div className="flex h-10 items-center border border-border" role="group" aria-label="Quantity">
                   <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-none" aria-label="Decrease quantity" disabled={!purchase.canBuy || qty <= 1} onClick={() => setQty((current) => clampQuantity(current - 1, purchase.maxQty))}>
@@ -557,7 +557,7 @@ const ProductDetailPage = () => {
                 {purchase.canBuy ? <span className="text-xs text-muted-foreground">Maximum {purchase.maxQty}</span> : null}
               </div>
 
-              <div className="hidden grid-cols-2 gap-3 md:grid">
+              <div className="hidden grid-cols-2 gap-2 md:grid">
                 <Button type="button" size="lg" variant="outline" className="border-primary font-bold text-primary hover:bg-primary/5 hover:text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
                   <ShoppingCart className="h-5 w-5" /> Add to cart
                 </Button>
@@ -565,21 +565,21 @@ const ProductDetailPage = () => {
               </div>
 
               <section className="border border-border bg-card" aria-labelledby="delivery-heading">
-                <div className="border-b border-border px-4 py-3">
+                <div className="border-b border-border px-3 py-2.5">
                   <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery in Canada</h2>
                   <p className="mt-1 text-xs text-muted-foreground">Shipping is finalized at checkout for each seller.</p>
                 </div>
-                <div className="divide-y divide-border px-4">
-                  <div className="grid grid-cols-[1fr_auto] gap-3 py-3 text-sm">
+                 <div className="divide-y divide-border px-3">
+                   <div className="grid grid-cols-[1fr_auto] gap-3 py-2.5 text-sm">
                     <div><p className="font-semibold">Standard delivery</p><p className="text-xs text-muted-foreground">3–7 business days</p></div>
                     <span className="font-bold">CA$12.50</span>
                   </div>
-                  <div className="grid grid-cols-[1fr_auto] gap-3 py-3 text-sm">
+                   <div className="grid grid-cols-[1fr_auto] gap-3 py-2.5 text-sm">
                     <div><p className="font-semibold">Express delivery</p><p className="text-xs text-muted-foreground">1–3 business days</p></div>
                     <span className="font-bold">CA$19.99</span>
                   </div>
                 </div>
-                <div className="flex gap-4 border-t border-border px-4 py-2 text-xs">
+                 <div className="flex gap-4 border-t border-border px-3 py-2 text-xs">
                   <Link to="/delivery" className="font-semibold text-primary hover:underline">Delivery details</Link>
                   <Link to="/return-policy" className="font-semibold text-primary hover:underline">7-day return policy</Link>
                 </div>
@@ -607,16 +607,16 @@ const ProductDetailPage = () => {
           />
 
           <RelatedProducts categoryId={product.category_id} currentProductId={product.id} />
-          <div className="h-24 md:hidden" />
+           <div className="h-20 md:hidden" />
         </div>
       </main>
 
-      <div className="fixed bottom-14 left-0 right-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur md:hidden">
+       <div className="fixed bottom-14 left-0 right-0 z-40 border-t border-border bg-card/95 px-2.5 py-2 shadow-lg backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-lg gap-2">
           <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label={wished ? "Remove from wishlist" : "Add to wishlist"} onClick={() => toggleWishlist.mutate(product.id)}>
             <Heart className={cn("h-5 w-5", wished && "fill-primary text-primary")} />
           </Button>
-          <Button type="button" variant="outline" className="h-11 flex-1 border-primary font-bold text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>Add to cart</Button>
+           <Button type="button" variant="outline" className="h-11 flex-1 border-primary font-bold text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}><ShoppingCart className="h-4 w-4" /> Add to cart</Button>
           <Button type="button" className="h-11 flex-1 font-bold" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>Buy now</Button>
         </div>
       </div>

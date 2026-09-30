@@ -54,23 +54,23 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
     <section className="border border-border bg-card" aria-label="Product information">
       <Tabs defaultValue="description">
         <div className="overflow-x-auto border-b border-border">
-          <TabsList className="h-12 w-max min-w-full justify-start rounded-none bg-transparent p-0">
-            <TabsTrigger value="description" className="h-12 rounded-none border-b-2 border-transparent px-5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">
+           <TabsList className="h-11 w-max min-w-full justify-start rounded-none bg-transparent p-0">
+             <TabsTrigger value="description" className="h-11 rounded-none border-b-2 border-transparent px-4 text-xs shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none md:px-5 md:text-sm">
               Description
             </TabsTrigger>
-            <TabsTrigger value="specifications" className="h-12 rounded-none border-b-2 border-transparent px-5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">
+             <TabsTrigger value="specifications" className="h-11 rounded-none border-b-2 border-transparent px-4 text-xs shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none md:px-5 md:text-sm">
               Specifications
             </TabsTrigger>
-            <TabsTrigger value="reviews" className="h-12 rounded-none border-b-2 border-transparent px-5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">
+             <TabsTrigger value="reviews" className="h-11 rounded-none border-b-2 border-transparent px-4 text-xs shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none md:px-5 md:text-sm">
               Reviews ({reviewCount})
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="description" className="m-0 p-5 md:p-6">
+         <TabsContent value="description" className="m-0 p-4 md:p-6">
           <h2 className="mb-3 text-lg font-bold">Product description</h2>
           {description ? (
-            <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{description}</p>
+             <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">{description}</p>
           ) : (
             <p className="text-sm italic text-muted-foreground">No description available.</p>
           )}
@@ -88,7 +88,7 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
           ) : null}
         </TabsContent>
 
-        <TabsContent value="specifications" className="m-0 p-5 md:p-6">
+         <TabsContent value="specifications" className="m-0 p-4 md:p-6">
           <h2 className="mb-3 text-lg font-bold">Specifications</h2>
           <div className="max-w-3xl border-y border-border">
             <SpecRow label="SKU" value={meta?.sku} />
