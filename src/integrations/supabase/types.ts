@@ -1012,6 +1012,7 @@ export type Database = {
       }
       product_variants: {
         Row: {
+          barcode: string | null
           compare_at_price: number | null
           created_at: string
           id: string
@@ -1023,6 +1024,7 @@ export type Database = {
           variant_options: Json
         }
         Insert: {
+          barcode?: string | null
           compare_at_price?: number | null
           created_at?: string
           id?: string
@@ -1034,6 +1036,7 @@ export type Database = {
           variant_options?: Json
         }
         Update: {
+          barcode?: string | null
           compare_at_price?: number | null
           created_at?: string
           id?: string
@@ -1056,9 +1059,13 @@ export type Database = {
       }
       products: {
         Row: {
+          allow_backorders: boolean
+          barcode: string | null
+          brand: string | null
           category_id: string | null
           compare_at_price: number | null
           condition: string
+          cost_per_item: number | null
           created_at: string
           customs_value_cad: number | null
           deal_ends_at: string | null
@@ -1072,14 +1079,20 @@ export type Database = {
           is_physical: boolean
           key_features: string[] | null
           length_cm: number | null
+          low_stock_threshold: number | null
+          max_order_qty: number | null
+          min_order_qty: number
+          mpn: string | null
           name: string
           price: number
+          shipping_options: Json
           ships_from_country: string | null
           sku: string | null
           slug: string
           status: string
           stock: number
           tax_category: string
+          track_inventory: boolean
           updated_at: string
           vendor_featured: boolean
           vendor_id: string
@@ -1089,9 +1102,13 @@ export type Database = {
           width_cm: number | null
         }
         Insert: {
+          allow_backorders?: boolean
+          barcode?: string | null
+          brand?: string | null
           category_id?: string | null
           compare_at_price?: number | null
           condition?: string
+          cost_per_item?: number | null
           created_at?: string
           customs_value_cad?: number | null
           deal_ends_at?: string | null
@@ -1105,14 +1122,20 @@ export type Database = {
           is_physical?: boolean
           key_features?: string[] | null
           length_cm?: number | null
+          low_stock_threshold?: number | null
+          max_order_qty?: number | null
+          min_order_qty?: number
+          mpn?: string | null
           name: string
           price: number
+          shipping_options?: Json
           ships_from_country?: string | null
           sku?: string | null
           slug: string
           status?: string
           stock?: number
           tax_category?: string
+          track_inventory?: boolean
           updated_at?: string
           vendor_featured?: boolean
           vendor_id: string
@@ -1122,9 +1145,13 @@ export type Database = {
           width_cm?: number | null
         }
         Update: {
+          allow_backorders?: boolean
+          barcode?: string | null
+          brand?: string | null
           category_id?: string | null
           compare_at_price?: number | null
           condition?: string
+          cost_per_item?: number | null
           created_at?: string
           customs_value_cad?: number | null
           deal_ends_at?: string | null
@@ -1138,14 +1165,20 @@ export type Database = {
           is_physical?: boolean
           key_features?: string[] | null
           length_cm?: number | null
+          low_stock_threshold?: number | null
+          max_order_qty?: number | null
+          min_order_qty?: number
+          mpn?: string | null
           name?: string
           price?: number
+          shipping_options?: Json
           ships_from_country?: string | null
           sku?: string | null
           slug?: string
           status?: string
           stock?: number
           tax_category?: string
+          track_inventory?: boolean
           updated_at?: string
           vendor_featured?: boolean
           vendor_id?: string
