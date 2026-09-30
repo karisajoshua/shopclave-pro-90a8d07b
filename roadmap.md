@@ -24,3 +24,8 @@
 
 ## Product trust information
 - [x] Expand the four clickable trust icons into detailed same-page panels using verified policies and supplied brand artwork.
+
+## Seller product listing (6 steps)
+- [x] Brand/MPN, barcode, cost, inventory rules, 4 shipping options, review with Edit, Save as Draft / Publish
+- [x] Product page shows the seller's enabled delivery options and prices
+- [ ] Deploy updated checkout shipping function (awaiting owner go-ahead)
