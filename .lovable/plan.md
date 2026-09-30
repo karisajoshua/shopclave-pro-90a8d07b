@@ -6,7 +6,9 @@ Make product listings more persuasive using accurate marketplace data, and ensur
 ## Changes
 
 1. **Add trustworthy shopping signals to product cards**
-   - Keep the existing real star rating, review count, sold count, price, discount, and sale countdown.
+   - Keep the existing price, discount, and sale countdown.
+   - Temporarily generate stable seeded ratings, review counts, and sold counts when a product has no real activity, so the values do not change between visits.
+   - Always prefer real review and paid-order totals as soon as they exist; seeded values are fallback display data only and will not create fake review records or alter order history.
    - Show a low-stock message only when the stored inventory is genuinely low.
    - Show an estimated delivery window derived from the seller’s stored handling time.
    - Show a verified-seller indicator only when the seller is actually approved.
@@ -21,12 +23,14 @@ Make product listings more persuasive using accurate marketplace data, and ensur
 
 3. **Reliability and consistency**
    - Add an image-error fallback on the product gallery so broken image links do not leave an empty area.
-   - Keep ratings, sales, stock, seller status, and delivery messaging tied to real stored data; add no fabricated urgency or social proof.
+   - Keep stock, seller status, and delivery messaging tied to real stored data; seeded review and sales figures remain isolated presentation fallbacks.
    - Preserve existing cart, Buy Now, variant, stock, wishlist, checkout, and currency behavior.
 
 ## Verification
 - Check products with general images, variant-only images, broken image links, and no images.
 - Check that no variant is selected automatically when several choices exist.
+- Confirm seeded figures are deterministic, consistent everywhere, and replaced independently by each real metric when available.
+- Confirm the product review section does not invent review comments, reviewer identities, photos, or rating distributions.
 - Confirm cards render correctly on mobile and desktop across all product-listing sections.
 - Run focused purchase/card tests, type checks, and verify the preview build.
 
