@@ -93,7 +93,7 @@ const Footer = () => {
                 <li><Link to="/help" className="hover:text-primary-foreground transition-colors">{t("footer.helpCenter")}</Link></li>
                 <li><Link to="/faq" className="hover:text-primary-foreground transition-colors">FAQ</Link></li>
                 <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">{t("footer.contactUs")}</Link></li>
-                <li><Link to="/orders" className="hover:text-primary-foreground transition-colors">Track an order</Link></li>
+                <li><Link to="/account" className="hover:text-primary-foreground transition-colors">Track an order</Link></li>
               </ul>
             </div>
             <div>
