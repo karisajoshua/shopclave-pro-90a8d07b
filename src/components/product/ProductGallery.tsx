@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import ImageZoom from "@/components/product/ImageZoom";
 
@@ -16,9 +16,10 @@ interface ProductGalleryProps {
   videoUrl?: string | null;
   productName: string;
   forcedImageUrl?: string | null;
+  discountPct?: number | null;
 }
 
-const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: ProductGalleryProps) => {
+const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl, discountPct }: ProductGalleryProps) => {
   const allImages = images.length ? images : [barakazIcon];
   const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const [activeIndex, setActiveIndex] = useState(0);
@@ -33,103 +34,72 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl }: Produ
     if (showVideo) return null;
     if (forcedImageUrl) {
       const idx = allImages.indexOf(forcedImageUrl);
-      if (idx >= 0) return allImages[idx];
-      return forcedImageUrl;
+      return idx >= 0 ? allImages[idx] : forcedImageUrl;
     }
     return allImages[activeIndex] || barakazIcon;
   })();
 
-  const totalItems = allImages.length + (embedUrl ? 1 : 0);
+  const selectImage = (index: number) => {
+    setShowVideo(false);
+    setActiveIndex(index);
+  };
+  const previous = () => selectImage((activeIndex - 1 + allImages.length) % allImages.length);
+  const next = () => selectImage((activeIndex + 1) % allImages.length);
 
   return (
-    <div>
-      {/* Desktop: thumbnails left + main image right */}
-      <div className="hidden md:flex gap-3">
-        {totalItems > 1 && (
-          <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-1">
-            {allImages.map((img, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => { setActiveIndex(i); setShowVideo(false); }}
-                className={`w-16 h-16 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 transition-colors ${
-                  !showVideo && activeIndex === i ? "border-primary" : "border-border"
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-            {embedUrl && (
-              <button
-                type="button"
-                onClick={() => setShowVideo(true)}
-                className={`w-16 h-16 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 flex items-center justify-center transition-colors ${
-                  showVideo ? "border-primary" : "border-border"
-                }`}
-              >
-                <Play className="h-6 w-6 text-primary" />
-              </button>
-            )}
-          </div>
+    <div className="space-y-3">
+      <div className="relative aspect-square overflow-hidden border border-border bg-white">
+        {discountPct ? (
+          <span className="absolute left-3 top-3 z-10 bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground">
+            -{discountPct}%
+          </span>
+        ) : null}
+
+        {showVideo && embedUrl ? (
+          <iframe src={embedUrl} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={`${productName} video`} />
+        ) : (
+          <>
+            <div className="hidden h-full md:block">
+              <ImageZoom src={displayImage || barakazIcon} alt={productName} />
+            </div>
+            <img src={displayImage || barakazIcon} alt={productName} className="h-full w-full object-contain md:hidden" />
+          </>
         )}
-        <div className="flex-1 aspect-square rounded-lg overflow-hidden bg-secondary border border-border">
-          {showVideo && embedUrl ? (
-            <iframe
-              src={embedUrl}
-              className="w-full h-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              title={`${productName} video`}
-            />
-          ) : (
-            <ImageZoom src={displayImage || barakazIcon} alt={productName} />
-          )}
-        </div>
+
+        {!showVideo && allImages.length > 1 && (
+          <>
+            <button type="button" aria-label="Previous product image" onClick={previous} className="absolute left-3 top-1/2 z-10 -translate-y-1/2 border border-border bg-background/95 p-2 shadow-sm hover:bg-background">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button type="button" aria-label="Next product image" onClick={next} className="absolute right-3 top-1/2 z-10 -translate-y-1/2 border border-border bg-background/95 p-2 shadow-sm hover:bg-background">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        )}
+
+        {!showVideo && (
+          <span className="absolute bottom-3 right-3 z-10 bg-foreground/75 px-2 py-1 text-xs font-medium text-background">
+            {activeIndex + 1}/{allImages.length}
+          </span>
+        )}
       </div>
 
-      {/* Mobile: main image on top, thumbnails below horizontally */}
-      <div className="md:hidden">
-        <div className="aspect-square rounded-lg overflow-hidden bg-secondary border border-border">
-          {showVideo && embedUrl ? (
-            <iframe
-              src={embedUrl}
-              className="w-full h-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              title={`${productName} video`}
-            />
-          ) : (
-            <img src={displayImage || barakazIcon} alt={productName} className="w-full h-full object-cover" />
+      {(allImages.length > 1 || embedUrl) && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {allImages.map((img, i) => (
+            <button key={img + i} type="button" aria-label={`View product image ${i + 1}`} onClick={() => selectImage(i)}
+              className={`h-16 w-16 shrink-0 overflow-hidden border-2 bg-white transition-colors ${!showVideo && activeIndex === i ? "border-primary" : "border-border hover:border-muted-foreground/50"}`}>
+              <img src={img} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+          {embedUrl && (
+            <button type="button" aria-label="Play product video" onClick={() => setShowVideo(true)}
+              className={`flex h-16 w-16 shrink-0 items-center justify-center border-2 bg-secondary ${showVideo ? "border-primary" : "border-border"}`}>
+              <Play className="h-5 w-5 text-primary" />
+            </button>
           )}
         </div>
-        {totalItems > 1 && (
-          <div className="flex gap-2 mt-3 overflow-x-auto">
-            {allImages.map((img, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => { setActiveIndex(i); setShowVideo(false); }}
-                className={`w-14 h-14 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 transition-colors ${
-                  !showVideo && activeIndex === i ? "border-primary" : "border-border"
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-            {embedUrl && (
-              <button
-                type="button"
-                onClick={() => setShowVideo(true)}
-                className={`w-14 h-14 rounded-md overflow-hidden border-2 bg-secondary flex-shrink-0 flex items-center justify-center transition-colors ${
-                  showVideo ? "border-primary" : "border-border"
-                }`}
-              >
-                <Play className="h-5 w-5 text-primary" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };
