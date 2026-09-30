@@ -552,22 +552,25 @@ const ProductDetailPage = () => {
         </Breadcrumb>
 
         {/* 3-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px_280px] gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)] gap-6 lg:gap-10 items-start">
           {/* Gallery */}
-          <div className="order-1 lg:order-none lg:row-span-2 space-y-6">
+          <div className="order-1 lg:order-none lg:sticky lg:top-20">
             <ProductGallery
               images={galleryImages}
               videoUrl={(product as any).video_url}
               productName={product.name}
               forcedImageUrl={null}
+              discountPct={discountPct}
             />
-            <div className="hidden lg:block space-y-6">
-              <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name, sku: (product as any).sku, condition: (product as any).condition, key_features: (product as any).key_features, whats_in_box: (product as any).whats_in_box }} />
-            </div>
           </div>
 
           {/* CENTER: Product Info */}
           <div className="order-2 lg:order-none space-y-4">
+            {vendor && (
+              <Link to={`/store/${vendor.slug ?? vendor.id}`} className="inline-block text-sm font-semibold text-primary hover:underline">
+                {vendor.store_name}
+              </Link>
+            )}
             <h1 className="font-display text-lg md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
               {product.name}
             </h1>
@@ -607,7 +610,7 @@ const ProductDetailPage = () => {
                   </span>
                 </div>
               )}
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-3xl font-extrabold text-destructive">
                 {formatPrice(Number(displayPrice))}
               </p>
             </div>
@@ -631,7 +634,7 @@ const ProductDetailPage = () => {
                             disabled={!available}
                             aria-pressed={selected}
                             onClick={() => setSelectedOptions((prev) => ({ ...prev, [optName]: val }))}
-                            className={`min-w-11 px-3 py-1.5 text-sm rounded-full border-2 transition-all disabled:opacity-40 disabled:line-through disabled:cursor-not-allowed ${
+                            className={`min-w-11 px-4 py-2 text-sm border-2 transition-all disabled:opacity-40 disabled:line-through disabled:cursor-not-allowed ${
                               selected
                                 ? "border-primary bg-primary/5 text-primary font-medium shadow-sm"
                                 : "border-border text-muted-foreground hover:border-foreground/30"
@@ -798,27 +801,37 @@ const ProductDetailPage = () => {
               </Button>
             </div>
 
-            {/* Delivery & returns */}
-            <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-              <div className="p-3 flex gap-3">
-                <Truck className="h-5 w-5 text-primary shrink-0" />
+            {/* Delivery */}
+            <div className="border border-border bg-card text-sm">
+              <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                <Truck className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="font-semibold text-foreground">Shipping within Canada</p>
-                  <p className="text-muted-foreground">Standard CA$12.50 · Express CA$19.99 per seller. Your arrival date is shown at checkout.</p>
-                  <Link to="/delivery" className="text-primary hover:underline text-xs">Delivery details</Link>
+                  <p className="font-bold">Delivery within Canada</p>
+                  <p className="text-xs text-muted-foreground">Choose your shipping method at checkout.</p>
                 </div>
               </div>
-              <div className="p-3 flex gap-3">
-                <RotateCcw className="h-5 w-5 text-primary shrink-0" />
-                <div>
-                  <p className="font-semibold text-foreground">7-day returns</p>
-                  <Link to="/return-policy" className="text-primary hover:underline text-xs">Return policy</Link>
+              <div className="divide-y divide-border px-4">
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <div><p className="font-semibold">Standard</p><p className="text-xs text-muted-foreground">3–7 business days</p></div>
+                  <span className="font-bold">CA$12.50</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <div><p className="font-semibold">Express</p><p className="text-xs text-muted-foreground">1–3 business days</p></div>
+                  <span className="font-bold">CA$19.99</span>
                 </div>
               </div>
-              <div className="p-3 flex gap-3">
-                <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
-                <p className="text-muted-foreground">Payment is completed securely at checkout.</p>
-              </div>
+              <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">Shipping is charged per seller. Final delivery selection is confirmed at checkout.</div>
+            </div>
+
+            {vendor && (
+              <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
+            )}
+
+            <div className="grid grid-cols-2 border border-border bg-card text-xs sm:grid-cols-4">
+              <div className="flex items-center gap-2 border-b border-r border-border p-3 sm:border-b-0"><ShieldCheck className="h-4 w-4 text-success" /><span>Secure payments</span></div>
+              <div className="flex items-center gap-2 border-b border-border p-3 sm:border-b-0 sm:border-r"><ShieldCheck className="h-4 w-4 text-success" /><span>Buyer protection</span></div>
+              <div className="flex items-center gap-2 border-r border-border p-3"><RotateCcw className="h-4 w-4 text-success" /><Link to="/return-policy" className="hover:underline">7-day returns</Link></div>
+              <div className="flex items-center gap-2 p-3"><Truck className="h-4 w-4 text-success" /><span>Canadian support</span></div>
             </div>
 
             <div className="flex items-center justify-between">
@@ -835,24 +848,14 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* Mobile: Seller info + Description tabs */}
-          <div className="order-3 lg:hidden space-y-6">
-            {vendor && (
-              <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
-            )}
-            <ProductDescriptionTabs description={product.description} productId={product.id} meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name, sku: (product as any).sku, condition: (product as any).condition, key_features: (product as any).key_features, whats_in_box: (product as any).whats_in_box }} />
-          </div>
-
-          {/* RIGHT: Seller Info */}
-          <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start">
-            {vendor && (
-              <SellerInfoSidebar vendor={vendor} productId={product.id} onChatOpen={() => setChatOpen(true)} />
-            )}
-          </div>
         </div>
 
-
-        {/* Reviews are now inside the tabs */}
+        <ProductDescriptionTabs
+          description={product.description}
+          productId={product.id}
+          reviewCount={reviewStats?.count || 0}
+          meta={{ name: product.name, category: product.categories?.name, stock: product.stock, vendor_name: vendor?.store_name, sku: (product as any).sku, condition: (product as any).condition, key_features: (product as any).key_features, whats_in_box: (product as any).whats_in_box }}
+        />
 
         {/* Related Products */}
         <RelatedProducts categoryId={product.category_id} currentProductId={product.id} />
@@ -870,15 +873,15 @@ const ProductDetailPage = () => {
           </span>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label={wishlistIds?.has(product.id) ? "Remove from wishlist" : "Add to wishlist"} onClick={() => toggleWishlist.mutate(product.id)}>
+            <Heart className={`h-5 w-5 ${wishlistIds?.has(product.id) ? "fill-primary text-primary" : ""}`} />
+          </Button>
           <Button variant="outline" className="flex-1 font-semibold gap-1.5 h-11" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
             <ShoppingCart className="h-4 w-4" />
             Add to cart
           </Button>
           <Button className="flex-1 font-semibold h-11" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>
             Buy now
-          </Button>
-          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Message seller" onClick={() => requireAuthMain(() => setChatOpen(true))}>
-            <MessageCircle className="h-4 w-4" />
           </Button>
         </div>
       </div>
