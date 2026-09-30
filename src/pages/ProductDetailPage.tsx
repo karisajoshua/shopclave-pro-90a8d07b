@@ -166,7 +166,6 @@ const ProductDetailPage = () => {
   const toggleWishlist = useToggleWishlist();
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
-  const [chatOpen, setChatOpen] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryService>("Standard Shipping");
 
   const { data: product, isLoading } = useQuery({
@@ -581,7 +580,7 @@ const ProductDetailPage = () => {
                 </div>
               </section>
 
-              {vendor ? <div className="col-span-2"><SellerCard vendor={vendor} productId={product.id} onMessage={() => setChatOpen(true)} /></div> : null}
+              {vendor ? <div className="col-span-2"><SellerCard vendor={vendor} /></div> : null}
               <div className="col-span-2"><TrustStrip /></div>
           </section>
 
