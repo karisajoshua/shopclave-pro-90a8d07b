@@ -68,7 +68,7 @@ const VendorStorePage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, slug, price, compare_at_price, deal_ends_at, created_at, vendor_featured, category_id, categories(id, name, slug), product_images(url, position)")
+        .select("id, name, slug, price, compare_at_price, deal_ends_at, created_at, vendor_featured, category_id, stock, handling_time_days, categories(id, name, slug), product_images(url, position)")
         .eq("vendor_id", vendorId!)
         .eq("status", "active")
         .order("created_at", { ascending: false })
@@ -315,6 +315,9 @@ const VendorStorePage = () => {
                       rating={ratingsMap[p.id]?.avg ?? 0}
                       reviewCount={ratingsMap[p.id]?.count ?? 0}
                       soldCount={ratingsMap[p.id]?.sold ?? 0}
+                      stock={p.stock}
+                      handlingTimeDays={p.handling_time_days}
+                      verifiedSeller={vendor.status === "approved"}
                     />
                   );
                 })}
@@ -401,6 +404,9 @@ const VendorStorePage = () => {
                       rating={ratingsMap[p.id]?.avg ?? 0}
                       reviewCount={ratingsMap[p.id]?.count ?? 0}
                       soldCount={ratingsMap[p.id]?.sold ?? 0}
+                      stock={p.stock}
+                      handlingTimeDays={p.handling_time_days}
+                      verifiedSeller={vendor.status === "approved"}
                     />
                   );
                 })}

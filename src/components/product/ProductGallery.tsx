@@ -94,7 +94,12 @@ const ProductGallery = ({
             <div className="hidden h-full md:block">
               <ImageZoom src={displayImage || barakazIcon} alt={productName} />
             </div>
-            <img src={displayImage || barakazIcon} alt={productName} className="h-full w-full object-contain md:hidden" />
+            <img
+              src={displayImage || barakazIcon}
+              alt={productName}
+              className="h-full w-full object-contain md:hidden"
+              onError={(event) => { event.currentTarget.src = barakazIcon; }}
+            />
           </>
         )}
 

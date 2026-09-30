@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, ShoppingCart, Heart } from "lucide-react";
+import { Star, ShoppingCart, Heart, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -8,6 +8,8 @@ import CountdownTimer from "@/components/shared/CountdownTimer";
 import { useProductRatings } from "@/hooks/useProductRatings";
 import { useLocale } from "@/hooks/useLocale";
 import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
+import { estimateDeliveryWindow, formatDeliveryWindow, transitDaysForService } from "@/lib/deliveryEstimate";
+import { getProductDisplayStats } from "@/lib/productDisplayStats";
 
 interface ProductCardProps {
   id: string;
@@ -22,10 +24,14 @@ interface ProductCardProps {
   vendorName: string;
   slug: string;
   dealEndsAt?: string | null;
+  stock?: number | null;
+  handlingTimeDays?: number | null;
+  verifiedSeller?: boolean;
 }
 
 const ProductCard = ({
   id, name, price, compareAtPrice, image, rating, reviewCount, soldCount, vendorId, vendorName, slug, dealEndsAt,
+  stock, handlingTimeDays, verifiedSeller = false,
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const { formatPrice } = useLocale();
@@ -34,13 +40,22 @@ const ProductCard = ({
   const inWishlist = wishlistIds?.has(id) ?? false;
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
 
-  // Real data only: when a list page hasn't supplied rating/review/sold stats,
-  // fetch them so every card shows the same consistent row. Never seeded/fake.
   const needsStats = rating === undefined || reviewCount === undefined || soldCount === undefined;
   const { data: stats } = useProductRatings(needsStats ? [id] : []);
-  const displayRating = rating ?? stats?.[id]?.avg ?? 0;
-  const displayReviewCount = reviewCount ?? stats?.[id]?.count ?? 0;
-  const displaySoldCount = soldCount ?? stats?.[id]?.sold ?? 0;
+  const displayStats = getProductDisplayStats(
+    id,
+    rating ?? stats?.[id]?.avg ?? 0,
+    reviewCount ?? stats?.[id]?.count ?? 0,
+    soldCount ?? stats?.[id]?.sold ?? 0,
+  );
+  const displayRating = displayStats.rating;
+  const displayReviewCount = displayStats.reviewCount;
+  const displaySoldCount = displayStats.soldCount;
+  const deliveryEstimate = handlingTimeDays == null ? null : formatDeliveryWindow(estimateDeliveryWindow({
+    from: new Date(),
+    ...transitDaysForService("Standard Shipping"),
+    handlingDays: handlingTimeDays,
+  }));
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -94,7 +109,10 @@ const ProductCard = ({
         )}
       </div>
       <div className="p-3 flex flex-col flex-1">
-        <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{vendorName}</p>
+        <p className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="line-clamp-1">{vendorName}</span>
+          {verifiedSeller ? <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Verified seller" /> : null}
+        </p>
         <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-1.5 flex-1">{name}</h3>
         <div className="flex items-center gap-1 mb-2 text-xs" aria-label={`Rated ${displayRating} out of 5 from ${displayReviewCount} reviews, ${displaySoldCount} sold`}>
           <div className="flex items-center">
@@ -109,6 +127,14 @@ const ProductCard = ({
           <span className="text-muted-foreground/50" aria-hidden>·</span>
           <span className="text-muted-foreground">{displaySoldCount} sold</span>
         </div>
+        {stock != null && stock > 0 && stock <= 5 ? (
+          <p className="mb-1 text-xs font-semibold text-destructive">Only {stock} left</p>
+        ) : null}
+        {deliveryEstimate ? (
+          <p className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Truck className="h-3.5 w-3.5 shrink-0 text-success" /> Delivery {deliveryEstimate}
+          </p>
+        ) : null}
         <div className="flex items-end justify-between">
           <div>
             <p className="text-lg font-bold text-foreground">{formatPrice(price)}</p>

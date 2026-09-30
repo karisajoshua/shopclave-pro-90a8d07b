@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import barakazIcon from "@/assets/barakaz-icon.webp";
 
 interface ImageZoomProps {
   src: string;
@@ -41,6 +42,7 @@ const ImageZoom = ({ src, alt, zoom = 2.2, className = "" }: ImageZoomProps) => 
         className="w-full h-full object-cover transition-opacity duration-150"
         style={{ opacity: active ? 0 : 1 }}
         draggable={false}
+        onError={(event) => { event.currentTarget.src = barakazIcon; }}
       />
       {active && (
         <div

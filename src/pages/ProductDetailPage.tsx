@@ -55,6 +55,7 @@ import {
 } from "@/lib/productPurchase";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import { cn } from "@/lib/utils";
+import { getProductDisplayStats } from "@/lib/productDisplayStats";
 import {
   estimateDeliveryWindow,
   formatDeliveryWindow,
@@ -253,6 +254,8 @@ const ProductDetailPage = () => {
     enabled: Boolean(product?.id),
   });
 
+  const { data: soldStats = {} } = useProductRatings(product?.id ? [product.id] : []);
+
   useEffect(() => {
     if (product?.id && product.vendor_id) void trackEvent(product.vendor_id, product.id, "view");
   }, [product?.id, product?.vendor_id]);
@@ -333,8 +336,10 @@ const ProductDetailPage = () => {
       const matches = images.filter((image: any) => image.variant_id === selectedVariant.id).sort((a: any, b: any) => a.position - b.position);
       if (matches.length) return matches.map((image: any) => image.url);
     }
-    const general = images.filter((image: any) => !image.variant_id).sort((a: any, b: any) => a.position - b.position);
-    return general.length ? general.map((image: any) => image.url) : [barakazIcon];
+    const sortedImages = images.slice().sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+    const general = sortedImages.filter((image: any) => !image.variant_id);
+    const defaults = general.length ? general : sortedImages;
+    return defaults.length ? defaults.map((image: any) => image.url) : [barakazIcon];
   }, [optionTypes, product, selectedOptions, selectedVariant, variants]);
 
   if (isLoading) {
@@ -356,6 +361,12 @@ const ProductDetailPage = () => {
   }
 
   const vendor = product.vendors as any;
+  const displayStats = getProductDisplayStats(
+    product.id,
+    reviewStats.avg,
+    reviewStats.count,
+    soldStats[product.id]?.sold ?? 0,
+  );
   const selectionLabel = selectedVariant ? Object.values(selectedVariant.variant_options as Record<string, string>).join(" / ") : "";
   const wished = Boolean(wishlistIds?.has(product.id));
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -481,16 +492,11 @@ const ProductDetailPage = () => {
                <h1 className="line-clamp-5 text-[11px] font-bold leading-snug text-foreground sm:text-sm md:text-2xl">{product.name}</h1>
 
               <div className="flex flex-wrap items-center gap-1 text-[10px] md:gap-2 md:text-sm">
-                {reviewStats.count > 0 ? (
-                  <>
-                    <RatingStars rating={reviewStats.avg} />
-                    <Button type="button" variant="link" className="h-auto p-0" onClick={scrollToReviews}>
-                      {reviewStats.avg.toFixed(1)} · {reviewStats.count} {reviewStats.count === 1 ? "review" : "reviews"}
-                    </Button>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">No reviews yet</span>
-                )}
+                <RatingStars rating={displayStats.rating} />
+                <Button type="button" variant="link" className="h-auto p-0" onClick={scrollToReviews}>
+                  {displayStats.rating.toFixed(1)} · {displayStats.reviewCount} {displayStats.reviewCount === 1 ? "review" : "reviews"}
+                </Button>
+                <span className="text-muted-foreground">· {displayStats.soldCount} sold</span>
                 <Button type="button" size="sm" variant="ghost" className="ml-auto hidden h-7 px-2 text-xs md:inline-flex" onClick={() => void shareProduct()}>
                   <Share2 className="h-4 w-4" /> Share
                 </Button>
