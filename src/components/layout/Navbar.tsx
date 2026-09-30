@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ShoppingCart, Search, Menu, MapPin, Globe, User, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
+  const location = useLocation();
+  const isProductPage = location.pathname.startsWith("/product/");
   const { user } = useAuth();
   const { totalItems } = useCart();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -208,7 +210,7 @@ const Navbar = () => {
         </nav>
 
         {/* === MOBILE QUICK LINKS === */}
-        <div className="md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground">
+        <div className={isProductPage ? "hidden" : "md:hidden bg-[hsl(var(--nav-secondary))] text-primary-foreground"}>
           <div className="flex items-center gap-0 h-9 text-xs overflow-x-auto scrollbar-hide px-1">
             <Link to="/search?deals=1" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.todaysDeals")}</Link>
             <Link to="/vendor/register" className="px-3 py-1 shrink-0 whitespace-nowrap">{t("nav.sellOn")}</Link>
