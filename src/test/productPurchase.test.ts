@@ -46,6 +46,8 @@ describe("quantity", () => {
 
 describe("product page wiring", () => {
   const src = readFileSync("src/pages/ProductDetailPage.tsx", "utf8");
+  const gallery = readFileSync("src/components/product/ProductGallery.tsx", "utf8");
+  const details = readFileSync("src/components/product/ProductDescriptionTabs.tsx", "utf8");
   it("desktop and mobile actions share one guarded handler with quantity", () => {
     expect(src.match(/handlePurchase\("cart"\)/g)?.length).toBe(2);
     expect(src.match(/handlePurchase\("buy"\)/g)?.length).toBe(2);
@@ -55,5 +57,21 @@ describe("product page wiring", () => {
     expect(src).not.toMatch(/seededRandom|getDisplayVendorPerformance|getDisplayProductRating|viewing this right now/);
     expect(src).toContain('priceCurrency: "CAD"');
     expect(src).not.toContain('"KES"');
+  });
+  it("keeps purchase controls consistent and stock-capped", () => {
+    expect(src).toContain('disabled={!purchase.canBuy || qty >= purchase.maxQty}');
+    expect(src).toContain('remainingForCart(purchase.maxQty, inCart)');
+    expect(src).toContain('variantId: selectedVariant?.id');
+  });
+  it("provides accessible gallery controls and mobile swipe", () => {
+    expect(gallery).toContain('aria-label="Previous product image"');
+    expect(gallery).toContain('aria-label="Next product image"');
+    expect(gallery).toContain('onTouchStart');
+    expect(gallery).toContain('Gallery position');
+  });
+  it("uses real review totals in the content tabs", () => {
+    expect(details).toContain('Reviews ({reviewCount})');
+    expect(details).toContain('ProductReviews productId={productId}');
+    expect(details).not.toContain('Questions');
   });
 });

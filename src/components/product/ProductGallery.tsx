@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Heart, Play } from "lucide-react";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import ImageZoom from "@/components/product/ImageZoom";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function getEmbedUrl(url: string): string | null {
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
@@ -16,14 +18,25 @@ interface ProductGalleryProps {
   videoUrl?: string | null;
   productName: string;
   forcedImageUrl?: string | null;
-  discountPct?: number | null;
+  discountPercent?: number | null;
+  wished?: boolean;
+  onToggleWishlist?: () => void;
 }
 
-const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl, discountPct }: ProductGalleryProps) => {
+const ProductGallery = ({
+  images,
+  videoUrl,
+  productName,
+  forcedImageUrl,
+  discountPercent,
+  wished = false,
+  onToggleWishlist,
+}: ProductGalleryProps) => {
   const allImages = images.length ? images : [barakazIcon];
   const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null;
   const [activeIndex, setActiveIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
+  const touchStart = useRef<number | null>(null);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -32,31 +45,50 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl, discoun
 
   const displayImage = (() => {
     if (showVideo) return null;
-    if (forcedImageUrl) {
-      const idx = allImages.indexOf(forcedImageUrl);
-      return idx >= 0 ? allImages[idx] : forcedImageUrl;
-    }
+    if (forcedImageUrl) return forcedImageUrl;
     return allImages[activeIndex] || barakazIcon;
   })();
 
-  const selectImage = (index: number) => {
-    setShowVideo(false);
-    setActiveIndex(index);
+  const totalItems = allImages.length + (embedUrl ? 1 : 0);
+  const currentPosition = showVideo ? totalItems : activeIndex + 1;
+
+  const move = (direction: -1 | 1) => {
+    if (totalItems <= 1) return;
+    const current = showVideo ? allImages.length : activeIndex;
+    const next = (current + direction + totalItems) % totalItems;
+    if (next === allImages.length && embedUrl) setShowVideo(true);
+    else {
+      setShowVideo(false);
+      setActiveIndex(next);
+    }
   };
-  const previous = () => selectImage((activeIndex - 1 + allImages.length) % allImages.length);
-  const next = () => selectImage((activeIndex + 1) % allImages.length);
+
+  const selectImage = (index: number) => {
+    setActiveIndex(index);
+    setShowVideo(false);
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="relative aspect-square overflow-hidden border border-border bg-white">
-        {discountPct ? (
-          <span className="absolute left-3 top-3 z-10 bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground">
-            -{discountPct}%
-          </span>
-        ) : null}
-
+    <div className="min-w-0" aria-label={`${productName} gallery`}>
+      <div
+        className="group relative aspect-square overflow-hidden border border-border bg-secondary"
+        onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }}
+        onTouchEnd={(event) => {
+          const start = touchStart.current;
+          const end = event.changedTouches[0]?.clientX;
+          touchStart.current = null;
+          if (start == null || end == null || Math.abs(start - end) < 45) return;
+          move(start > end ? 1 : -1);
+        }}
+      >
         {showVideo && embedUrl ? (
-          <iframe src={embedUrl} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={`${productName} video`} />
+          <iframe
+            src={embedUrl}
+            className="h-full w-full"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            title={`${productName} video`}
+          />
         ) : (
           <>
             <div className="hidden h-full md:block">
@@ -66,40 +98,96 @@ const ProductGallery = ({ images, videoUrl, productName, forcedImageUrl, discoun
           </>
         )}
 
-        {!showVideo && allImages.length > 1 && (
-          <>
-            <button type="button" aria-label="Previous product image" onClick={previous} className="absolute left-3 top-1/2 z-10 -translate-y-1/2 border border-border bg-background/95 p-2 shadow-sm hover:bg-background">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button type="button" aria-label="Next product image" onClick={next} className="absolute right-3 top-1/2 z-10 -translate-y-1/2 border border-border bg-background/95 p-2 shadow-sm hover:bg-background">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </>
-        )}
-
-        {!showVideo && (
-          <span className="absolute bottom-3 right-3 z-10 bg-foreground/75 px-2 py-1 text-xs font-medium text-background">
-            {activeIndex + 1}/{allImages.length}
+        {discountPercent && discountPercent > 0 ? (
+          <span className="absolute left-3 top-3 rounded bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground">
+            -{discountPercent}%
           </span>
-        )}
+        ) : null}
+
+        {onToggleWishlist ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="absolute right-3 top-3 rounded-full shadow-sm"
+            aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+            onClick={onToggleWishlist}
+          >
+            <Heart className={cn("h-5 w-5", wished && "fill-primary text-primary")} />
+          </Button>
+        ) : null}
+
+        {totalItems > 1 ? (
+          <>
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full shadow-sm md:opacity-0 md:group-hover:opacity-100"
+              aria-label="Previous product image"
+              onClick={() => move(-1)}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full shadow-sm md:opacity-0 md:group-hover:opacity-100"
+              aria-label="Next product image"
+              onClick={() => move(1)}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+            <span className="absolute bottom-3 right-3 rounded-full bg-foreground/75 px-2.5 py-1 text-xs font-medium text-background">
+              {currentPosition}/{totalItems}
+            </span>
+          </>
+        ) : null}
       </div>
 
-      {(allImages.length > 1 || embedUrl) && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {allImages.map((img, i) => (
-            <button key={img + i} type="button" aria-label={`View product image ${i + 1}`} onClick={() => selectImage(i)}
-              className={`h-16 w-16 shrink-0 overflow-hidden border-2 bg-white transition-colors ${!showVideo && activeIndex === i ? "border-primary" : "border-border hover:border-muted-foreground/50"}`}>
-              <img src={img} alt="" className="h-full w-full object-cover" />
-            </button>
-          ))}
-          {embedUrl && (
-            <button type="button" aria-label="Play product video" onClick={() => setShowVideo(true)}
-              className={`flex h-16 w-16 shrink-0 items-center justify-center border-2 bg-secondary ${showVideo ? "border-primary" : "border-border"}`}>
-              <Play className="h-5 w-5 text-primary" />
-            </button>
-          )}
-        </div>
-      )}
+      {totalItems > 1 ? (
+        <>
+          <div className="mt-3 hidden gap-2 overflow-x-auto pb-1 md:flex" aria-label="Product thumbnails">
+            {allImages.map((image, index) => (
+              <Button
+                key={`${image}-${index}`}
+                type="button"
+                variant="outline"
+                aria-label={`View product image ${index + 1}`}
+                aria-current={!showVideo && activeIndex === index ? "true" : undefined}
+                onClick={() => selectImage(index)}
+                className={cn(
+                  "h-16 w-16 shrink-0 overflow-hidden rounded-sm p-0",
+                  !showVideo && activeIndex === index ? "border-2 border-primary" : "border-border",
+                )}
+              >
+                <img src={image} alt="" className="h-full w-full object-cover" />
+              </Button>
+            ))}
+            {embedUrl ? (
+              <Button
+                type="button"
+                variant="outline"
+                aria-label="View product video"
+                aria-current={showVideo ? "true" : undefined}
+                onClick={() => setShowVideo(true)}
+                className={cn("h-16 w-16 shrink-0 rounded-sm p-0", showVideo ? "border-2 border-primary" : "border-border")}
+              >
+                <Play className="h-6 w-6 text-primary" />
+              </Button>
+            ) : null}
+          </div>
+          <div className="mt-3 flex justify-center gap-1.5 md:hidden" aria-label="Gallery position">
+            {Array.from({ length: totalItems }).map((_, index) => (
+              <span
+                key={index}
+                className={cn("h-1.5 rounded-full transition-all", currentPosition === index + 1 ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/30")}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 };

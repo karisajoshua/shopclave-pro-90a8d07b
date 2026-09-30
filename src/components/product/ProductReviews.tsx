@@ -6,12 +6,12 @@ import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 interface ProductReviewsProps {
   productId: string;
   embedded?: boolean;
+  showHeading?: boolean;
 }
 
 const StarRating = ({
@@ -38,7 +38,7 @@ const StarRating = ({
   </div>
 );
 
-const ProductReviews = ({ productId, embedded = false }: ProductReviewsProps) => {
+const ProductReviews = ({ productId, embedded = false, showHeading = true }: ProductReviewsProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newRating, setNewRating] = useState(0);
@@ -140,7 +140,7 @@ const ProductReviews = ({ productId, embedded = false }: ProductReviewsProps) =>
 
   return (
     <div id="reviews-section" className={embedded ? "p-4" : "border-t border-border pt-8 mt-8"}>
-      <h2 className={`font-display font-bold mb-6 ${embedded ? "text-lg" : "text-xl"}`}>Customer Reviews</h2>
+      {showHeading && <h2 className={`font-display font-bold mb-6 ${embedded ? "text-lg" : "text-xl"}`}>Customer Reviews</h2>}
 
       <div className="grid md:grid-cols-[280px_1fr] gap-8">
         {/* Summary */}
@@ -195,9 +195,6 @@ const ProductReviews = ({ productId, embedded = false }: ProductReviewsProps) =>
               <div key={review.id} className="border-b border-border pb-4 last:border-0">
                 <div className="flex items-center gap-2 mb-1">
                   <StarRating rating={review.rating} />
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    Verified Purchase
-                  </Badge>
                 </div>
                 <p className="text-sm font-medium">
                   {review.profile?.full_name || "Customer"}
