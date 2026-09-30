@@ -18,3 +18,6 @@
 - [x] Rebuild the product purchase layout, gallery, delivery, seller, trust, tabs, and mobile actions without changing purchase flows.
 - [x] Verify desktop and mobile rendering, tests, types, and preview build.
 - [x] Add temporary deterministic review/sold fallbacks, real card signals, and default product images.
+
+## Desktop marketplace footer
+- [x] Add supplied payment marks with conditional checkout wording and expand support, shopping, seller, policy, trust, and account navigation.

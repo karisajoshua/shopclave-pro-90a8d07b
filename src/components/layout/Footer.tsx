@@ -1,10 +1,40 @@
 import { Link } from "react-router-dom";
-import { MessageCircle, Facebook, Instagram, Twitter, Youtube, Linkedin } from "lucide-react";
+import { Facebook, Headphones, Instagram, LockKeyhole, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
 import barakazLogo from "@/assets/barakaz-logo.webp";
 import appBadges from "@/assets/app-store-badges.webp";
+import jcbLogo from "@/assets/payment-methods/jcb.webp";
+import bankTransferLogo from "@/assets/payment-methods/bank-transfer.webp";
+import shopPayLogo from "@/assets/payment-methods/shop-pay.webp";
+import afterpayLogo from "@/assets/payment-methods/afterpay.webp";
+import klarnaLogo from "@/assets/payment-methods/klarna.webp";
+import mastercardLogo from "@/assets/payment-methods/mastercard.webp";
+import stripeLogo from "@/assets/payment-methods/stripe.webp";
+import googlePayLogo from "@/assets/payment-methods/google-pay.webp";
+import applePayLogo from "@/assets/payment-methods/apple-pay.webp";
+import paypalLogo from "@/assets/payment-methods/paypal.webp";
+
+const paymentMethods = [
+  { name: "Mastercard", logo: mastercardLogo },
+  { name: "JCB", logo: jcbLogo },
+  { name: "Apple Pay", logo: applePayLogo },
+  { name: "Google Pay", logo: googlePayLogo },
+  { name: "PayPal", logo: paypalLogo },
+  { name: "Stripe", logo: stripeLogo },
+  { name: "Shop Pay", logo: shopPayLogo },
+  { name: "Klarna", logo: klarnaLogo },
+  { name: "Afterpay", logo: afterpayLogo },
+  { name: "Bank transfer", logo: bankTransferLogo },
+];
+
+const assuranceItems = [
+  { icon: LockKeyhole, title: "Secure checkout", detail: "Encrypted payment processing" },
+  { icon: RotateCcw, title: "7-day returns", detail: "On eligible purchases" },
+  { icon: Truck, title: "Tracked delivery", detail: "Updates on supported shipments" },
+  { icon: Headphones, title: "Customer support", detail: "Help when you need it" },
+];
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -37,10 +67,25 @@ const Footer = () => {
         </div>
       </div>
 
+      {/* Marketplace assurance */}
+      <div className="border-b border-primary-foreground/10 bg-[hsl(var(--nav-dark))] text-primary-foreground">
+        <div className="container grid grid-cols-2 gap-px bg-primary-foreground/10 lg:grid-cols-4">
+          {assuranceItems.map(({ icon: Icon, title, detail }) => (
+            <div key={title} className="flex items-center gap-3 bg-[hsl(var(--nav-dark))] px-5 py-5">
+              <Icon className="h-6 w-6 shrink-0 text-[hsl(var(--marketplace-orange))]" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="mt-0.5 text-xs text-primary-foreground/60">{detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Link columns */}
       <div className="bg-[hsl(var(--nav-dark))] text-primary-foreground">
-        <div className="container py-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="container py-12">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-5">
             <div>
               <h4 className="font-bold text-sm mb-4">{t("footer.needHelp")}</h4>
               <ul className="space-y-2.5 text-sm text-primary-foreground/70">
@@ -48,17 +93,24 @@ const Footer = () => {
                 <li><Link to="/help" className="hover:text-primary-foreground transition-colors">{t("footer.helpCenter")}</Link></li>
                 <li><Link to="/faq" className="hover:text-primary-foreground transition-colors">FAQ</Link></li>
                 <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">{t("footer.contactUs")}</Link></li>
-                <li>
-                  <a href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-primary-foreground transition-colors">
-                    <MessageCircle className="h-3.5 w-3.5" /> {t("footer.whatsappUs")}
-                  </a>
-                </li>
+                <li><Link to="/account" className="hover:text-primary-foreground transition-colors">Track an order</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm mb-4">Shop</h4>
+              <ul className="space-y-2.5 text-sm text-primary-foreground/70">
+                <li><Link to="/search" className="hover:text-primary-foreground transition-colors">Browse all products</Link></li>
+                <li><Link to="/search?sort=newest" className="hover:text-primary-foreground transition-colors">New arrivals</Link></li>
+                <li><Link to="/search?deals=true" className="hover:text-primary-foreground transition-colors">Deals</Link></li>
+                <li><Link to="/wishlist" className="hover:text-primary-foreground transition-colors">Wishlist</Link></li>
+                <li><Link to="/cart" className="hover:text-primary-foreground transition-colors">Shopping cart</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold text-sm mb-4">{t("footer.aboutBarakaz")}</h4>
               <ul className="space-y-2.5 text-sm text-primary-foreground/70">
                 <li><Link to="/about" className="hover:text-primary-foreground transition-colors">{t("footer.aboutUs")}</Link></li>
+                <li><Link to="/contact" className="hover:text-primary-foreground transition-colors">Careers & partnerships</Link></li>
                 <li><Link to="/terms" className="hover:text-primary-foreground transition-colors">{t("footer.terms")}</Link></li>
                 <li><Link to="/privacy-policy" className="hover:text-primary-foreground transition-colors">{t("footer.privacy")}</Link></li>
                 <li><Link to="/cookie-policy" className="hover:text-primary-foreground transition-colors">{t("footer.cookies")}</Link></li>
@@ -68,8 +120,9 @@ const Footer = () => {
               <h4 className="font-bold text-sm mb-4">{t("footer.makeMoney")}</h4>
               <ul className="space-y-2.5 text-sm text-primary-foreground/70">
                 <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">{t("footer.sellOnBarakaz")}</Link></li>
-                <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">{t("footer.vendorHub")}</Link></li>
+                <li><Link to="/vendor/dashboard" className="hover:text-primary-foreground transition-colors">{t("footer.vendorHub")}</Link></li>
                 <li><Link to="/vendor/register" className="hover:text-primary-foreground transition-colors">{t("footer.becomePartner")}</Link></li>
+                <li><Link to="/vendor/resources" className="hover:text-primary-foreground transition-colors">Seller resources</Link></li>
               </ul>
             </div>
             <div>
@@ -77,10 +130,36 @@ const Footer = () => {
               <ul className="space-y-2.5 text-sm text-primary-foreground/70">
                 <li><Link to="/delivery" className="hover:text-primary-foreground transition-colors">{t("footer.delivery")}</Link></li>
                 <li><Link to="/return-policy" className="hover:text-primary-foreground transition-colors">{t("footer.returnPolicy")}</Link></li>
-                <li><Link to="/auth" className="hover:text-primary-foreground transition-colors">{t("footer.myAccount")}</Link></li>
+                <li><Link to="/account" className="hover:text-primary-foreground transition-colors">{t("footer.myAccount")}</Link></li>
                 <li><Link to="/cart" className="hover:text-primary-foreground transition-colors">{t("footer.myCart")}</Link></li>
+                <li><Link to="/account" className="hover:text-primary-foreground transition-colors">Orders & returns</Link></li>
               </ul>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment methods */}
+      <div className="border-t border-primary-foreground/10 bg-[hsl(var(--nav-dark))] text-primary-foreground">
+        <div className="container py-8">
+          <div className="mb-5 flex items-end justify-between gap-6">
+            <div>
+              <h4 className="flex items-center gap-2 text-sm font-bold">
+                <ShieldCheck className="h-4 w-4 text-[hsl(var(--marketplace-orange))]" aria-hidden="true" />
+                Payment options
+              </h4>
+              <p className="mt-1 text-xs text-primary-foreground/55">
+                Available methods are confirmed securely at checkout and may vary by order.
+              </p>
+            </div>
+            <p className="hidden text-xs text-primary-foreground/45 lg:block">Prices shown in Canadian dollars (CAD)</p>
+          </div>
+          <div className="grid grid-cols-5 gap-2 lg:grid-cols-10" aria-label="Payment methods that may be available at checkout">
+            {paymentMethods.map((method) => (
+              <div key={method.name} className="flex h-11 items-center justify-center overflow-hidden rounded border border-primary-foreground/15 bg-background px-2" title={method.name}>
+                <img src={method.logo} alt={method.name} className="h-7 w-full object-contain" loading="lazy" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -98,19 +177,12 @@ const Footer = () => {
               <img src={appBadges} alt="Download Barakaz on App Store & Google Play" className="h-10 w-auto" />
             </a>
           </div>
-          <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-4 mt-2" aria-label="Barakaz social media">
             <a href="https://www.facebook.com/share/1E58qDYbDL/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Facebook className="h-5 w-5" /></a>
             <a href="https://www.tiktok.com/@barakazofficial" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.75a8.18 8.18 0 0 0 4.76 1.52V6.84a4.84 4.84 0 0 1-1-.15z"/></svg>
             </a>
             <a href="https://www.instagram.com/barakazofficial" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Instagram className="h-5 w-5" /></a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301a.601.601 0 0 1 .634.055.613.613 0 0 1 .199.596c-.011.038-.355 1.19-1.364 1.773-.209.121-.512.152-.785.152-.339 0-.648-.075-.775-.105a8.457 8.457 0 0 1-.12 1.014c-.645 3.061-3.191 6.695-8.455 6.695C5.029 20 2.394 17.834 1.498 16.953a.622.622 0 0 1 .35-1.058c.238-.03 2.385-.241 3.518-1.164a3.503 3.503 0 0 1-1.895-2.363.593.593 0 0 1 .405-.699 3.525 3.525 0 0 1-1.353-2.694.602.602 0 0 1 .545-.594 3.527 3.527 0 0 1-.883-2.77.611.611 0 0 1 .976-.375c1.043.855 2.347 1.37 3.468 1.37h.12C8.044 4.273 9.68.793 12.206.793z"/></svg>
-            </a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Twitter className="h-5 w-5" /></a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Youtube className="h-5 w-5" /></a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><Linkedin className="h-5 w-5" /></a>
-            <a href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><MessageCircle className="h-5 w-5" /></a>
           </div>
           <div className="flex items-center gap-4 mt-2">
             <img
