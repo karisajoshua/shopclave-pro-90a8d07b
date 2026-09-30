@@ -47,8 +47,9 @@ const DEMO_PRODUCTS = Array.from({ length: 8 }).map((_, i) => ({
   vendorId: `vendor-${i % 3}`,
   vendorName: ["TechHub Store", "Fashion Point", "Home Essentials"][i % 3],
   slug: ["wireless-headphones", "smart-watch-pro", "running-shoes", "organic-face-cream", "led-desk-lamp", "cotton-tshirt", "bluetooth-speaker", "yoga-mat"][i],
-  rating: [4.5, 4.8, 4.2, 4.6, 4.0, 4.3, 4.7, 4.1][i],
-  reviewCount: [128, 56, 89, 234, 45, 167, 73, 92][i],
+  rating: 0,
+  reviewCount: 0,
+  soldCount: 0,
 }));
 
 const Index = () => {
@@ -144,6 +145,7 @@ const Index = () => {
         slug: p.slug,
         rating: ratingsMap[p.id]?.avg ?? 0,
         reviewCount: ratingsMap[p.id]?.count ?? 0,
+        soldCount: ratingsMap[p.id]?.sold ?? 0,
         dealEndsAt: p.deal_ends_at || null,
       }))
     : isFirstRunDemo

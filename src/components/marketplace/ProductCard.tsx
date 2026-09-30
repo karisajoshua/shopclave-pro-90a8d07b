@@ -5,7 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import CountdownTimer from "@/components/shared/CountdownTimer";
-import { getDisplayProductRating } from "@/lib/product-rating-fallback";
+import { useProductRatings } from "@/hooks/useProductRatings";
 import { useLocale } from "@/hooks/useLocale";
 import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
 
@@ -17,6 +17,7 @@ interface ProductCardProps {
   image: string;
   rating?: number;
   reviewCount?: number;
+  soldCount?: number;
   vendorId: string;
   vendorName: string;
   slug: string;
@@ -24,7 +25,7 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({
-  id, name, price, compareAtPrice, image, rating = 0, reviewCount = 0, vendorId, vendorName, slug, dealEndsAt,
+  id, name, price, compareAtPrice, image, rating, reviewCount, soldCount, vendorId, vendorName, slug, dealEndsAt,
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const { formatPrice } = useLocale();
@@ -32,7 +33,14 @@ const ProductCard = ({
   const toggleWishlist = useToggleWishlist();
   const inWishlist = wishlistIds?.has(id) ?? false;
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
-  const displayRating = getDisplayProductRating(id, rating, reviewCount);
+
+  // Real data only: when a list page hasn't supplied rating/review/sold stats,
+  // fetch them so every card shows the same consistent row. Never seeded/fake.
+  const needsStats = rating === undefined || reviewCount === undefined || soldCount === undefined;
+  const { data: stats } = useProductRatings(needsStats ? [id] : []);
+  const displayRating = rating ?? stats?.[id]?.avg ?? 0;
+  const displayReviewCount = reviewCount ?? stats?.[id]?.count ?? 0;
+  const displaySoldCount = soldCount ?? stats?.[id]?.sold ?? 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -87,15 +95,19 @@ const ProductCard = ({
       </div>
       <div className="p-3 flex flex-col flex-1">
         <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{vendorName}</p>
-        <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2 flex-1">{name}</h3>
-        <div className="flex items-center gap-1 mb-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              className={`h-3 w-3 ${i < Math.round(displayRating.rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
-            />
-          ))}
-          <span className="text-xs text-muted-foreground ml-1">({displayRating.reviewCount})</span>
+        <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-1.5 flex-1">{name}</h3>
+        <div className="flex items-center gap-1 mb-2 text-xs" aria-label={`Rated ${displayRating} out of 5 from ${displayReviewCount} reviews, ${displaySoldCount} sold`}>
+          <div className="flex items-center">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className={`h-3 w-3 ${i < Math.round(displayRating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`}
+              />
+            ))}
+          </div>
+          <span className="text-muted-foreground">({displayReviewCount})</span>
+          <span className="text-muted-foreground/50" aria-hidden>·</span>
+          <span className="text-muted-foreground">{displaySoldCount} sold</span>
         </div>
         <div className="flex items-end justify-between">
           <div>

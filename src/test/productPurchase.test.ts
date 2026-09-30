@@ -83,3 +83,20 @@ describe("product page wiring", () => {
     expect(details).not.toContain('Questions');
   });
 });
+
+describe("marketplace product card", () => {
+  const card = readFileSync("src/components/marketplace/ProductCard.tsx", "utf8");
+  it("shows a consistent real-data row under the title: stars, review count and sold", () => {
+    expect(card).toContain("displayReviewCount");
+    expect(card).toContain("{displaySoldCount} sold");
+    expect(card).toMatch(/aria-label=\{`Rated \${displayRating} out of 5/);
+  });
+  it("uses only real ratings — no seeded fallback", () => {
+    expect(card).not.toContain("product-rating-fallback");
+    expect(card).not.toMatch(/seededRandom|seededFloat|getDisplayProductRating/);
+  });
+  it("falls back to the real stats hook when a list omits stats", () => {
+    expect(card).toContain("useProductRatings(needsStats ? [id] : [])");
+    expect(card).toContain("stats?.[id]?.sold");
+  });
+});

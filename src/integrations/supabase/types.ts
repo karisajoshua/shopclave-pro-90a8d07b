@@ -3392,6 +3392,7 @@ export type Database = {
           avg_rating: number
           product_id: string
           review_count: number
+          sold_count: number
         }[]
       }
       get_public_profiles: {

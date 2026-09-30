@@ -314,6 +314,7 @@ const VendorStorePage = () => {
                       dealEndsAt={p.deal_ends_at}
                       rating={ratingsMap[p.id]?.avg ?? 0}
                       reviewCount={ratingsMap[p.id]?.count ?? 0}
+                      soldCount={ratingsMap[p.id]?.sold ?? 0}
                     />
                   );
                 })}
@@ -399,6 +400,7 @@ const VendorStorePage = () => {
                       dealEndsAt={p.deal_ends_at}
                       rating={ratingsMap[p.id]?.avg ?? 0}
                       reviewCount={ratingsMap[p.id]?.count ?? 0}
+                      soldCount={ratingsMap[p.id]?.sold ?? 0}
                     />
                   );
                 })}
