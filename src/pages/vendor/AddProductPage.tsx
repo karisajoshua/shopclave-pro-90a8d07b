@@ -16,6 +16,7 @@ import { Plus, X, Layers, Upload, Video, ImageIcon, ChevronRight, Check } from "
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { isAdminUnlimited } from "@/lib/subscriptionPlans";
+import { ShippingOptionsFields, DEFAULT_SHIPPING_OPTIONS, validateShippingOptions, InventoryExtrasFields, emptyInventoryExtras, validateInventoryExtras, inventoryExtrasToColumns, SHIP_LABELS, shipDaysLabel, type ShippingOptions, type InventoryExtras, type ShipKey } from "@/components/vendor/ProductListingExtras";
 import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
 
 const STEPS = [
@@ -60,8 +61,10 @@ const AddProductPage = () => {
   const [form, setForm] = useState({
     name: "", description: "", price: "", compareAtPrice: "", bulkPrice: "",
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
-    dealEndsAt: "",
+    dealEndsAt: "", brand: "", mpn: "",
   });
+  const [shipping, setShipping] = useState<ShippingOptions>(DEFAULT_SHIPPING_OPTIONS);
+  const [inv, setInv] = useState<InventoryExtras>(emptyInventoryExtras);
   const [pkg, setPkg] = useState<PackageDims>(emptyPackageDims);
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
@@ -147,7 +150,7 @@ const AddProductPage = () => {
     switch (step) {
       case 0: if (!selectedCategoryId) { toast.error("Please select a category"); return false; } return true;
       case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } return true;
-      case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
+      case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
       case 3: return true;
       case 4: if (hasVariants && variantRows.length === 0) { toast.error("Add at least one variant option with values"); return false; } return true;
       default: return true;
@@ -158,14 +161,18 @@ const AddProductPage = () => {
   const back = () => setStep(s => Math.max(s - 1, 0));
 
   // Submit
-  const handleSubmit = async () => {
-    const pkgErr = validatePackageDims(pkg);
-    if (pkgErr) { toast.error(pkgErr); setStep(2); return; }
+  const handleSubmit = async (publishStatus: "active" | "draft") => {
+    if (publishStatus === "active") {
+      if (!selectedCategoryId) { toast.error("Please select a category"); setStep(0); return; }
+      if (!form.name.trim() || !form.description.trim()) { toast.error("Name and description are required"); setStep(1); return; }
+      const e2 = (!(parseFloat(form.price) > 0) && "Price is required") || validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping);
+      if (e2) { toast.error(e2); setStep(2); return; }
+    } else if (!form.name.trim()) { toast.error("Add a product name before saving a draft"); setStep(1); return; }
     if (!vendor) { toast.error("Vendor account not found"); return; }
     setLoading(true);
     try {
       // Enforce listing limit (admins are unlimited)
-      if (!isAdmin) {
+      if (!isAdmin && publishStatus === "active") {
         const { data: sub } = await supabase
           .from("vendor_subscriptions")
           .select("max_listings, plan_name")
@@ -194,17 +201,18 @@ const AddProductPage = () => {
       const { data: product, error } = await supabase.from("products").insert({
         vendor_id: vendor.id, name: form.name.trim(), slug,
         description: form.description.trim() || null,
-        price: parseFloat(form.price),
+        price: parseFloat(form.price) || 0,
         compare_at_price: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
         stock: hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : parseInt(form.stock) || 0,
-        category_id: selectedCategoryId || null, status: form.status,
+        category_id: selectedCategoryId || null, status: publishStatus,
+        brand: form.brand.trim() || null, mpn: form.mpn.trim() || null, shipping_options: shipping, ...inventoryExtrasToColumns(inv),
         video_url: videoUrl.trim() || null,
         sku: autoSku,
         key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
-        ...packageDimsToColumns(pkg),
+        ...(validatePackageDims(pkg) ? {} : packageDimsToColumns(pkg)),
       } as any).select().single();
       if (error) throw error;
 
@@ -230,7 +238,7 @@ const AddProductPage = () => {
         }));
       }
 
-      toast.success("Product added!");
+      toast.success(publishStatus === "active" ? "Product published!" : "Draft saved");
       navigate("/vendor/products");
     } catch (err: any) {
       console.error("Add product failed:", err);
@@ -240,7 +248,7 @@ const AddProductPage = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <h2 className="text-xl font-bold mb-4">Add New Product</h2>
 
       {/* Step indicator */}
@@ -281,6 +289,10 @@ const AddProductPage = () => {
             <div>
               <Label>Product Name *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter product name" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><Label>Brand</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="e.g. Generic" /></div>
+              <div><Label>Model / MPN (Optional)</Label><Input value={form.mpn} onChange={(e) => setForm({ ...form, mpn: e.target.value })} /></div>
             </div>
             <div>
               <Label>Condition *</Label>
@@ -360,7 +372,7 @@ const AddProductPage = () => {
         {/* Step 2: Pricing & Stock */}
         {step === 2 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Pricing & Stock</h3>
+            <h3 className="font-semibold text-lg">Pricing, Inventory & Shipping</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Price (CAD) *</Label>
@@ -392,24 +404,13 @@ const AddProductPage = () => {
               </div>
               <div>
                 <Label>SKU</Label>
-                <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Optional" />
+                <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Auto-generated if blank" />
               </div>
             </div>
 
+            <InventoryExtrasFields value={inv} onChange={setInv} />
             <PackageMeasurementsFields value={pkg} onChange={setPkg} />
-
-            <div>
-              <Label>Delivery Options</Label>
-              <Select value={form.delivery} onValueChange={(v) => setForm({ ...form, delivery: v })}>
-                <SelectTrigger><SelectValue placeholder="Select delivery option" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="standard">Standard Delivery</SelectItem>
-                  <SelectItem value="express">Express Delivery</SelectItem>
-                  <SelectItem value="pickup">Pickup Only</SelectItem>
-                  <SelectItem value="both">Delivery & Pickup</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <ShippingOptionsFields value={shipping} onChange={setShipping} />
 
             <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
               <Label className="flex items-center gap-1.5 text-primary">⚡ Flash Sale Timer (optional)</Label>
@@ -554,46 +555,54 @@ const AddProductPage = () => {
         {/* Step 5: Review & Submit */}
         {step === 5 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Review & Submit</h3>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium">{categoryPath.join(" > ") || "—"}</span></div>
-              <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Product Name</span><span className="font-medium">{form.name || "—"}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Condition</span><span className="font-medium capitalize">{form.condition}</span></div>
-              {keyFeatures.filter(f => f.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Key Features</span><span className="font-medium">{keyFeatures.filter(f => f.trim()).length} listed</span></div>}
-              {whatsInBoxItems.filter(s => s.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{whatsInBoxItems.filter(s => s.trim()).length} items</span></div>}
-              <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">{form.price ? `CA$${form.price}` : "—"}</span></div>
-              {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">CA${form.compareAtPrice}</span></div>}
-              <div className="flex justify-between"><span className="text-muted-foreground">Stock</span><span className="font-medium">{hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : form.stock}</span></div>
-              {images.length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Images</span><span className="font-medium">{images.length} uploaded</span></div>}
-              {hasVariants && <div className="flex justify-between"><span className="text-muted-foreground">Variants</span><span className="font-medium">{variantRows.length} combinations</span></div>}
-              <Separator />
-
-              {/* Seller Info */}
-              <div className="bg-secondary/50 rounded-lg p-3 space-y-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase">Seller Info</h4>
-                <div className="flex justify-between"><span className="text-muted-foreground">Seller Name</span><span className="font-medium">{vendor?.store_name || "—"}</span></div>
-                {vendor?.phone && <div className="flex justify-between"><span className="text-muted-foreground">Phone #1</span><span className="font-medium">{vendor.phone}</span></div>}
-                {vendor?.phone2 && <div className="flex justify-between"><span className="text-muted-foreground">Phone #2</span><span className="font-medium">{vendor.phone2}</span></div>}
+            <h3 className="font-semibold text-lg">Review your product</h3>
+            <p className="text-sm text-muted-foreground">Check everything before publishing. Use Edit to change any section.</p>
+            {([
+              { title: "Product Details", to: 1, rows: [["Name", form.name], ["Category", categoryPath.join(" > ")], ["Brand", form.brand], ["Model / MPN", form.mpn], ["Condition", form.condition === "new" ? "New" : "Used"], ["Key features", `${keyFeatures.filter(f => f.trim()).length} listed`], ["What's in the box", `${whatsInBoxItems.filter(f => f.trim()).length} items`]] },
+              { title: "Pricing & Inventory", to: 2, rows: [["Price", form.price ? `CA$${Number(form.price).toFixed(2)}` : ""], ["Compare at", form.compareAtPrice ? `CA$${Number(form.compareAtPrice).toFixed(2)}` : ""], ["SKU", form.sku || "Auto-generated"], ["Barcode", inv.barcode], ["Stock", hasVariants ? `Managed by variants (Total: ${variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0)})` : form.stock], ["Order quantity", `Min ${inv.minQty || 1}${inv.maxQty ? ` · Max ${inv.maxQty}` : ""}`]] },
+              { title: "Shipping", to: 2, rows: [["Weight", pkg.weightG ? `${pkg.weightG} g` : ""], ["Package", pkg.lengthCm ? `${pkg.lengthCm} × ${pkg.widthCm} × ${pkg.heightCm} cm` : ""], ...(Object.keys(SHIP_LABELS) as ShipKey[]).filter(k => shipping[k].enabled).map(k => [SHIP_LABELS[k], `${shipDaysLabel(k, shipping[k].days)} · ${shipping[k].price > 0 ? `CA$${shipping[k].price.toFixed(2)}` : "Free"}`])] },
+              { title: "Media", to: 3, rows: [["Images", `${images.length} uploaded`], ["Video", videoUrl]] },
+              { title: "Seller", to: -1, rows: [["Store", vendor?.store_name]] },
+            ] as { title: string; to: number; rows: [string, any][] }[]).map((sec) => (
+              <div key={sec.title} className="rounded-lg border border-border">
+                <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                  <h4 className="font-semibold">{sec.title}</h4>
+                  {sec.to >= 0 && <Button type="button" size="sm" variant="secondary" onClick={() => setStep(sec.to)}>Edit</Button>}
+                </div>
+                {sec.title === "Media" && images.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto px-4 pt-3">{images.slice(0, 6).map((im, i) => <img key={i} src={im.preview} alt="" className="h-14 w-14 shrink-0 rounded border border-border object-cover" />)}</div>
+                )}
+                <dl className="divide-y divide-border px-4 text-sm">
+                  {sec.rows.map(([k, v]) => <div key={k} className="grid grid-cols-[40%_1fr] gap-2 py-2"><dt className="text-muted-foreground">{k}</dt><dd className="font-medium break-words">{v || "N/A"}</dd></div>)}
+                </dl>
               </div>
+            ))}
+            {hasVariants && variantRows.length > 0 && (
+              <div className="rounded-lg border border-border">
+                <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                  <h4 className="font-semibold">Variants ({variantRows.length} combinations)</h4>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setStep(4)}>Edit</Button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-left text-xs"><tr><th className="p-2">Variant</th><th className="p-2">Price</th><th className="p-2">Stock</th><th className="p-2">SKU</th><th className="p-2">Image</th></tr></thead>
+                    <tbody>{variantRows.map((v, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="p-2">{Object.entries(v.options).map(([k, val]) => `${k}: ${val}`).join(", ")}</td>
+                        <td className="p-2">CA${Number(v.price || form.price || 0).toFixed(2)}</td>
+                        <td className="p-2">{v.stock}</td>
+                        <td className="p-2">{v.sku || "Auto"}</td>
+                        <td className="p-2">{v.imagePreviews[0] ? <img src={v.imagePreviews[0]} alt="" className="h-8 w-8 rounded object-cover" /> : "—"}</td>
+                      </tr>))}</tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button type="button" variant="outline" className="h-12 flex-1" onClick={back} disabled={loading}>Back</Button>
+              <Button type="button" variant="secondary" className="h-12 flex-1" onClick={() => handleSubmit("draft")} disabled={loading}>Save as Draft</Button>
+              <Button type="button" className="h-12 flex-1 font-bold" onClick={() => handleSubmit("active")} disabled={loading}>{loading ? "Saving..." : "Publish Product"}</Button>
             </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button type="button" className="w-full h-12 font-bold text-base bg-green-600 hover:bg-green-700 text-white" onClick={handleSubmit} disabled={loading}>
-              {loading ? "Posting..." : "Post Ad"}
-            </Button>
           </div>
         )}
 
@@ -604,11 +613,6 @@ const AddProductPage = () => {
             <Button type="button" className="flex-1" onClick={next}>
               {step === 4 ? "Review" : "Next"}
             </Button>
-          </div>
-        )}
-        {step === 5 && step > 0 && (
-          <div className="mt-4">
-            <Button type="button" variant="outline" className="w-full" onClick={back}>Back</Button>
           </div>
         )}
       </div>
