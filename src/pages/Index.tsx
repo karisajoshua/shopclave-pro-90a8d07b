@@ -81,7 +81,7 @@ const Index = () => {
       // Featured products marked by admin
       let featuredQ = await supabase
         .from("products")
-        .select("*, vendors(store_name), product_images(url)")
+        .select("*, vendors(store_name, status), product_images(url, position)")
         .eq("status", "active")
         .eq("featured", true)
         .order("created_at", { ascending: false })
@@ -139,7 +139,7 @@ const Index = () => {
         name: p.name,
         price: Number(p.price),
         compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
-        image: p.product_images?.[0]?.url || barakazIcon,
+        image: p.product_images?.slice().sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))[0]?.url || barakazIcon,
         vendorId: p.vendor_id,
         vendorName: p.vendors?.store_name || "Unknown Seller",
         slug: p.slug,
@@ -147,6 +147,9 @@ const Index = () => {
         reviewCount: ratingsMap[p.id]?.count ?? 0,
         soldCount: ratingsMap[p.id]?.sold ?? 0,
         dealEndsAt: p.deal_ends_at || null,
+        stock: p.stock,
+        handlingTimeDays: p.handling_time_days,
+        verifiedSeller: p.vendors?.status === "approved",
       }))
     : isFirstRunDemo
       ? DEMO_PRODUCTS

@@ -12,7 +12,7 @@ const BestDealsSection = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("*, vendors(store_name), product_images(url)")
+        .select("*, vendors(store_name, status), product_images(url, position)")
         .eq("status", "active")
         .not("compare_at_price", "is", null)
         .order("created_at", { ascending: false })
@@ -54,7 +54,7 @@ const BestDealsSection = () => {
               name={p.name}
               price={Number(p.price)}
               compareAtPrice={p.compare_at_price ? Number(p.compare_at_price) : null}
-              image={p.product_images?.[0]?.url || barakazIcon}
+              image={p.product_images?.slice().sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))[0]?.url || barakazIcon}
               vendorId={p.vendor_id}
               vendorName={p.vendors?.store_name || "Unknown Seller"}
               slug={p.slug}
@@ -62,6 +62,9 @@ const BestDealsSection = () => {
               reviewCount={ratingsMap[p.id]?.count ?? 0}
               soldCount={ratingsMap[p.id]?.sold ?? 0}
               dealEndsAt={p.deal_ends_at}
+              stock={p.stock}
+              handlingTimeDays={p.handling_time_days}
+              verifiedSeller={p.vendors?.status === "approved"}
             />
           ))}
         </div>

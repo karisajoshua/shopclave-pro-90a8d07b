@@ -76,6 +76,8 @@ describe("product page wiring", () => {
     expect(gallery).toContain('aria-label="Next product image"');
     expect(gallery).toContain('onTouchStart');
     expect(gallery).toContain('Gallery position');
+    expect(src).toContain("const defaults = general.length ? general : sortedImages");
+    expect(gallery).toContain("event.currentTarget.src = barakazIcon");
   });
   it("uses real review totals in the content tabs", () => {
     expect(details).toContain('Reviews ({reviewCount})');
@@ -86,17 +88,25 @@ describe("product page wiring", () => {
 
 describe("marketplace product card", () => {
   const card = readFileSync("src/components/marketplace/ProductCard.tsx", "utf8");
-  it("shows a consistent real-data row under the title: stars, review count and sold", () => {
+  it("shows a consistent row under the title: stars, review count and sold", () => {
     expect(card).toContain("displayReviewCount");
     expect(card).toContain("{displaySoldCount} sold");
     expect(card).toMatch(/aria-label=\{`Rated \${displayRating} out of 5/);
   });
-  it("uses only real ratings — no seeded fallback", () => {
-    expect(card).not.toContain("product-rating-fallback");
-    expect(card).not.toMatch(/seededRandom|seededFloat|getDisplayProductRating/);
+  it("uses deterministic temporary fallbacks without writing review or order records", () => {
+    const displayStats = readFileSync("src/lib/productDisplayStats.ts", "utf8");
+    expect(card).toContain("getProductDisplayStats");
+    expect(displayStats).toContain("hasRealReviews ? realRating");
+    expect(displayStats).toContain("hasRealSold ? realSoldCount");
+    expect(displayStats).not.toMatch(/Math\.random|supabase/);
   });
   it("falls back to the real stats hook when a list omits stats", () => {
     expect(card).toContain("useProductRatings(needsStats ? [id] : [])");
     expect(card).toContain("stats?.[id]?.sold");
+  });
+  it("shows only real stock, delivery, and seller verification signals", () => {
+    expect(card).toContain("stock != null && stock > 0 && stock <= 5");
+    expect(card).toContain("handlingTimeDays == null ? null");
+    expect(card).toContain("verifiedSeller ?");
   });
 });

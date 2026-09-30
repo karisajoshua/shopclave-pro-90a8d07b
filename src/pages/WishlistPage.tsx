@@ -69,6 +69,9 @@ const WishlistPage = () => {
                   vendorName={p.vendors?.store_name || ""}
                   slug={p.slug}
                   dealEndsAt={p.deal_ends_at || null}
+                  stock={p.stock}
+                  handlingTimeDays={p.handling_time_days}
+                  verifiedSeller={p.vendors?.status === "approved"}
                 />
               );
             })}

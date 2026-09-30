@@ -71,8 +71,8 @@ export const useWishlistProducts = () => {
         .from("wishlists")
         .select(
           `id, created_at, product_id,
-           products(id, name, slug, price, compare_at_price, vendor_id, deal_ends_at,
-             vendors(store_name),
+           products(id, name, slug, price, compare_at_price, vendor_id, deal_ends_at, stock, handling_time_days,
+              vendors(store_name, status),
              product_images(url, position))`
         )
         .eq("user_id", user!.id)
