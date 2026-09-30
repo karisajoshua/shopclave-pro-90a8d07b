@@ -21,3 +21,6 @@
 
 ## Desktop marketplace footer
 - [x] Add supplied payment marks with conditional checkout wording and expand support, shopping, seller, policy, trust, and account navigation.
+
+## Product trust information
+- [x] Expand the four clickable trust icons into detailed same-page panels using verified policies and supplied brand artwork.
