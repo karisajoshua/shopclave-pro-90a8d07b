@@ -401,6 +401,10 @@ const ProductDetailPage = () => {
     }));
   }, [product?.handling_time_days, (product as any)?.shipping_options]);
 
+  useEffect(() => {
+    if (deliveryOptions.length && !deliveryOptions.some((o) => o.service === selectedDelivery)) setSelectedDelivery(deliveryOptions[0].service);
+  }, [deliveryOptions, selectedDelivery]);
+
   const purchase = getPurchaseState({
     hasVariants,
     optionKeys: Object.keys(optionTypes),
