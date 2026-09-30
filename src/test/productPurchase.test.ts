@@ -67,7 +67,7 @@ describe("product page wiring", () => {
     const checkout = readFileSync("src/pages/CheckoutPage.tsx", "utf8");
     expect(src).toContain('"Standard Shipping" as const');
     expect(src).toContain('"Express Shipping" as const');
-    expect(src).toContain("Estimated arrival {option.arrival}");
+    expect(src).toContain("Estimated delivery {option.arrival}");
     expect(src).toContain("saveDeliveryPreference(product.vendor_id, selectedDelivery)");
     expect(checkout).toContain("readDeliveryPreference(v.vendor_id)");
   });

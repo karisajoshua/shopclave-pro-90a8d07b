@@ -134,23 +134,70 @@ const SellerCard = ({ vendor }: { vendor: any }) => {
   );
 };
 
+const TRUST_ITEMS = [
+  {
+    icon: LockKeyhole,
+    title: "Secure payments",
+    detail: "Protected checkout",
+    info: "When you check out, your payment is processed over an encrypted connection. Your card details are never stored on Barakaz or shared with the seller.",
+    link: { to: "/faq", label: "Payment questions" },
+  },
+  {
+    icon: ShieldCheck,
+    title: "Buyer protection",
+    detail: "Shop with confidence",
+    info: "Barakaz connects you directly with sellers. Keep order communication on Barakaz so there is a record of your purchase, and contact support if something goes wrong with an order.",
+    link: { to: "/help", label: "Visit the Help Center" },
+  },
+  {
+    icon: RotateCcw,
+    title: "Returns",
+    detail: "7-day policy",
+    info: "Sellers on Barakaz offer a 7-day voluntary return policy from the date you receive your order. Check the full policy for eligibility and how to start a return.",
+    link: { to: "/return-policy", label: "Read the return policy" },
+  },
+  {
+    icon: MessageCircle,
+    title: "Canadian support",
+    detail: "Help when needed",
+    info: "Our support team is based in Canada and is available to help with orders, deliveries, and seller questions.",
+    link: { to: "/contact", label: "Contact support" },
+  },
+];
+
 const TrustStrip = () => {
-  const items = [
-    { icon: LockKeyhole, title: "Secure payments", detail: "Protected checkout" },
-    { icon: ShieldCheck, title: "Buyer protection", detail: "Shop with confidence" },
-    { icon: RotateCcw, title: "Returns", detail: "7-day policy" },
-    { icon: MessageCircle, title: "Canadian support", detail: "Help when needed" },
-  ];
   return (
-     <div className="grid grid-cols-4 border border-border bg-card">
-      {items.map(({ icon: Icon, title, detail }) => (
-         <div key={title} className="flex min-w-0 flex-col items-center gap-1 border-r border-border px-1 py-2 text-center last:border-r-0 sm:flex-row sm:gap-2 sm:p-2.5 sm:text-left md:p-3">
-           <Icon className="h-5 w-5 shrink-0 text-success" />
-          <div className="min-w-0">
-             <p className="text-[9px] font-bold leading-tight text-foreground sm:text-xs">{title}</p>
-             <p className="hidden text-[11px] text-muted-foreground sm:block">{detail}</p>
-          </div>
-        </div>
+    <div className="grid grid-cols-4 border border-border bg-card">
+      {TRUST_ITEMS.map(({ icon: Icon, title, detail, info, link }) => (
+        <Dialog key={title}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={`${title} — ${detail}. Open details`}
+              className="flex min-w-0 cursor-pointer flex-col items-center gap-1 border-r border-border px-1 py-2 text-center transition-colors last:border-r-0 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex-row sm:gap-2 sm:p-2.5 sm:text-left md:p-3"
+            >
+              <Icon className="h-5 w-5 shrink-0 text-success" />
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold leading-tight text-foreground sm:text-xs">{title}</p>
+                <p className="hidden text-[11px] text-muted-foreground sm:block">{detail}</p>
+              </div>
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Icon className="h-5 w-5 text-success" /> {title}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm leading-6 text-muted-foreground">{info}</p>
+            <Link
+              to={link.to}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              {link.label} <ChevronRight className="inline h-4 w-4" />
+            </Link>
+          </DialogContent>
+        </Dialog>
       ))}
     </div>
   );
@@ -567,7 +614,7 @@ const ProductDetailPage = () => {
                         <RadioGroupItem id={`delivery-${option.service}`} value={option.service} />
                         <div>
                           <p className="font-semibold">{option.label}</p>
-                          <p className="text-xs font-medium text-success">Estimated arrival {option.arrival}</p>
+                          <p className="text-xs font-medium text-success">Estimated delivery {option.arrival}</p>
                         </div>
                         <span className="font-bold">{option.price}</span>
                       </label>
