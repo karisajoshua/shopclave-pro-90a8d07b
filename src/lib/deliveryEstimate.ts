@@ -71,7 +71,7 @@ export function addBusinessDays(start: Date, days: number, province?: string): D
 }
 
 export type DeliveryWindow = { earliest: Date; latest: Date };
-export type DeliveryService = "Standard Shipping" | "Express Shipping";
+export type DeliveryService = "Standard Shipping" | "Express Shipping" | "Free Shipping" | "Local Pickup";
 
 const DELIVERY_PREFERENCE_KEY = "barakaz_delivery_preferences";
 
@@ -114,7 +114,7 @@ export function readDeliveryPreference(vendorId: string): DeliveryService | null
   try {
     const stored = window.sessionStorage.getItem(DELIVERY_PREFERENCE_KEY);
     const value = stored ? (JSON.parse(stored) as Record<string, unknown>)[vendorId] : null;
-    return value === "Standard Shipping" || value === "Express Shipping" ? value : null;
+    return value === "Standard Shipping" || value === "Express Shipping" || value === "Free Shipping" || value === "Local Pickup" ? value : null;
   } catch {
     return null;
   }

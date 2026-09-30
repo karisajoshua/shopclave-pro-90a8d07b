@@ -1,3 +1,4 @@
+import { normalizeShippingOptions, SHIP_LABELS, type ShipKey } from "@/components/vendor/ProductListingExtras";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -385,18 +386,24 @@ const ProductDetailPage = () => {
     : null;
   const deliveryOptions = useMemo(() => {
     const handlingDays = Number(product?.handling_time_days ?? 1);
-    return [
-      { service: "Standard Shipping" as const, label: "Standard delivery", price: "CA$12.50" },
-      { service: "Express Shipping" as const, label: "Express delivery", price: "CA$19.99" },
-    ].map((option) => ({
+    const opts = normalizeShippingOptions((product as any)?.shipping_options);
+    return (Object.keys(SHIP_LABELS) as ShipKey[]).filter((k) => opts[k].enabled).map((k) => {
+      const [lo, hi] = opts[k].days.split("-").map(Number);
+      return { service: SHIP_LABELS[k] as any, label: k === "pickup" ? "Local pickup" : `${SHIP_LABELS[k].replace(" Shipping", "")} delivery`,
+        price: opts[k].price > 0 ? `CA$${opts[k].price.toFixed(2)}` : "Free", lo, hi };
+    }).map((option) => ({
       ...option,
       arrival: formatDeliveryWindow(estimateDeliveryWindow({
         from: new Date(),
-        ...transitDaysForService(option.service),
+        minDays: option.lo, maxDays: option.hi,
         handlingDays,
       })),
     }));
-  }, [product?.handling_time_days]);
+  }, [product?.handling_time_days, (product as any)?.shipping_options]);
+
+  useEffect(() => {
+    if (deliveryOptions.length && !deliveryOptions.some((o) => o.service === selectedDelivery)) setSelectedDelivery(deliveryOptions[0].service);
+  }, [deliveryOptions, selectedDelivery]);
 
   const purchase = getPurchaseState({
     hasVariants,

@@ -127,6 +127,13 @@
       "when": 1790783901772,
       "tag": "0017_product_ratings_add_sold_count",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790812067795,
+      "tag": "0018_product_listing_fields",
+      "breakpoints": true
     }
   ]
 }
