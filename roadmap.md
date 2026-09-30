@@ -16,4 +16,4 @@
 
 ## Product detail page redesign
 - [x] Rebuild the product purchase layout, gallery, delivery, seller, trust, tabs, and mobile actions without changing purchase flows.
-- [ ] Verify desktop and mobile rendering, tests, types, and preview build.
+- [x] Verify desktop and mobile rendering, tests, types, and preview build.
