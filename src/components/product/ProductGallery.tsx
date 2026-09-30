@@ -71,7 +71,7 @@ const ProductGallery = ({
   return (
     <div className="min-w-0" aria-label={`${productName} gallery`}>
       <div
-        className="group relative aspect-square overflow-hidden bg-secondary"
+        className="group relative aspect-square overflow-hidden bg-card"
         onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }}
         onTouchEnd={(event) => {
           const start = touchStart.current;
@@ -109,7 +109,7 @@ const ProductGallery = ({
             type="button"
             size="icon"
             variant="secondary"
-            className="absolute right-2 top-2 h-9 w-9 rounded-full shadow-sm md:right-3 md:top-3"
+            className="absolute right-2 top-2 h-8 w-8 rounded-full shadow-sm md:right-3 md:top-3 md:h-9 md:w-9"
             aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
             onClick={onToggleWishlist}
           >
@@ -123,7 +123,7 @@ const ProductGallery = ({
               type="button"
               size="icon"
               variant="secondary"
-              className="absolute left-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow-sm md:left-3 md:opacity-0 md:group-hover:opacity-100"
+              className="absolute left-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full shadow-sm md:left-3 md:h-9 md:w-9 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Previous product image"
               onClick={() => move(-1)}
             >
@@ -133,7 +133,7 @@ const ProductGallery = ({
               type="button"
               size="icon"
               variant="secondary"
-              className="absolute right-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow-sm md:right-3 md:opacity-0 md:group-hover:opacity-100"
+              className="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full shadow-sm md:right-3 md:h-9 md:w-9 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Next product image"
               onClick={() => move(1)}
             >
@@ -148,7 +148,7 @@ const ProductGallery = ({
 
       {totalItems > 1 ? (
         <>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1 md:mt-3" aria-label="Product thumbnails">
+          <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-1 md:mt-3 md:gap-2" aria-label="Product thumbnails">
             {allImages.map((image, index) => (
               <Button
                 key={`${image}-${index}`}
@@ -158,7 +158,7 @@ const ProductGallery = ({
                 aria-current={!showVideo && activeIndex === index ? "true" : undefined}
                 onClick={() => selectImage(index)}
                 className={cn(
-                  "h-12 w-12 shrink-0 overflow-hidden rounded-sm p-0 md:h-16 md:w-16",
+                  "h-11 w-11 shrink-0 overflow-hidden rounded-sm p-0 md:h-16 md:w-16",
                   !showVideo && activeIndex === index ? "border-2 border-primary" : "border-border",
                 )}
               >
@@ -172,7 +172,7 @@ const ProductGallery = ({
                 aria-label="View product video"
                 aria-current={showVideo ? "true" : undefined}
                 onClick={() => setShowVideo(true)}
-                className={cn("h-12 w-12 shrink-0 rounded-sm p-0 md:h-16 md:w-16", showVideo ? "border-2 border-primary" : "border-border")}
+                className={cn("h-11 w-11 shrink-0 rounded-sm p-0 md:h-16 md:w-16", showVideo ? "border-2 border-primary" : "border-border")}
               >
                 <Play className="h-6 w-6 text-primary" />
               </Button>
