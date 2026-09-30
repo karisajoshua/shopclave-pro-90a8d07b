@@ -71,7 +71,7 @@ const RatingStars = ({ rating }: { rating: number }) => (
     {[1, 2, 3, 4, 5].map((star) => (
       <Star
         key={star}
-        className={cn("h-4 w-4", star <= Math.round(rating) ? "fill-warning text-warning" : "text-muted-foreground/25")}
+        className={cn("h-3 w-3 md:h-4 md:w-4", star <= Math.round(rating) ? "fill-warning text-warning" : "text-muted-foreground/25")}
       />
     ))}
   </span>
@@ -442,7 +442,7 @@ const ProductDetailPage = () => {
 
       <main className="bg-muted/30 pb-8 pt-2 md:pt-4">
         <div className="container space-y-3">
-          <section className="grid gap-3 bg-card p-2.5 md:p-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] lg:gap-6" aria-label="Product purchase information">
+          <section className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] gap-2 bg-card p-2.5 md:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] md:gap-6 md:p-4" aria-label="Product purchase information">
             <ProductGallery
               images={galleryImages}
               videoUrl={product.video_url}
@@ -452,15 +452,15 @@ const ProductDetailPage = () => {
               onToggleWishlist={() => toggleWishlist.mutate(product.id)}
             />
 
-            <div className="min-w-0 space-y-3">
+            <div className="min-w-0 space-y-2 md:space-y-3">
               {vendor ? (
-                <Link to={`/store/${vendor.slug ?? vendor.id}`} className="text-xs font-semibold text-primary hover:underline md:text-sm">
+                <Link to={`/store/${vendor.slug ?? vendor.id}`} className="block truncate text-[10px] font-semibold text-primary hover:underline md:text-sm">
                   Sold by {vendor.store_name}
                 </Link>
               ) : null}
-              <h1 className="text-lg font-bold leading-snug text-foreground md:text-2xl">{product.name}</h1>
+              <h1 className="line-clamp-4 text-xs font-bold leading-snug text-foreground sm:text-sm md:text-2xl">{product.name}</h1>
 
-              <div className="flex flex-wrap items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-1 text-[10px] md:gap-2 md:text-sm">
                 {reviewStats.count > 0 ? (
                   <>
                     <RatingStars rating={reviewStats.avg} />
@@ -471,38 +471,38 @@ const ProductDetailPage = () => {
                 ) : (
                   <span className="text-muted-foreground">No reviews yet</span>
                 )}
-                <Button type="button" size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => void shareProduct()}>
+                <Button type="button" size="sm" variant="ghost" className="ml-auto hidden h-7 px-2 text-xs md:inline-flex" onClick={() => void shareProduct()}>
                   <Share2 className="h-4 w-4" /> Share
                 </Button>
               </div>
 
-              <Separator />
+              <Separator className="hidden md:block" />
 
               {product.deal_ends_at && new Date(product.deal_ends_at).getTime() > Date.now() ? <CountdownTimer endsAt={product.deal_ends_at} /> : null}
 
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <p className="text-3xl font-extrabold text-primary">{formatPrice(Number(displayPrice))}</p>
+                <p className="text-xl font-extrabold text-primary md:text-3xl">{formatPrice(Number(displayPrice))}</p>
                 {discountPct && displayCompare ? (
                   <>
-                    <span className="text-sm text-muted-foreground line-through">{formatPrice(Number(displayCompare))}</span>
-                    <Badge variant="destructive">Save {discountPct}%</Badge>
+                    <span className="text-[10px] text-muted-foreground line-through md:text-sm">{formatPrice(Number(displayCompare))}</span>
+                    <Badge variant="destructive" className="h-5 px-1.5 text-[9px] md:text-xs">Save {discountPct}%</Badge>
                   </>
                 ) : null}
               </div>
 
-              <p className={cn("flex items-center gap-1.5 text-sm font-semibold", purchase.canBuy ? "text-success" : "text-destructive")}>
-                {purchase.canBuy ? <CheckCircle2 className="h-4 w-4" /> : null}
+              <p className={cn("flex items-center gap-1 text-[10px] font-semibold md:text-sm", purchase.canBuy ? "text-success" : "text-destructive")}>
+                {purchase.canBuy ? <CheckCircle2 className="h-3 w-3 md:h-4 md:w-4" /> : null}
                 {purchase.canBuy ? "In stock" : purchaseMessage(purchase)}
               </p>
 
               {hasVariants ? (
-                <div className="space-y-3 border-y border-border py-3">
+                <div className="space-y-2 border-y border-border py-2 md:space-y-3 md:py-3">
                   {Object.entries(optionTypes).map(([optionName, values]) => (
                     <fieldset key={optionName}>
-                      <legend className="mb-2 text-sm font-bold">
+                       <legend className="mb-1 text-[10px] font-bold md:mb-2 md:text-sm">
                         {optionName}: <span className="font-normal text-muted-foreground">{selectedOptions[optionName] ?? "Choose an option"}</span>
                       </legend>
-                      <div className="flex flex-wrap gap-2">
+                       <div className="flex flex-wrap gap-1 md:gap-2">
                         {values.map((value) => {
                           const selected = selectedOptions[optionName] === value;
                           const available = isOptionValueAvailable(variants as any, selectedOptions, optionName, value);
@@ -516,12 +516,12 @@ const ProductDetailPage = () => {
                               aria-pressed={selected}
                               onClick={() => setSelectedOptions((current) => ({ ...current, [optionName]: value }))}
                                className={cn(
-                                 "h-auto min-h-9 rounded-sm px-2.5 py-1.5 text-xs md:text-sm",
+                                 "h-auto min-h-7 rounded-sm px-1.5 py-1 text-[9px] md:min-h-9 md:px-2.5 md:py-1.5 md:text-sm",
                                 selected && "border-2 border-primary bg-primary/5 text-primary",
                                 !available && "line-through",
                               )}
                             >
-                               {image ? <img src={image} alt="" className="h-8 w-8 border border-border object-cover" /> : null}
+                               {image ? <img src={image} alt="" className="h-6 w-6 border border-border object-cover md:h-8 md:w-8" /> : null}
                               {value}
                             </Button>
                           );
@@ -543,28 +543,29 @@ const ProductDetailPage = () => {
                 </div>
               ) : null}
 
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold">Quantity</span>
-                <div className="flex h-10 items-center border border-border" role="group" aria-label="Quantity">
-                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-none" aria-label="Decrease quantity" disabled={!purchase.canBuy || qty <= 1} onClick={() => setQty((current) => clampQuantity(current - 1, purchase.maxQty))}>
+              <div className="flex items-center gap-1.5 md:gap-3">
+                <span className="text-[10px] font-bold md:text-sm">Quantity</span>
+                <div className="flex h-8 items-center border border-border md:h-10" role="group" aria-label="Quantity">
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7 rounded-none md:h-9 md:w-9" aria-label="Decrease quantity" disabled={!purchase.canBuy || qty <= 1} onClick={() => setQty((current) => clampQuantity(current - 1, purchase.maxQty))}>
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="w-10 text-center text-sm font-bold" aria-live="polite">{qty}</span>
-                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-none" aria-label="Increase quantity" disabled={!purchase.canBuy || qty >= purchase.maxQty} onClick={() => setQty((current) => clampQuantity(current + 1, purchase.maxQty))}>
+                  <span className="w-6 text-center text-[10px] font-bold md:w-10 md:text-sm" aria-live="polite">{qty}</span>
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7 rounded-none md:h-9 md:w-9" aria-label="Increase quantity" disabled={!purchase.canBuy || qty >= purchase.maxQty} onClick={() => setQty((current) => clampQuantity(current + 1, purchase.maxQty))}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                {purchase.canBuy ? <span className="text-xs text-muted-foreground">Maximum {purchase.maxQty}</span> : null}
+                {purchase.canBuy ? <span className="hidden text-xs text-muted-foreground sm:inline">Maximum {purchase.maxQty}</span> : null}
               </div>
+            </div>
 
-              <div className="hidden grid-cols-2 gap-2 md:grid">
-                <Button type="button" size="lg" variant="outline" className="border-primary font-bold text-primary hover:bg-primary/5 hover:text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
-                  <ShoppingCart className="h-5 w-5" /> Add to cart
-                </Button>
-                <Button type="button" size="lg" className="font-bold" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>Buy now</Button>
-              </div>
+            <div className="col-span-2 grid grid-cols-2 gap-2 pt-1">
+              <Button type="button" size="lg" variant="outline" className="border-primary font-bold text-primary hover:bg-primary/5 hover:text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
+                <ShoppingCart className="h-5 w-5" /> Add to cart
+              </Button>
+              <Button type="button" size="lg" className="font-bold" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>Buy now</Button>
+            </div>
 
-              <section className="border border-border bg-card" aria-labelledby="delivery-heading">
+              <section className="col-span-2 border border-border bg-card" aria-labelledby="delivery-heading">
                 <div className="border-b border-border px-3 py-2.5">
                   <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery in Canada</h2>
                   <p className="mt-1 text-xs text-muted-foreground">Shipping is finalized at checkout for each seller.</p>
@@ -585,9 +586,8 @@ const ProductDetailPage = () => {
                 </div>
               </section>
 
-              {vendor ? <SellerCard vendor={vendor} productId={product.id} onMessage={() => setChatOpen(true)} /> : null}
-              <TrustStrip />
-            </div>
+              {vendor ? <div className="col-span-2"><SellerCard vendor={vendor} productId={product.id} onMessage={() => setChatOpen(true)} /></div> : null}
+              <div className="col-span-2"><TrustStrip /></div>
           </section>
 
           <ProductDescriptionTabs
