@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -24,7 +23,6 @@ import ProductCard from "@/components/marketplace/ProductCard";
 import CountdownTimer from "@/components/shared/CountdownTimer";
 import ProductGallery from "@/components/product/ProductGallery";
 import ProductDescriptionTabs from "@/components/product/ProductDescriptionTabs";
-import ChatDialog from "@/components/shared/ChatDialog";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +38,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { useLocale } from "@/hooks/useLocale";
