@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     const { data: products, error: prodErr } = await admin
       .from("products")
       .select(
-        "id, vendor_id, name, weight_g, length_cm, width_cm, height_cm, is_physical, international_shipping_enabled, ships_from_country, handling_time_days",
+        "id, vendor_id, name, weight_g, length_cm, width_cm, height_cm, is_physical, international_shipping_enabled, ships_from_country, handling_time_days, shipping_options",
       )
       .in("id", productIds);
     if (prodErr || !products) return json({ error: "Failed to load products" }, 500);
@@ -279,16 +279,34 @@ Deno.serve(async (req) => {
         pushBlocked("flat_rate_unavailable", "Standard and Express flat-rate shipping are currently available only for shipments within Canada.");
         continue;
       }
-      const options: Array<Record<string, unknown>> = [
-        { source: "estimate", rate_id: null, provider: "Barakaz", service: "Standard Shipping",
-          amount_original: 12.50, currency_original: "CAD", fx_rate_to_cad: 1,
-          amount_cad: 12.50, estimated_days: 7,
-          duration_terms: "Estimated delivery: 3–7 business days; carrier selected at fulfillment", is_estimate: true },
-        { source: "estimate", rate_id: null, provider: "Barakaz", service: "Express Shipping",
-          amount_original: 19.99, currency_original: "CAD", fx_rate_to_cad: 1,
-          amount_cad: 19.99, estimated_days: 3,
-          duration_terms: "Estimated delivery: 1–3 business days; carrier selected at fulfillment", is_estimate: true },
-      ];
+      // Seller-configured per-product options. An option is offered for this seller's parcel only
+      // when every product enables it; price is the highest configured price (server-side, never client).
+      const DEF: Record<string, { enabled: boolean; days: string; price: number }> = {
+        standard: { enabled: true, days: "3-7", price: 12.5 }, express: { enabled: true, days: "1-3", price: 19.99 },
+        free: { enabled: false, days: "3-7", price: 0 }, pickup: { enabled: false, days: "1-2", price: 0 },
+      };
+      const NAMES: Record<string, string> = { standard: "Standard Shipping", express: "Express Shipping", free: "Free Shipping", pickup: "Local Pickup" };
+      const options: Array<Record<string, unknown>> = [];
+      for (const key of Object.keys(DEF)) {
+        let ok = true, price = 0, maxDays = 0, minDays = 99;
+        for (const it of vItems) {
+          const raw = (productMap.get(it.product_id) as any)?.shipping_options?.[key];
+          const o = raw ? { ...DEF[key], ...raw } : DEF[key];
+          if (!o.enabled) { ok = false; break; }
+          const pr = key === "free" || key === "pickup" ? 0 : Math.max(0, Number(o.price) || 0);
+          if (key !== "free" && key !== "pickup" && !(pr > 0)) { ok = false; break; }
+          price = Math.max(price, pr);
+          const [lo, hi] = String(o.days || DEF[key].days).split("-").map((n) => parseInt(n, 10));
+          minDays = Math.min(minDays, lo || 1); maxDays = Math.max(maxDays, hi || lo || 7);
+        }
+        if (!ok) continue;
+        const amt = Math.round(price * 100) / 100;
+        options.push({ source: "estimate", rate_id: null, provider: "Barakaz", service: NAMES[key],
+          amount_original: amt, currency_original: "CAD", fx_rate_to_cad: 1, amount_cad: amt, estimated_days: maxDays,
+          duration_terms: key === "pickup" ? `Local pickup: ready in ${minDays}–${maxDays} business days` : `Estimated delivery: ${minDays}–${maxDays} business days; carrier selected at fulfillment`,
+          is_estimate: true });
+      }
+      if (!options.length) { pushBlocked("no_shared_option", "These items don't share a delivery option from this seller. Order them separately."); continue; }
 
       for (const o of options) {
         quoteRows.push({
