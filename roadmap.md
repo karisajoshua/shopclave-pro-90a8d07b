@@ -13,3 +13,7 @@
 - [ ] Publish 6 seller agreements (ca-v1) — needs legal text from user
 - [ ] Stripe: activate Connect Express (CA) + restricted key permissions (Accounts/Account Links: Write) — user, in Stripe
 - [ ] Test-mode seller run-through before any live flag
+
+## Product detail page redesign
+- [x] Rebuild the product purchase layout, gallery, delivery, seller, trust, tabs, and mobile actions without changing purchase flows.
+- [ ] Verify desktop and mobile rendering, tests, types, and preview build.
