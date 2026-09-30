@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   addBusinessDays, isBusinessDay, estimateDeliveryWindow, transitDaysForService, deliveryItemsLabel,
+  readDeliveryPreference, saveDeliveryPreference,
 } from "@/lib/deliveryEstimate";
 
 const d = (s: string) => { const [y, m, dd] = s.split("-").map(Number); return new Date(y, m - 1, dd); };
@@ -30,5 +31,12 @@ describe("deliveryEstimate", () => {
   it("labels items with correct plural", () => {
     expect(deliveryItemsLabel(1)).toBe("Delivery to your address • 1 item");
     expect(deliveryItemsLabel(3)).toBe("Delivery to your address • 3 items");
+  });
+  it("persists only supported delivery preferences per seller", () => {
+    sessionStorage.clear();
+    saveDeliveryPreference("seller-1", "Express Shipping");
+    expect(readDeliveryPreference("seller-1")).toBe("Express Shipping");
+    sessionStorage.setItem("barakaz_delivery_preferences", JSON.stringify({ "seller-2": "Unknown" }));
+    expect(readDeliveryPreference("seller-2")).toBeNull();
   });
 });

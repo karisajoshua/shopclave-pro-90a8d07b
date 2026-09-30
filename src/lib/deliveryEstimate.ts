@@ -71,6 +71,9 @@ export function addBusinessDays(start: Date, days: number, province?: string): D
 }
 
 export type DeliveryWindow = { earliest: Date; latest: Date };
+export type DeliveryService = "Standard Shipping" | "Express Shipping";
+
+const DELIVERY_PREFERENCE_KEY = "barakaz_delivery_preferences";
 
 /**
  * @param minDays/maxDays transit business days (e.g. 3–7 Standard, 1–3 Express)
@@ -92,6 +95,29 @@ export function estimateDeliveryWindow(opts: {
 
 export function transitDaysForService(service: string): { minDays: number; maxDays: number } {
   return service === "Express Shipping" ? { minDays: 1, maxDays: 3 } : { minDays: 3, maxDays: 7 };
+}
+
+export function saveDeliveryPreference(vendorId: string, service: DeliveryService): void {
+  if (typeof window === "undefined") return;
+  try {
+    const stored = window.sessionStorage.getItem(DELIVERY_PREFERENCE_KEY);
+    const preferences = stored ? JSON.parse(stored) as Record<string, DeliveryService> : {};
+    preferences[vendorId] = service;
+    window.sessionStorage.setItem(DELIVERY_PREFERENCE_KEY, JSON.stringify(preferences));
+  } catch {
+    // Checkout remains usable when browser storage is unavailable.
+  }
+}
+
+export function readDeliveryPreference(vendorId: string): DeliveryService | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.sessionStorage.getItem(DELIVERY_PREFERENCE_KEY);
+    const value = stored ? (JSON.parse(stored) as Record<string, unknown>)[vendorId] : null;
+    return value === "Standard Shipping" || value === "Express Shipping" ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 export function formatDeliveryWindow(w: DeliveryWindow, locale = "en-CA"): string {

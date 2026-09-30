@@ -28,6 +28,7 @@ import ChatDialog from "@/components/shared/ChatDialog";
 import SEO, { SITE_URL } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +56,13 @@ import {
 } from "@/lib/productPurchase";
 import barakazIcon from "@/assets/barakaz-icon.webp";
 import { cn } from "@/lib/utils";
+import {
+  estimateDeliveryWindow,
+  formatDeliveryWindow,
+  saveDeliveryPreference,
+  transitDaysForService,
+  type DeliveryService,
+} from "@/lib/deliveryEstimate";
 
 const FASHION_CATEGORY_ID = "a0000001-0000-0000-0000-000000000002";
 
@@ -209,6 +217,7 @@ const ProductDetailPage = () => {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
   const [chatOpen, setChatOpen] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<DeliveryService>("Standard Shipping");
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -286,6 +295,20 @@ const ProductDetailPage = () => {
   const discountPct = displayCompare && Number(displayCompare) > Number(displayPrice)
     ? Math.round(((Number(displayCompare) - Number(displayPrice)) / Number(displayCompare)) * 100)
     : null;
+  const deliveryOptions = useMemo(() => {
+    const handlingDays = Number(product?.handling_time_days ?? 1);
+    return [
+      { service: "Standard Shipping" as const, label: "Standard delivery", price: "CA$12.50" },
+      { service: "Express Shipping" as const, label: "Express delivery", price: "CA$19.99" },
+    ].map((option) => ({
+      ...option,
+      arrival: formatDeliveryWindow(estimateDeliveryWindow({
+        from: new Date(),
+        ...transitDaysForService(option.service),
+        handlingDays,
+      })),
+    }));
+  }, [product?.handling_time_days]);
 
   const purchase = getPurchaseState({
     hasVariants,
@@ -359,6 +382,7 @@ const ProductDetailPage = () => {
       return;
     }
     const qtyToAdd = Math.min(qty, room);
+    saveDeliveryPreference(product.vendor_id, selectedDelivery);
     addItem({
       productId: product.id,
       name: product.name,
@@ -568,18 +592,39 @@ const ProductDetailPage = () => {
               <section className="col-span-2 border border-border bg-card" aria-labelledby="delivery-heading">
                 <div className="border-b border-border px-3 py-2.5">
                   <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery in Canada</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Shipping is finalized at checkout for each seller.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Choose a delivery option. The final quote is confirmed at checkout.</p>
                 </div>
-                 <div className="divide-y divide-border px-3">
-                   <div className="grid grid-cols-[1fr_auto] gap-3 py-2.5 text-sm">
-                    <div><p className="font-semibold">Standard delivery</p><p className="text-xs text-muted-foreground">3–7 business days</p></div>
-                    <span className="font-bold">CA$12.50</span>
-                  </div>
-                   <div className="grid grid-cols-[1fr_auto] gap-3 py-2.5 text-sm">
-                    <div><p className="font-semibold">Express delivery</p><p className="text-xs text-muted-foreground">1–3 business days</p></div>
-                    <span className="font-bold">CA$19.99</span>
-                  </div>
-                </div>
+                <RadioGroup
+                  value={selectedDelivery}
+                  onValueChange={(value) => {
+                    const service = value as DeliveryService;
+                    setSelectedDelivery(service);
+                    saveDeliveryPreference(product.vendor_id, service);
+                  }}
+                  className="divide-y divide-border px-3"
+                  aria-label="Delivery option"
+                >
+                  {deliveryOptions.map((option) => {
+                    const selected = selectedDelivery === option.service;
+                    return (
+                      <label
+                        key={option.service}
+                        htmlFor={`delivery-${option.service}`}
+                        className={cn(
+                          "-mx-3 grid cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-l-2 px-3 py-3 text-sm transition-colors",
+                          selected ? "border-l-primary bg-primary/5" : "border-l-transparent hover:bg-muted/40",
+                        )}
+                      >
+                        <RadioGroupItem id={`delivery-${option.service}`} value={option.service} />
+                        <div>
+                          <p className="font-semibold">{option.label}</p>
+                          <p className="text-xs font-medium text-success">Estimated arrival {option.arrival}</p>
+                        </div>
+                        <span className="font-bold">{option.price}</span>
+                      </label>
+                    );
+                  })}
+                </RadioGroup>
                  <div className="flex gap-4 border-t border-border px-3 py-2 text-xs">
                   <Link to="/delivery" className="font-semibold text-primary hover:underline">Delivery details</Link>
                   <Link to="/return-policy" className="font-semibold text-primary hover:underline">7-day return policy</Link>

@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/hooks/useLocale";
 import CheckoutLoader from "@/components/checkout/CheckoutLoader";
 import { validateStripeCheckoutUrl, logHandoff } from "@/lib/stripeHandoff";
-import { estimateDeliveryWindow, formatDeliveryWindow, transitDaysForService, deliveryItemsLabel } from "@/lib/deliveryEstimate";
+import { estimateDeliveryWindow, formatDeliveryWindow, transitDaysForService, deliveryItemsLabel, readDeliveryPreference } from "@/lib/deliveryEstimate";
 import { COUNTRIES, DEFAULT_COUNTRY, countryByCode, countryByName, searchCountries, addressFormat, validatePostal, isDomesticDestination } from "@/lib/countries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -329,7 +329,10 @@ const CheckoutPage = () => {
         (data?.vendors || []).forEach((v: any) => {
           if (v.blocked) errMap[v.vendor_id] = v.message;
           rateMap[v.vendor_id] = v.rates || [];
-          if (v.rates?.length) autoSelect[v.vendor_id] = v.rates[0];
+          if (v.rates?.length) {
+            const preferredService = readDeliveryPreference(v.vendor_id);
+            autoSelect[v.vendor_id] = v.rates.find((rate: any) => rate.service === preferredService) || v.rates[0];
+          }
         });
         setShippingRates(rateMap);
         setShippingErrors(errMap);
