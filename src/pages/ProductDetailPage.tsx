@@ -2,13 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
+  ClipboardList,
+  CreditCard,
+  EyeOff,
   Heart,
   LockKeyhole,
+  Mail,
   MessageCircle,
   Minus,
+  PackageCheck,
   Plus,
   RotateCcw,
   Ruler,
@@ -16,6 +23,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Star,
+  ThumbsUp,
   Truck,
   Users,
 } from "lucide-react";
@@ -55,6 +63,18 @@ import {
   remainingForCart,
 } from "@/lib/productPurchase";
 import barakazIcon from "@/assets/barakaz-icon.webp";
+import afterpayLogo from "@/assets/payment-methods/afterpay.webp.asset.json";
+import applePayLogo from "@/assets/payment-methods/apple-pay.webp.asset.json";
+import bankTransferLogo from "@/assets/payment-methods/bank-transfer.webp.asset.json";
+import discoverLogo from "@/assets/payment-methods/discover.jpg.asset.json";
+import googlePayLogo from "@/assets/payment-methods/google-pay.webp.asset.json";
+import klarnaLogo from "@/assets/payment-methods/klarna.webp.asset.json";
+import mastercardLogo from "@/assets/payment-methods/mastercard-detail.jpg.asset.json";
+import paypalLogo from "@/assets/payment-methods/paypal.webp.asset.json";
+import shopPayLogo from "@/assets/payment-methods/shop-pay.webp.asset.json";
+import stripeLogo from "@/assets/payment-methods/stripe.webp.asset.json";
+import visaLogo from "@/assets/payment-methods/visa.jpg.asset.json";
+import returnsBox from "@/assets/product-info/returns-box.jpg.asset.json";
 import { cn } from "@/lib/utils";
 import { getProductDisplayStats } from "@/lib/productDisplayStats";
 import {
@@ -136,33 +156,71 @@ const SellerCard = ({ vendor }: { vendor: any }) => {
   );
 };
 
+const paymentLogos = [
+  { name: "Visa", url: visaLogo.url },
+  { name: "Mastercard", url: mastercardLogo.url },
+  { name: "Discover", url: discoverLogo.url },
+  { name: "PayPal", url: paypalLogo.url },
+  { name: "Apple Pay", url: applePayLogo.url },
+  { name: "Google Pay", url: googlePayLogo.url },
+  { name: "Klarna", url: klarnaLogo.url },
+  { name: "Shop Pay", url: shopPayLogo.url },
+  { name: "Afterpay", url: afterpayLogo.url },
+  { name: "Stripe", url: stripeLogo.url },
+  { name: "Bank transfer", url: bankTransferLogo.url },
+];
+
 const TRUST_ITEMS = [
   {
     icon: LockKeyhole,
     title: "Secure payments",
     detail: "Protected checkout",
-    info: "When you check out, your payment is processed over an encrypted connection. Your card details are never stored on Barakaz or shared with the seller.",
-    link: { to: "/faq", label: "Payment questions" },
+    intro: "Shop with confidence. Payment information is handled through secure checkout.",
+    illustration: "payments",
+    points: [
+      { icon: ShieldCheck, title: "Encrypted transactions", text: "Checkout uses an encrypted connection and secure payment processing." },
+      { icon: CreditCard, title: "Multiple payment options", text: "The methods available for your order are shown and confirmed at checkout." },
+      { icon: EyeOff, title: "Card details stay private", text: "Your full card information is not stored by Barakaz or shared with the seller." },
+    ],
+    link: { to: "/faq", label: "Learn more about payment security" },
   },
   {
     icon: ShieldCheck,
     title: "Buyer protection",
     detail: "Shop with confidence",
-    info: "Barakaz connects you directly with sellers. Keep order communication on Barakaz so there is a record of your purchase, and contact support if something goes wrong with an order.",
-    link: { to: "/help", label: "Visit the Help Center" },
+    intro: "Eligible orders receive support when an order does not arrive, arrives damaged, or differs significantly from its description.",
+    illustration: "shield",
+    points: [
+      { icon: CircleDollarSign, title: "Eligible refund support", text: "Report a qualifying order issue and request a review from your Orders page." },
+      { icon: ClipboardList, title: "Recorded claims process", text: "Keep order communication on Barakaz so the purchase and seller conversation can be reviewed." },
+      { icon: ThumbsUp, title: "Safer marketplace shopping", text: "Seller status, order records, and secure checkout help support a fair resolution." },
+    ],
+    link: { to: "/help", label: "Learn more about Buyer Protection" },
   },
   {
     icon: RotateCcw,
     title: "Returns",
     detail: "7-day policy",
-    info: "Sellers on Barakaz offer a 7-day voluntary return policy from the date you receive your order. Check the full policy for eligibility and how to start a return.",
-    link: { to: "/return-policy", label: "Read the return policy" },
+    intro: "Eligible items can be returned within 7 days of delivery under the Barakaz return policy.",
+    illustration: "returns",
+    points: [
+      { icon: CalendarDays, title: "7-day return window", text: "Start an eligible return within 7 days of the delivery date." },
+      { icon: PackageCheck, title: "Item condition", text: "Items must be unused, in original packaging, and in the condition received." },
+      { icon: CircleDollarSign, title: "Refund process", text: "After inspection, approved refunds are issued to the original payment method within 5–10 business days." },
+    ],
+    link: { to: "/return-policy", label: "View full Return Policy" },
   },
   {
     icon: MessageCircle,
     title: "Canadian support",
     detail: "Help when needed",
-    info: "Our support team is based in Canada and is available to help with orders, deliveries, and seller questions.",
+    intro: "Our Canada-based support team can help with orders, deliveries, returns, payments, and seller questions.",
+    illustration: "support",
+    points: [
+      { icon: Mail, title: "Email support", text: "Contact support@barakaz.com for customer assistance." },
+      { icon: ClipboardList, title: "Order assistance", text: "Have your order number ready so the team can find your purchase faster." },
+      { icon: MessageCircle, title: "Help Center", text: "Find answers about orders, shipping, payments, returns, and selling." },
+    ],
     link: { to: "/contact", label: "Contact support" },
   },
 ];
@@ -170,7 +228,7 @@ const TRUST_ITEMS = [
 const TrustStrip = () => {
   return (
     <div className="grid grid-cols-4 border border-border bg-card">
-      {TRUST_ITEMS.map(({ icon: Icon, title, detail, info, link }) => (
+      {TRUST_ITEMS.map(({ icon: Icon, title, detail, intro, illustration, points, link }) => (
         <Dialog key={title}>
           <DialogTrigger asChild>
             <button
@@ -185,19 +243,49 @@ const TrustStrip = () => {
               </div>
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Icon className="h-5 w-5 text-success" /> {title}
-              </DialogTitle>
+          <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto p-0 sm:rounded-lg">
+            <DialogHeader className="items-center px-6 pt-7 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                <Icon className="h-8 w-8 text-success" />
+              </span>
+              <DialogTitle className="pt-2 text-2xl font-bold">{title}</DialogTitle>
+              <p className="text-sm leading-6 text-muted-foreground">{intro}</p>
             </DialogHeader>
-            <p className="text-sm leading-6 text-muted-foreground">{info}</p>
-            <Link
-              to={link.to}
-              className="text-sm font-semibold text-primary hover:underline"
-            >
-              {link.label} <ChevronRight className="inline h-4 w-4" />
-            </Link>
+            {illustration === "payments" ? (
+              <div className="grid grid-cols-4 gap-2 px-6" aria-label="Payment methods that may be available at checkout">
+                {paymentLogos.map((method) => (
+                  <div key={method.name} className="flex h-10 items-center justify-center rounded border border-border bg-card px-1.5">
+                    <img src={method.url} alt={method.name} className="h-7 w-full object-contain" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            ) : illustration === "returns" ? (
+              <img src={returnsBox.url} alt="Open delivery box with a return arrow" className="mx-auto h-36 w-56 object-contain" />
+            ) : illustration === "shield" ? (
+              <div className="mx-auto flex h-28 w-40 items-center justify-center rounded bg-success/10">
+                <ShieldCheck className="h-20 w-20 text-success" aria-hidden="true" />
+              </div>
+            ) : (
+              <div className="mx-auto flex h-28 w-40 items-center justify-center rounded bg-success/10">
+                <MessageCircle className="h-20 w-20 text-success" aria-hidden="true" />
+              </div>
+            )}
+            <div className="space-y-1 px-6">
+              {points.map(({ icon: PointIcon, title: pointTitle, text }) => (
+                <div key={pointTitle} className="flex gap-3 border-b border-border py-3 last:border-0">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success/10">
+                    <PointIcon className="h-5 w-5 text-success" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">{pointTitle}</h3>
+                    <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button asChild size="lg" className="mx-6 mb-6 font-bold">
+              <Link to={link.to}>{link.label} <ChevronRight className="h-4 w-4" /></Link>
+            </Button>
           </DialogContent>
         </Dialog>
       ))}
