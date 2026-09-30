@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 export interface ProductRating {
   avg: number;
   count: number;
+  sold: number;
 }
 
 /**
- * Fetches average rating + review count for a list of product IDs.
- * Returns a map keyed by product id. Same data used on ProductDetailPage.
+ * Fetches average rating, review count and real sold units (paid orders only)
+ * for a list of product IDs. Returns a map keyed by product id.
+ * Same data used on ProductDetailPage.
  */
 export const useProductRatings = (productIds: string[]) => {
   // Filter out non-uuid demo ids so we don't blow up the RPC
@@ -29,6 +31,7 @@ export const useProductRatings = (productIds: string[]) => {
         map[row.product_id] = {
           avg: Number(row.avg_rating) || 0,
           count: Number(row.review_count) || 0,
+          sold: Number(row.sold_count) || 0,
         };
       });
       return map;
