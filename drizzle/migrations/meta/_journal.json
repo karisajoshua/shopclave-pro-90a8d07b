@@ -120,6 +120,13 @@
       "when": 1790643596857,
       "tag": "0016_canada_only_seller_submission_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790783901772,
+      "tag": "0017_product_ratings_add_sold_count",
+      "breakpoints": true
     }
   ]
 }
