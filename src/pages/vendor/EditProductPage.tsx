@@ -1,3 +1,4 @@
+import { ShippingOptionsFields, DEFAULT_SHIPPING_OPTIONS, validateShippingOptions, normalizeShippingOptions, InventoryExtrasFields, emptyInventoryExtras, validateInventoryExtras, inventoryExtrasToColumns, inventoryExtrasFromProduct, type ShippingOptions, type InventoryExtras } from "@/components/vendor/ProductListingExtras";
 import { PackageMeasurementsFields, emptyPackageDims, validatePackageDims, packageDimsToColumns, packageDimsFromProduct, type PackageDims } from "@/components/vendor/PackageMeasurementsFields";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
@@ -60,8 +61,10 @@ const EditProductPage = () => {
   const [form, setForm] = useState({
     name: "", description: "", price: "", compareAtPrice: "", bulkPrice: "",
     stock: "0", sku: "", status: "active", condition: "new", delivery: "",
-    dealEndsAt: "",
+    dealEndsAt: "", brand: "", mpn: "",
   });
+  const [shipping, setShipping] = useState<ShippingOptions>(DEFAULT_SHIPPING_OPTIONS);
+  const [inv, setInv] = useState<InventoryExtras>(emptyInventoryExtras);
   const [pkg, setPkg] = useState<PackageDims>(emptyPackageDims);
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
@@ -113,8 +116,11 @@ const EditProductPage = () => {
       condition: p.condition || "new",
       delivery: "",
       dealEndsAt: p.deal_ends_at ? new Date(p.deal_ends_at).toISOString().slice(0, 16) : "",
+      brand: p.brand || "", mpn: p.mpn || "",
     });
     setPkg(packageDimsFromProduct(p));
+    setShipping(normalizeShippingOptions(p.shipping_options));
+    setInv(inventoryExtrasFromProduct(p));
     setKeyFeatures(p.key_features?.length ? [...p.key_features] : [""]);
     setWhatsInBoxItems(Array.isArray(p.whats_in_box) && p.whats_in_box.length ? [...p.whats_in_box] : [""]);
     setVideoUrl(p.video_url || "");
@@ -242,7 +248,7 @@ const EditProductPage = () => {
     switch (step) {
       case 0: if (!selectedCategoryId) { toast.error("Please select a category"); return false; } return true;
       case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } return true;
-      case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
+      case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
       case 3: return true;
       case 4: if (hasVariants && variantRows.length === 0) { toast.error("Add at least one variant option with values"); return false; } return true;
       default: return true;
@@ -253,8 +259,8 @@ const EditProductPage = () => {
   const back = () => setStep(s => Math.max(s - 1, 0));
 
   // Submit
-  const handleSubmit = async () => {
-    const pkgErr = validatePackageDims(pkg);
+  const handleSubmit = async (publishStatus: string = form.status) => {
+    const pkgErr = publishStatus === "active" ? ((!(parseFloat(form.price) > 0) && "Price is required") || validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping)) : null;
     if (pkgErr) { toast.error(pkgErr); setStep(2); return; }
     if (!vendor || !productId) return;
     setLoading(true);
@@ -267,14 +273,15 @@ const EditProductPage = () => {
         compare_at_price: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
         stock: hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : parseInt(form.stock) || 0,
         category_id: selectedCategoryId || null,
-        status: form.status,
+        status: publishStatus,
+        brand: form.brand.trim() || null, mpn: form.mpn.trim() || null, shipping_options: shipping, ...inventoryExtrasToColumns(inv),
         video_url: videoUrl.trim() || null,
         sku: form.sku.trim() || undefined,
         key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
-        ...packageDimsToColumns(pkg),
+        ...(validatePackageDims(pkg) ? {} : packageDimsToColumns(pkg)),
       } as any).eq("id", productId);
       if (error) throw error;
 
@@ -372,6 +379,10 @@ const EditProductPage = () => {
             <div>
               <Label>Product Name *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter product name" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><Label>Brand</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
+              <div><Label>Model / MPN (Optional)</Label><Input value={form.mpn} onChange={(e) => setForm({ ...form, mpn: e.target.value })} /></div>
             </div>
             <div>
               <Label>Condition *</Label>
@@ -484,20 +495,9 @@ const EditProductPage = () => {
               </div>
             </div>
 
+            <InventoryExtrasFields value={inv} onChange={setInv} />
             <PackageMeasurementsFields value={pkg} onChange={setPkg} />
-
-            <div>
-              <Label>Delivery Options</Label>
-              <Select value={form.delivery} onValueChange={(v) => setForm({ ...form, delivery: v })}>
-                <SelectTrigger><SelectValue placeholder="Select delivery option" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="standard">Standard Delivery</SelectItem>
-                  <SelectItem value="express">Express Delivery</SelectItem>
-                  <SelectItem value="pickup">Pickup Only</SelectItem>
-                  <SelectItem value="both">Delivery & Pickup</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <ShippingOptionsFields value={shipping} onChange={setShipping} />
             <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
               <Label className="flex items-center gap-1.5 text-primary">⚡ Flash Sale Timer (optional)</Label>
               <p className="text-xs text-muted-foreground mb-2">Set an end time to feature this product in the homepage Flash Sale section.</p>
@@ -673,20 +673,11 @@ const EditProductPage = () => {
               </div>
             </div>
 
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button type="button" variant="outline" className="h-12 flex-1" onClick={back} disabled={loading}>Back</Button>
+              <Button type="button" variant="secondary" className="h-12 flex-1" onClick={() => handleSubmit("draft")} disabled={loading}>Save as Draft</Button>
+              <Button type="button" className="h-12 flex-1 font-bold" onClick={() => handleSubmit("active")} disabled={loading}>{loading ? "Saving..." : "Publish Product"}</Button>
             </div>
-
-            <Button type="button" className="w-full h-12 font-bold text-base bg-primary hover:bg-primary/90" onClick={handleSubmit} disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
-            </Button>
           </div>
         )}
 
@@ -697,11 +688,6 @@ const EditProductPage = () => {
             <Button type="button" className="flex-1" onClick={next}>
               {step === 4 ? "Review" : "Next"}
             </Button>
-          </div>
-        )}
-        {step === 5 && (
-          <div className="mt-4">
-            <Button type="button" variant="outline" className="w-full" onClick={back}>Back</Button>
           </div>
         )}
       </div>
