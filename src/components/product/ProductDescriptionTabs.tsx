@@ -1,6 +1,8 @@
-import { Check } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Box, Check, ChevronDown, ChevronUp, List } from "lucide-react";
 import ProductReviews from "./ProductReviews";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 export interface ProductMeta {
   name?: string;
@@ -9,6 +11,13 @@ export interface ProductMeta {
   sku?: string;
   stock?: number;
   vendor_name?: string;
+  brand?: string | null;
+  mpn?: string | null;
+  weight_g?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
+  option_values?: Record<string, string[]>;
   video_url?: string | null;
   key_features?: string[] | null;
   whats_in_box?: string[] | null;
@@ -21,23 +30,48 @@ interface ProductDescriptionTabsProps {
   meta?: ProductMeta;
 }
 
-const SpecRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
-  <div className="grid grid-cols-[minmax(110px,32%)_1fr] border-b border-border py-3 text-sm last:border-0">
-    <span className="font-medium text-muted-foreground">{label}</span>
-    <span className="text-foreground">{value || "—"}</span>
+const SpecRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="grid grid-cols-[minmax(112px,34%)_1fr] border-b border-border last:border-0">
+    <span className="border-r border-border bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground md:text-sm">{label}</span>
+    <span className="min-w-0 break-words px-3 py-2 text-xs text-foreground md:text-sm">{value}</span>
   </div>
 );
 
-const FeatureList = ({ items }: { items: string[] }) => (
+const ShowMore = ({ children, hidden, expanded, onToggle }: { children: ReactNode; hidden: boolean; expanded: boolean; onToggle: () => void }) => (
+  <>
+    {children}
+    {hidden ? (
+      <Button type="button" variant="ghost" size="sm" className="mt-2 h-8 px-1 text-primary" onClick={onToggle} aria-expanded={expanded}>
+        {expanded ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
+        {expanded ? "Show less" : "Show more"}
+      </Button>
+    ) : null}
+  </>
+);
+
+const FeatureList = ({ items, limit = 6 }: { items: string[]; limit?: number }) => {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? items : items.slice(0, limit);
+  return <ShowMore hidden={items.length > limit} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
   <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
-    {items.map((item) => (
-      <li key={item} className="flex items-start gap-2">
+    {shown.map((item, index) => (
+      <li key={`${item}-${index}`} className="flex items-start gap-2">
         <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" strokeWidth={3} />
-        <span>{item}</span>
+        <span className="break-words">{item}</span>
       </li>
     ))}
   </ul>
-);
+  </ShowMore>;
+};
+
+const ExpandableDescription = ({ text }: { text: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 420;
+  const shown = !expanded && isLong ? `${text.slice(0, 420).trimEnd()}…` : text;
+  return <ShowMore hidden={isLong} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
+    <p className="whitespace-pre-line break-words text-xs leading-5 text-muted-foreground md:text-sm md:leading-6">{shown}</p>
+  </ShowMore>;
+};
 
 const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta }: ProductDescriptionTabsProps) => {
   const parsedFeatures = (() => {
@@ -49,6 +83,21 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
       .filter((line) => /^[-•*]\s*/.test(line))
       .map((line) => line.replace(/^[-•*]\s*/, ""));
   })();
+  const dimensions = meta?.length_cm != null && meta.width_cm != null && meta.height_cm != null
+    ? `${meta.length_cm} × ${meta.width_cm} × ${meta.height_cm} cm`
+    : null;
+  const specificationRows = [
+    ["Product type", meta?.category],
+    ...Object.entries(meta?.option_values || {}).map(([name, values]) => [`${name} options`, values.join(", ")]),
+    ["Weight (package)", meta?.weight_g != null ? `${meta.weight_g} g` : null],
+    ["Package dimensions", dimensions],
+    ["Condition", meta?.condition ? (meta.condition === "new" ? "New" : "Used") : null],
+    ["Brand", meta?.brand],
+    ["Model / MPN", meta?.mpn],
+    ["SKU", meta?.sku],
+    ["Available stock", meta?.stock !== undefined ? String(meta.stock) : null],
+    ["Sold by", meta?.vendor_name],
+  ].filter((row): row is [string, string] => Boolean(row[1]));
 
   return (
     <section className="border-y border-border bg-card md:border" aria-label="Product information">
@@ -70,7 +119,7 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
          <TabsContent value="description" className="m-0 p-3 md:p-6">
           <h2 className="mb-3 text-lg font-bold">Product description</h2>
           {description ? (
-             <p className="whitespace-pre-line text-xs leading-5 text-muted-foreground md:text-sm md:leading-6">{description}</p>
+            <ExpandableDescription text={description} />
           ) : (
             <p className="text-sm italic text-muted-foreground">No description available.</p>
           )}
@@ -80,23 +129,27 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
               <FeatureList items={parsedFeatures} />
             </div>
           ) : null}
-          {meta?.whats_in_box?.length ? (
-            <div className="mt-6 border-t border-border pt-5">
-              <h3 className="mb-3 font-bold">What's in the box</h3>
-              <FeatureList items={meta.whats_in_box} />
-            </div>
-          ) : null}
         </TabsContent>
 
          <TabsContent value="specifications" className="m-0 p-3 md:p-6">
-          <h2 className="mb-3 text-lg font-bold">Specifications</h2>
-          <div className="max-w-3xl border-y border-border">
-            <SpecRow label="SKU" value={meta?.sku} />
-            <SpecRow label="Category" value={meta?.category} />
-            <SpecRow label="Condition" value={meta?.condition ? (meta.condition === "new" ? "New" : "Used") : undefined} />
-            <SpecRow label="Available stock" value={meta?.stock !== undefined ? String(meta.stock) : undefined} />
-            <SpecRow label="Sold by" value={meta?.vendor_name} />
-          </div>
+           <div className="mb-3 flex items-center gap-2">
+             <List className="h-5 w-5" aria-hidden="true" />
+             <h2 className="text-lg font-bold">Specifications</h2>
+           </div>
+           {specificationRows.length ? (
+             <div className="overflow-hidden rounded-sm border border-border">
+               {specificationRows.map(([label, value]) => <SpecRow key={label} label={label} value={value} />)}
+             </div>
+           ) : <p className="text-sm italic text-muted-foreground">No specifications available.</p>}
+           {meta?.whats_in_box?.length ? (
+             <section className="mt-5 border-t border-border pt-5" aria-labelledby="box-heading">
+               <div className="mb-3 flex items-center gap-2">
+                 <Box className="h-5 w-5" aria-hidden="true" />
+                 <h3 id="box-heading" className="font-bold">What's in the box</h3>
+               </div>
+               <FeatureList items={meta.whats_in_box} limit={4} />
+             </section>
+           ) : null}
         </TabsContent>
 
         <TabsContent value="reviews" className="m-0 p-1 md:p-2">
