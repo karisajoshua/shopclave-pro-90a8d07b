@@ -101,7 +101,7 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
 
   return (
     <section className="border-y border-border bg-card md:border" aria-label="Product information">
-      <Tabs defaultValue="description">
+      <Tabs defaultValue="specifications">
         <div className="overflow-x-auto border-b border-border">
           <TabsList className="h-10 w-full justify-around rounded-none bg-transparent p-0 md:h-11 md:w-max md:min-w-full md:justify-start">
              <TabsTrigger value="description" className="h-10 flex-1 rounded-none border-b-2 border-transparent px-2 text-[11px] shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none md:h-11 md:flex-none md:px-5 md:text-sm">
