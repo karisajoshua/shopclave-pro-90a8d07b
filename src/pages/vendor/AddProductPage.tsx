@@ -204,7 +204,7 @@ const AddProductPage = () => {
         price: parseFloat(form.price) || 0,
         compare_at_price: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
         stock: hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : parseInt(form.stock) || 0,
-        category_id: selectedCategoryId || null, status: publishStatus,
+        category_id: selectedCategoryId || null, status: "draft",
         brand: form.brand.trim() || null, mpn: form.mpn.trim() || null, shipping_options: shipping, ...inventoryExtrasToColumns(inv),
         video_url: videoUrl.trim() || null,
         sku: autoSku,
@@ -215,10 +215,11 @@ const AddProductPage = () => {
         ...(validatePackageDims(pkg) ? {} : packageDimsToColumns(pkg)),
       } as any).select().single();
       if (error) throw error;
+      const must = (r: { error: any }) => { if (r.error) throw r.error; };
 
       if (images.length > 0 && product) {
         const urls = await uploadImages(product.id);
-        if (urls.length) await supabase.from("product_images").insert(urls.map((url, idx) => ({ product_id: product.id, url, position: idx })));
+        if (urls.length) must(await supabase.from("product_images").insert(urls.map((url, idx) => ({ product_id: product.id, url, position: idx }))));
       }
 
       if (hasVariants && variantRows.length > 0 && product) {
@@ -233,11 +234,13 @@ const AddProductPage = () => {
           } as any).select("id").single();
           if (vErr) throw vErr;
           if (allUrls.length > 0 && variant) {
-            await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: product.id, variant_id: variant.id, url, position: idx })));
+            must(await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: product.id, variant_id: variant.id, url, position: idx }))));
           }
         }));
       }
 
+      // Go live only after photos and sizes saved, so a failed save never shows a half-finished listing.
+      if (publishStatus === "active" && product) must(await supabase.from("products").update({ status: "active" } as any).eq("id", product.id));
       toast.success(publishStatus === "active" ? "Product published!" : "Draft saved");
       navigate("/vendor/products");
     } catch (err: any) {
