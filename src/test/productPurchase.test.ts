@@ -83,6 +83,13 @@ describe("product page wiring", () => {
     expect(details).toContain('ProductReviews productId={productId}');
     expect(details).not.toContain('Questions');
   });
+  it("shows saved product specifications and expands long content", () => {
+    expect(details).toContain('Package dimensions');
+    expect(details).toContain("meta?.option_values");
+    expect(details).toContain("Show more");
+    expect(src).toContain("option_values: optionTypes");
+    expect(src).toContain("weight_g: product.weight_g");
+  });
 });
 
 describe("marketplace product card", () => {

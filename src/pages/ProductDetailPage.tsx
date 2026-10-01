@@ -744,6 +744,13 @@ const ProductDetailPage = () => {
               vendor_name: vendor?.store_name,
               sku: product.sku,
               condition: product.condition,
+              brand: product.brand,
+              mpn: product.mpn,
+              weight_g: product.weight_g,
+              length_cm: product.length_cm,
+              width_cm: product.width_cm,
+              height_cm: product.height_cm,
+              option_values: optionTypes,
               key_features: product.key_features,
               whats_in_box: product.whats_in_box,
             }}
