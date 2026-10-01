@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Box, Check, ChevronDown, ChevronUp, List } from "lucide-react";
 import ProductReviews from "./ProductReviews";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 
 export interface ProductMeta {
   name?: string;
@@ -10,6 +9,7 @@ export interface ProductMeta {
   condition?: string;
   sku?: string;
   stock?: number;
+  low_stock_threshold?: number | null;
   vendor_name?: string;
   brand?: string | null;
   mpn?: string | null;
@@ -32,8 +32,8 @@ interface ProductDescriptionTabsProps {
 
 const SpecRow = ({ label, value }: { label: string; value: string }) => (
   <div className="grid grid-cols-[minmax(112px,34%)_1fr] border-b border-border last:border-0">
-    <span className="border-r border-border bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground md:text-sm">{label}</span>
-    <span className="min-w-0 break-words px-3 py-2 text-xs text-foreground md:text-sm">{value}</span>
+    <span className="border-r border-border bg-muted/40 px-3 py-2 text-xs font-medium text-foreground/70 md:text-sm">{label}</span>
+    <span className="min-w-0 break-words px-3 py-2 text-xs font-medium text-foreground/90 md:text-sm">{value}</span>
   </div>
 );
 
@@ -41,15 +41,20 @@ const ShowMore = ({ children, hidden, expanded, onToggle }: { children: ReactNod
   <>
     {children}
     {hidden ? (
-      <Button type="button" variant="ghost" size="sm" className="mt-2 h-8 px-1 text-primary" onClick={onToggle} aria-expanded={expanded}>
-        {expanded ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
+      <button
+        type="button"
+        className="mt-2 inline-flex items-center gap-1 rounded-sm text-sm font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         {expanded ? "Show less" : "Show more"}
-      </Button>
+      </button>
     ) : null}
   </>
 );
 
-const FeatureList = ({ items, limit = 6 }: { items: string[]; limit?: number }) => {
+const FeatureList = ({ items, limit = 3 }: { items: string[]; limit?: number }) => {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? items : items.slice(0, limit);
   return <ShowMore hidden={items.length > limit} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
@@ -69,7 +74,7 @@ const ExpandableDescription = ({ text }: { text: string }) => {
   const isLong = text.length > 420;
   const shown = !expanded && isLong ? `${text.slice(0, 420).trimEnd()}…` : text;
   return <ShowMore hidden={isLong} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
-    <p className="whitespace-pre-line break-words text-xs leading-5 text-muted-foreground md:text-sm md:leading-6">{shown}</p>
+    <p className="whitespace-pre-line break-words text-xs leading-5 text-foreground/85 md:text-sm md:leading-6">{shown}</p>
   </ShowMore>;
 };
 
@@ -82,6 +87,14 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
       .map((line) => line.trim())
       .filter((line) => /^[-•*]\s*/.test(line))
       .map((line) => line.replace(/^[-•*]\s*/, ""));
+  })();
+  const lowStockLimit = meta?.low_stock_threshold ?? 5;
+  const stockLabel = (() => {
+    const s = meta?.stock;
+    if (s == null) return null;
+    if (s <= 0) return "Out of stock";
+    if (s <= lowStockLimit) return `Only ${s} left`;
+    return "In Stock";
   })();
   const dimensions = meta?.length_cm != null && meta.width_cm != null && meta.height_cm != null
     ? `${meta.length_cm} × ${meta.width_cm} × ${meta.height_cm} cm`
