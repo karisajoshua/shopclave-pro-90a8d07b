@@ -682,32 +682,49 @@ const EditProductPage = () => {
         {/* Step 5: Review & Submit */}
         {step === 5 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Review & Save</h3>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium">{categoryPath.join(" > ") || "—"}</span></div>
-              <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Product Name</span><span className="font-medium">{form.name || "—"}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Condition</span><span className="font-medium capitalize">{form.condition}</span></div>
-              {keyFeatures.filter(f => f.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Key Features</span><span className="font-medium">{keyFeatures.filter(f => f.trim()).length} listed</span></div>}
-              {whatsInBoxItems.filter(s => s.trim()).length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">What's in the Box</span><span className="font-medium">{whatsInBoxItems.filter(s => s.trim()).length} items</span></div>}
-              <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className="font-medium">{form.price ? `CA$${form.price}` : "—"}</span></div>
-              {form.compareAtPrice && <div className="flex justify-between"><span className="text-muted-foreground">Compare at Price</span><span className="font-medium">CA${form.compareAtPrice}</span></div>}
-              <div className="flex justify-between"><span className="text-muted-foreground">Stock</span><span className="font-medium">{hasVariants ? variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0) : form.stock}</span></div>
-              {form.sku && <div className="flex justify-between"><span className="text-muted-foreground">SKU</span><span className="font-medium">{form.sku}</span></div>}
-              {images.length > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Images</span><span className="font-medium">{images.length} uploaded</span></div>}
-              {hasVariants && <div className="flex justify-between"><span className="text-muted-foreground">Variants</span><span className="font-medium">{variantRows.length} combinations</span></div>}
-              <Separator />
-
-              <div className="bg-secondary/50 rounded-lg p-3 space-y-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase">Seller Info</h4>
-                <div className="flex justify-between"><span className="text-muted-foreground">Seller Name</span><span className="font-medium">{vendor?.store_name || "—"}</span></div>
-                {vendor?.phone && <div className="flex justify-between"><span className="text-muted-foreground">Phone #1</span><span className="font-medium">{vendor.phone}</span></div>}
-                {vendor?.phone2 && <div className="flex justify-between"><span className="text-muted-foreground">Phone #2</span><span className="font-medium">{vendor.phone2}</span></div>}
+            <h3 className="font-semibold text-lg">Review your product</h3>
+            <p className="text-sm text-muted-foreground">Check everything before saving. Use Edit to change any section.</p>
+            {([
+              { title: "Product Details", to: 1, rows: [["Name", form.name], ["Category", categoryPath.join(" > ")], ["Brand", form.brand], ["Model / MPN", form.mpn], ["Condition", form.condition === "new" ? "New" : "Used"], ["Key features", `${keyFeatures.filter(f => f.trim()).length} listed`], ["What's in the box", `${whatsInBoxItems.filter(f => f.trim()).length} items`]] },
+              { title: "Pricing & Inventory", to: 2, rows: [["Price", form.price ? `CA$${Number(form.price).toFixed(2)}` : ""], ["Compare at", form.compareAtPrice ? `CA$${Number(form.compareAtPrice).toFixed(2)}` : ""], ["SKU", form.sku || "Auto-generated"], ["Barcode", inv.barcode], ["Stock", hasVariants ? `Managed by variants (Total: ${variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0)})` : form.stock], ["Order quantity", `Min ${inv.minQty || 1}${inv.maxQty ? ` · Max ${inv.maxQty}` : ""}`]] },
+              { title: "Shipping", to: 2, rows: [["Weight", pkg.weightG ? `${pkg.weightG} g` : ""], ["Package", pkg.lengthCm ? `${pkg.lengthCm} × ${pkg.widthCm} × ${pkg.heightCm} cm` : ""], ...(Object.keys(SHIP_LABELS) as ShipKey[]).filter(k => shipping[k].enabled).map(k => [SHIP_LABELS[k], `${shipDaysLabel(k, shipping[k].days)} · ${shipping[k].price > 0 ? `CA$${shipping[k].price.toFixed(2)}` : "Free"}`])] },
+              { title: "Media", to: 3, rows: [["Images", `${images.length} uploaded`], ["Video", videoUrl]] },
+              { title: "Seller", to: -1, rows: [["Store", vendor?.store_name]] },
+            ] as { title: string; to: number; rows: [string, any][] }[]).map((sec) => (
+              <div key={sec.title} className="rounded-lg border border-border">
+                <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                  <h4 className="font-semibold">{sec.title}</h4>
+                  {sec.to >= 0 && <Button type="button" size="sm" variant="secondary" onClick={() => setStep(sec.to)}>Edit</Button>}
+                </div>
+                {sec.title === "Media" && images.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto px-4 pt-3">{images.slice(0, 6).map((im, i) => <img key={i} src={im.preview} alt="" className="h-14 w-14 shrink-0 rounded border border-border object-cover" />)}</div>
+                )}
+                <dl className="divide-y divide-border px-4 text-sm">
+                  {sec.rows.map(([k, v]) => <div key={k} className="grid grid-cols-[40%_1fr] gap-2 py-2"><dt className="text-muted-foreground">{k}</dt><dd className="font-medium break-words">{v || "N/A"}</dd></div>)}
+                </dl>
               </div>
-            </div>
-
+            ))}
+            {hasVariants && variantRows.length > 0 && (
+              <div className="rounded-lg border border-border">
+                <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                  <h4 className="font-semibold">Variants ({variantRows.length} combinations)</h4>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setStep(4)}>Edit</Button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-left text-xs"><tr><th className="p-2">Variant</th><th className="p-2">Price</th><th className="p-2">Stock</th><th className="p-2">SKU</th><th className="p-2">Image</th></tr></thead>
+                    <tbody>{variantRows.map((v, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="p-2">{Object.entries(v.options).map(([k, val]) => `${k}: ${val}`).join(", ")}</td>
+                        <td className="p-2">CA${Number(v.price || form.price || 0).toFixed(2)}</td>
+                        <td className="p-2">{v.stock}</td>
+                        <td className="p-2">{v.sku || "Auto"}</td>
+                        <td className="p-2">{(v.imagePreviews[0] || v.existingImageUrls[0]) ? <img src={v.imagePreviews[0] || v.existingImageUrls[0]} alt="" className="h-8 w-8 rounded object-cover" /> : "—"}</td>
+                      </tr>))}</tbody>
+                  </table>
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button type="button" variant="outline" className="h-12 flex-1" onClick={back} disabled={loading}>Back</Button>
               <Button type="button" variant="secondary" className="h-12 flex-1" onClick={() => handleSubmit("draft")} disabled={loading}>Save as Draft</Button>
