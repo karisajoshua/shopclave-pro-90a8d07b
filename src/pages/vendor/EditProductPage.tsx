@@ -1,4 +1,4 @@
-import { ShippingOptionsFields, DEFAULT_SHIPPING_OPTIONS, validateShippingOptions, normalizeShippingOptions, InventoryExtrasFields, emptyInventoryExtras, validateInventoryExtras, inventoryExtrasToColumns, inventoryExtrasFromProduct, type ShippingOptions, type InventoryExtras } from "@/components/vendor/ProductListingExtras";
+import { ShippingOptionsFields, DEFAULT_SHIPPING_OPTIONS, validateShippingOptions, normalizeShippingOptions, SHIP_LABELS, shipDaysLabel, InventoryExtrasFields, emptyInventoryExtras, validateInventoryExtras, inventoryExtrasToColumns, inventoryExtrasFromProduct, type ShippingOptions, type ShipKey, type InventoryExtras } from "@/components/vendor/ProductListingExtras";
 import { PackageMeasurementsFields, emptyPackageDims, validatePackageDims, packageDimsToColumns, packageDimsFromProduct, type PackageDims } from "@/components/vendor/PackageMeasurementsFields";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
