@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertImageToWebp } from "@/lib/imageToWebp";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X, Layers, Upload, Video, ImageIcon, ChevronRight, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -52,6 +52,7 @@ const EditProductPage = () => {
   const { id: productId } = useParams<{ id: string }>();
   const { vendor } = useOutletContext<{ vendor: any }>();
   const [step, setStep] = useState(0);
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   // Category state — selected leaf id
@@ -266,7 +267,7 @@ const EditProductPage = () => {
     setLoading(true);
     try {
       const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean);
-      const { error } = await supabase.from("products").update({
+      const { data: updatedRows, error } = await supabase.from("products").update({
         name: form.name.trim(),
         description: form.description.trim() || null,
         price: parseFloat(form.price),
@@ -282,36 +283,62 @@ const EditProductPage = () => {
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
         ...(validatePackageDims(pkg) ? {} : packageDimsToColumns(pkg)),
-      } as any).eq("id", productId);
+      } as any).eq("id", productId).select("id");
       if (error) throw error;
+      if (!updatedRows?.length) throw new Error("This product could not be saved. You may not have permission to edit it.");
 
-      // Handle images
+      const must = (r: { error: any }) => { if (r.error) throw r.error; };
+
+      // Product-level (general) images only
       const uploadedImages = await uploadImages(productId);
-      await supabase.from("product_images").delete().eq("product_id", productId);
+      must(await supabase.from("product_images").delete().eq("product_id", productId).is("variant_id", null));
       if (uploadedImages.length > 0) {
-        await supabase.from("product_images").insert(uploadedImages.map((img, idx) => ({ product_id: productId, url: img.url, position: idx })));
+        must(await supabase.from("product_images").insert(uploadedImages.map((img, idx) => ({ product_id: productId, url: img.url, position: idx }))));
       }
 
-      // Handle variants
-      await supabase.from("product_variants").delete().eq("product_id", productId);
+      // Variants: update in place by id; never delete variants referenced by past orders
+      const { data: existingV, error: evErr } = await supabase.from("product_variants").select("id").eq("product_id", productId);
+      if (evErr) throw evErr;
+      const keepIds = new Set(hasVariants ? variantRows.map(v => v.id).filter(Boolean) as string[] : []);
+      const removed = (existingV || []).map(v => v.id).filter(id => !keepIds.has(id));
+      if (removed.length) {
+        const { data: ordered, error: oErr } = await supabase.from("order_items").select("variant_id").in("variant_id", removed);
+        if (oErr) throw oErr;
+        const orderedIds = new Set((ordered || []).map((o: any) => o.variant_id));
+        const deletable = removed.filter(id => !orderedIds.has(id));
+        const retire = removed.filter(id => orderedIds.has(id));
+        if (deletable.length) must(await supabase.from("product_variants").delete().in("id", deletable));
+        if (retire.length) must(await supabase.from("product_variants").update({ stock: 0 } as any).in("id", retire));
+      }
       if (hasVariants && variantRows.length > 0) {
-        await Promise.all(variantRows.map(async (v) => {
+        for (const v of variantRows) {
           const newUrls = v.imageFiles.length > 0 ? await uploadVariantImages(v.imageFiles, productId) : [];
           const allUrls = [...v.existingImageUrls, ...newUrls];
-          const { data: variant, error: vErr } = await supabase.from("product_variants").insert({
-            product_id: productId, variant_options: v.options,
+          const fields = {
+            variant_options: v.options,
             price: v.price ? parseFloat(v.price) : null,
             compare_at_price: v.compareAtPrice ? parseFloat(v.compareAtPrice) : null,
             stock: parseInt(v.stock) || 0,
             sku: v.sku.trim() || null, image_url: allUrls[0] || null,
-          } as any).select("id").single();
-          if (vErr) throw vErr;
-          if (allUrls.length > 0 && variant) {
-            await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: productId, variant_id: variant.id, url, position: idx })));
+          };
+          let variantId = v.id;
+          if (variantId) {
+            const { data: upd, error: uErr } = await supabase.from("product_variants").update(fields as any).eq("id", variantId).select("id");
+            if (uErr) throw uErr;
+            if (!upd?.length) throw new Error("A variant could not be updated. Please refresh and try again.");
+          } else {
+            const { data: ins, error: iErr } = await supabase.from("product_variants").insert({ product_id: productId, ...fields } as any).select("id").single();
+            if (iErr) throw iErr;
+            variantId = ins.id;
           }
-        }));
+          must(await supabase.from("product_images").delete().eq("variant_id", variantId!));
+          if (allUrls.length > 0) {
+            must(await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: productId, variant_id: variantId, url, position: idx }))));
+          }
+        }
       }
 
+      queryClient.invalidateQueries();
       toast.success("Product updated!");
       navigate("/vendor/products");
     } catch (err: any) {
