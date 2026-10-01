@@ -108,7 +108,7 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
     ["Brand", meta?.brand],
     ["Model / MPN", meta?.mpn],
     ["SKU", meta?.sku],
-    ["Available stock", meta?.stock !== undefined ? String(meta.stock) : null],
+    ["Stock", stockLabel],
     ["Sold by", meta?.vendor_name],
   ].filter((row): row is [string, string] => Boolean(row[1]));
 

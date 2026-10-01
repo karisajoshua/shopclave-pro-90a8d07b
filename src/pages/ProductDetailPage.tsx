@@ -741,6 +741,7 @@ const ProductDetailPage = () => {
               name: product.name,
               category: product.categories?.name,
               stock: displayStock,
+              low_stock_threshold: product.low_stock_threshold,
               vendor_name: vendor?.store_name,
               sku: product.sku,
               condition: product.condition,
