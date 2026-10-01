@@ -264,6 +264,10 @@ const EditProductPage = () => {
     const pkgErr = publishStatus === "active" ? ((!(parseFloat(form.price) > 0) && "Price is required") || validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping)) : null;
     if (pkgErr) { toast.error(pkgErr); setStep(2); return; }
     if (!vendor || !productId) return;
+    if ((product as any)?.vendor_id && (product as any).vendor_id !== vendor.id) {
+      toast.error("Only the seller who owns this product can edit it.");
+      return;
+    }
     setLoading(true);
     try {
       const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean);
@@ -288,13 +292,20 @@ const EditProductPage = () => {
       if (!updatedRows?.length) throw new Error("This product could not be saved. You may not have permission to edit it.");
 
       const must = (r: { error: any }) => { if (r.error) throw r.error; };
+      // Insert new photo rows first, then remove the old ones — a failed save never leaves a product without photos.
+      const replaceImages = async (variantId: string | null, urls: string[]) => {
+        let q = supabase.from("product_images").select("id").eq("product_id", productId);
+        q = variantId ? q.eq("variant_id", variantId) : q.is("variant_id", null);
+        const { data: old, error: oErr } = await q;
+        if (oErr) throw oErr;
+        if (urls.length) must(await supabase.from("product_images").insert(urls.map((url, idx) => ({ product_id: productId, variant_id: variantId, url, position: idx }))));
+        const oldIds = (old || []).map((r: any) => r.id);
+        if (oldIds.length) must(await supabase.from("product_images").delete().in("id", oldIds));
+      };
 
       // Product-level (general) images only
       const uploadedImages = await uploadImages(productId);
-      must(await supabase.from("product_images").delete().eq("product_id", productId).is("variant_id", null));
-      if (uploadedImages.length > 0) {
-        must(await supabase.from("product_images").insert(uploadedImages.map((img, idx) => ({ product_id: productId, url: img.url, position: idx }))));
-      }
+      await replaceImages(null, uploadedImages.map(img => img.url));
 
       // Variants: update in place by id; never delete variants referenced by past orders
       const { data: existingV, error: evErr } = await supabase.from("product_variants").select("id").eq("product_id", productId);
@@ -331,10 +342,7 @@ const EditProductPage = () => {
             if (iErr) throw iErr;
             variantId = ins.id;
           }
-          must(await supabase.from("product_images").delete().eq("variant_id", variantId!));
-          if (allUrls.length > 0) {
-            must(await supabase.from("product_images").insert(allUrls.map((url, idx) => ({ product_id: productId, variant_id: variantId, url, position: idx }))));
-          }
+          await replaceImages(variantId!, allUrls);
         }
       }
 
