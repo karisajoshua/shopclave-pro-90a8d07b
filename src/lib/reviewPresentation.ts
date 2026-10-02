@@ -4,30 +4,6 @@ export interface RatingDistributionItem {
   pct: number;
 }
 
-export interface SampleReview {
-  id: string;
-  name: string;
-  rating: number;
-  comment: string;
-}
-
-const sampleComments = [
-  "The item matched the description and the ordering experience was straightforward.",
-  "Good presentation, clear product details, and an easy purchase process.",
-  "The product information was helpful and everything was simple to understand.",
-  "A smooth shopping experience with useful details throughout the page.",
-  "The listing was clear, well organized, and easy to review before ordering.",
-];
-
-const hashText = (value: string) => {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-};
-
 export const buildRatingDistribution = (rating: number, total: number): RatingDistributionItem[] => {
   const safeTotal = Math.max(0, Math.floor(total));
   if (!safeTotal) return [5, 4, 3, 2, 1].map((star) => ({ star, count: 0, pct: 0 }));
@@ -77,15 +53,5 @@ export const buildRatingDistribution = (rating: number, total: number): RatingDi
     star,
     count: counts[index],
     pct: (counts[index] / safeTotal) * 100,
-  }));
-};
-
-export const buildSampleReviews = (productId: string, count: number): SampleReview[] => {
-  const offset = hashText(productId) % sampleComments.length;
-  return Array.from({ length: Math.max(0, count) }, (_, index) => ({
-    id: `sample-${index}`,
-    name: `Sample customer ${index + 1}`,
-    rating: index === 4 ? 4 : 5,
-    comment: sampleComments[(offset + index) % sampleComments.length],
   }));
 };
