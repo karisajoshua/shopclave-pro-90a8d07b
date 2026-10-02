@@ -87,7 +87,8 @@ describe("product page wiring", () => {
   });
   it("uses real review totals in the content tabs", () => {
     expect(details).toContain('Reviews ({reviewCount})');
-    expect(details).toContain('ProductReviews productId={productId}');
+    expect(details).toContain('productId={productId}');
+    expect(details).toContain('displayReviewCount={reviewCount}');
     expect(src).toContain("reviewCount={displayStats.reviewCount}");
     expect(src).toContain("reviewRating={displayStats.rating}");
     expect(details).not.toContain('Questions');
