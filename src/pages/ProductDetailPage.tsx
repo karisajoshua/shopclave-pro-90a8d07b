@@ -736,7 +736,8 @@ const ProductDetailPage = () => {
           <ProductDescriptionTabs
             description={product.description}
             productId={product.id}
-            reviewCount={reviewStats.count}
+            reviewCount={displayStats.reviewCount}
+            reviewRating={displayStats.rating}
             meta={{
               name: product.name,
               category: product.categories?.name,
