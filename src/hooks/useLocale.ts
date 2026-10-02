@@ -42,7 +42,9 @@ const COUNTRY_CODE_MAP: Record<string, { name: string; currency: string; currenc
   MX: { name: "Mexico", currency: "MXN", currencySymbol: "MX$" },
 };
 
-const FALLBACK_LOCALE: CountryInfo = { code: "KE", name: "Kenya", currency: "KES", currencySymbol: "KSh" };
+// Catalogue prices are stored in CAD, so use Canada until a visitor's country
+// is detected or explicitly selected. This prevents a temporary non-CAD price.
+const FALLBACK_LOCALE: CountryInfo = { code: "CA", name: "Canada", currency: "CAD", currencySymbol: "CA$" };
 
 const CACHE_KEY = "barakaz_geo_country_v3"; // v3 invalidates old "always Kenya" caches
 const MANUAL_KEY = "barakaz_geo_country_manual";
