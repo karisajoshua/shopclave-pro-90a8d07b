@@ -53,7 +53,13 @@ export const buildRatingDistribution = (rating: number, total: number): RatingDi
   const targetScore = Math.round(safeRating * safeTotal);
   let score = counts.reduce((sum, count, index) => sum + count * stars[index], 0);
   while (score < targetScore) {
-    const source = counts.findLastIndex((count, index) => count > 0 && stars[index] < 5);
+    let source = -1;
+    for (let index = counts.length - 1; index >= 0; index -= 1) {
+      if (counts[index] > 0 && stars[index] < 5) {
+        source = index;
+        break;
+      }
+    }
     if (source < 0) break;
     counts[source] -= 1;
     counts[source - 1] += 1;
