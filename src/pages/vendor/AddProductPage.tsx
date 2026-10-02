@@ -151,7 +151,7 @@ const AddProductPage = () => {
   const validateStep = (): boolean => {
     switch (step) {
       case 0: if (!selectedCategoryId) { toast.error("Please select a category"); return false; } return true;
-      case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } return true;
+      case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } { const se = validateSpecifications(specs); if (se) { toast.error(se); return false; } } return true;
       case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
       case 3: return true;
       case 4: if (hasVariants && variantRows.length === 0) { toast.error("Add at least one variant option with values"); return false; } return true;
@@ -329,6 +329,7 @@ const AddProductPage = () => {
 
             {/* Key Features */}
             <SpecificationsFields value={specs} onChange={setSpecs} />
+            <Separator />
             <div>
               <Label className="mb-2 block">Key Features</Label>
               <p className="text-xs text-muted-foreground mb-2">Add features one per line. These appear independently in the product specifications.</p>

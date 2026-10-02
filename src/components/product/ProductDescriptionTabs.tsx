@@ -18,6 +18,7 @@ export interface ProductMeta {
   width_cm?: number | null;
   height_cm?: number | null;
   option_values?: Record<string, string[]>;
+  specifications?: { name: string; value: string }[] | null;
   video_url?: string | null;
   key_features?: string[] | null;
   whats_in_box?: string[] | null;
@@ -111,6 +112,7 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, revie
     ["SKU", meta?.sku],
     ["Stock", stockLabel],
     ["Sold by", meta?.vendor_name],
+    ...(Array.isArray(meta?.specifications) ? meta!.specifications! : []).map((r) => [r?.name, r?.value]),
   ].filter((row): row is [string, string] => Boolean(row[1]));
 
   return (
