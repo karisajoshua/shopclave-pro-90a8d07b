@@ -32,3 +32,6 @@
 - [x] Brand/MPN, barcode, cost, inventory rules, 4 shipping options, review with Edit, Save as Draft / Publish
 - [x] Product page shows the seller's enabled delivery options and prices
 - [ ] Deploy updated checkout shipping function (awaiting owner go-ahead)
+
+## Review presentation
+- [ ] Complete the review rating distribution and five-card review presentation without fabricating verified customers.
