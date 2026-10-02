@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Star } from "lucide-react";
+import { BadgeCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,8 @@ interface ProductReviewsProps {
   productId: string;
   embedded?: boolean;
   showHeading?: boolean;
+  displayRating?: number;
+  displayReviewCount?: number;
 }
 
 const StarRating = ({
@@ -38,7 +40,13 @@ const StarRating = ({
   </div>
 );
 
-const ProductReviews = ({ productId, embedded = false, showHeading = true }: ProductReviewsProps) => {
+const ProductReviews = ({
+  productId,
+  embedded = false,
+  showHeading = true,
+  displayRating,
+  displayReviewCount,
+}: ProductReviewsProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newRating, setNewRating] = useState(0);
@@ -125,6 +133,7 @@ const ProductReviews = ({ productId, embedded = false, showHeading = true }: Pro
       queryClient.invalidateQueries({ queryKey: ["reviews", productId] });
       queryClient.invalidateQueries({ queryKey: ["can-review", productId] });
       queryClient.invalidateQueries({ queryKey: ["review-stats", productId] });
+      queryClient.invalidateQueries({ queryKey: ["product-ratings"] });
     },
     onError: (e: any) => toast.error(e.message || "Failed to submit review"),
   });
@@ -137,6 +146,8 @@ const ProductReviews = ({ productId, embedded = false, showHeading = true }: Pro
     count: reviews.filter((r: any) => r.rating === star).length,
     pct: reviews.length ? (reviews.filter((r: any) => r.rating === star).length / reviews.length) * 100 : 0,
   }));
+  const summaryRating = displayRating ?? avgRating;
+  const summaryReviewCount = displayReviewCount ?? reviews.length;
 
   return (
     <div id="reviews-section" className={embedded ? "p-4" : "border-t border-border pt-8 mt-8"}>
@@ -146,10 +157,10 @@ const ProductReviews = ({ productId, embedded = false, showHeading = true }: Pro
         {/* Summary */}
         <div className="space-y-4">
           <div className="text-center md:text-left">
-            <div className="text-4xl font-bold">{avgRating.toFixed(1)}</div>
-            <StarRating rating={Math.round(avgRating)} size="h-5 w-5" />
+            <div className="text-4xl font-bold">{summaryRating.toFixed(1)}</div>
+            <StarRating rating={Math.round(summaryRating)} size="h-5 w-5" />
             <p className="text-sm text-muted-foreground mt-1">
-              {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+              {summaryReviewCount} {summaryReviewCount === 1 ? "review" : "reviews"}
             </p>
           </div>
           <div className="space-y-2">
@@ -196,9 +207,13 @@ const ProductReviews = ({ productId, embedded = false, showHeading = true }: Pro
                 <div className="flex items-center gap-2 mb-1">
                   <StarRating rating={review.rating} />
                 </div>
-                <p className="text-sm font-medium">
-                  {review.profile?.full_name || "Customer"}
-                </p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="text-sm font-medium">{review.profile?.full_name || "Customer"}</p>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    Verified buyer
+                  </span>
+                </div>
                 <p className="text-xs text-muted-foreground mb-2">
                   {new Date(review.created_at).toLocaleDateString("en-US", {
                     year: "numeric",

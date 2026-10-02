@@ -27,6 +27,7 @@ interface ProductDescriptionTabsProps {
   description: string | null;
   productId: string;
   reviewCount?: number;
+  reviewRating?: number;
   meta?: ProductMeta;
 }
 
@@ -78,7 +79,7 @@ const ExpandableDescription = ({ text }: { text: string }) => {
   </ShowMore>;
 };
 
-const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta }: ProductDescriptionTabsProps) => {
+const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, reviewRating = 0, meta }: ProductDescriptionTabsProps) => {
   const parsedFeatures = (() => {
     if (meta?.key_features?.length) return meta.key_features;
     if (!description) return [];
@@ -166,7 +167,12 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, meta 
         </TabsContent>
 
         <TabsContent value="reviews" className="m-0 p-1 md:p-2">
-          <ProductReviews productId={productId} embedded showHeading={false} />
+          <ProductReviews
+            productId={productId}
+            embedded
+            displayRating={reviewRating}
+            displayReviewCount={reviewCount}
+          />
         </TabsContent>
       </Tabs>
     </section>

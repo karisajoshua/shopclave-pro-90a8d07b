@@ -20,6 +20,7 @@
 - [x] Add temporary deterministic review/sold fallbacks, real card signals, and default product images.
 - [x] Expand product specifications with saved seller data, box contents, and Show more controls for long text.
 - [x] Make the delivery heading location-neutral and default product prices to CAD before country-based conversion.
+- [x] Keep the title and Reviews tab totals aligned and identify eligible reviewers as verified buyers.
 
 ## Desktop marketplace footer
 - [x] Add supplied payment marks with conditional checkout wording and expand support, shopping, seller, policy, trust, and account navigation.
