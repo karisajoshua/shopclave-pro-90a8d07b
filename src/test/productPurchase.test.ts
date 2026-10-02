@@ -93,18 +93,15 @@ describe("product page wiring", () => {
     expect(src).toContain("reviewRating={displayStats.rating}");
     expect(details).not.toContain('Questions');
   });
-  it("labels submitted customer reviews as verified buyers", () => {
+  it("shows only the review count and rating distribution — no review cards", () => {
     const reviews = readFileSync("src/components/product/ProductReviews.tsx", "utf8");
     expect(reviews).toContain("Customer Reviews");
-    expect(reviews).toContain("Verified buyer");
-    expect(reviews).toContain("displayReviewCount");
-  });
-  it("fills the displayed rating distribution and clearly labels sample reviews", () => {
-    const reviews = readFileSync("src/components/product/ProductReviews.tsx", "utf8");
     expect(reviews).toContain("buildRatingDistribution(summaryRating, summaryReviewCount)");
-    expect(reviews).toContain("Math.max(0, 5 - reviews.length)");
-    expect(reviews).toContain("Sample reviews are shown for presentation only");
-    expect(reviews).toContain("Sample review");
+    expect(reviews).toContain("Write a Review");
+    expect(reviews).not.toContain("buildSampleReviews");
+    expect(reviews).not.toContain("Sample review");
+    expect(reviews).not.toContain("Verified buyer");
+    expect(reviews).not.toContain("review.profile");
   });
   it("shows saved product specifications and expands long content", () => {
     expect(details).toContain('Package dimensions');
