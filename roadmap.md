@@ -19,6 +19,7 @@
 - [x] Verify desktop and mobile rendering, tests, types, and preview build.
 - [x] Add temporary deterministic review/sold fallbacks, real card signals, and default product images.
 - [x] Expand product specifications with saved seller data, box contents, and Show more controls for long text.
+- [x] Make the delivery heading location-neutral and default product prices to CAD before country-based conversion.
 
 ## Desktop marketplace footer
 - [x] Add supplied payment marks with conditional checkout wording and expand support, shopping, seller, policy, trust, and account navigation.

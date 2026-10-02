@@ -689,7 +689,7 @@ const ProductDetailPage = () => {
 
              <section className="col-span-2 border border-border bg-card" aria-labelledby="delivery-heading">
                  <div className="border-b border-border px-3 py-2">
-                  <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery in Canada</h2>
+                  <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery to your address</h2>
                   <p className="mt-1 text-xs text-muted-foreground">Choose a delivery option. The final quote is confirmed at checkout.</p>
                 </div>
                 <RadioGroup
