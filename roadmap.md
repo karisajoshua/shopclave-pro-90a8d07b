@@ -35,3 +35,6 @@
 
 ## Review presentation
 - [x] Complete the review rating distribution and five-card review presentation without fabricating verified customers.
+
+- [x] Seller specifications rows in product form + product page
+- [x] Product page price display like reference (large orange CA$ price, strikethrough compare)

@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { isAdminUnlimited } from "@/lib/subscriptionPlans";
 import { ShippingOptionsFields, DEFAULT_SHIPPING_OPTIONS, validateShippingOptions, InventoryExtrasFields, emptyInventoryExtras, validateInventoryExtras, inventoryExtrasToColumns, SHIP_LABELS, shipDaysLabel, type ShippingOptions, type InventoryExtras, type ShipKey } from "@/components/vendor/ProductListingExtras";
+import { SpecificationsFields, normalizeSpecifications, validateSpecifications, type SpecRowInput } from "@/components/vendor/ProductListingExtras";
 import { CategoryPicker, useCategoryAncestors } from "@/components/shared/CategoryPicker";
 
 const STEPS = [
@@ -67,6 +68,7 @@ const AddProductPage = () => {
   const [inv, setInv] = useState<InventoryExtras>(emptyInventoryExtras);
   const [pkg, setPkg] = useState<PackageDims>(emptyPackageDims);
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
+  const [specs, setSpecs] = useState<SpecRowInput[]>([]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
   const [showBulkPrice, setShowBulkPrice] = useState(false);
 
@@ -149,7 +151,7 @@ const AddProductPage = () => {
   const validateStep = (): boolean => {
     switch (step) {
       case 0: if (!selectedCategoryId) { toast.error("Please select a category"); return false; } return true;
-      case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } return true;
+      case 1: if (!form.name.trim()) { toast.error("Product name is required"); return false; } if (!form.description.trim()) { toast.error("Description is required"); return false; } { const se = validateSpecifications(specs); if (se) { toast.error(se); return false; } } return true;
       case 2: { if (!form.price || parseFloat(form.price) <= 0) { toast.error("Price is required"); return false; } const pkgErr = validatePackageDims(pkg) || validateInventoryExtras(inv) || validateShippingOptions(shipping); if (pkgErr) { toast.error(pkgErr); return false; } return true; }
       case 3: return true;
       case 4: if (hasVariants && variantRows.length === 0) { toast.error("Add at least one variant option with values"); return false; } return true;
@@ -209,6 +211,7 @@ const AddProductPage = () => {
         video_url: videoUrl.trim() || null,
         sku: autoSku,
         key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
+        specifications: normalizeSpecifications(specs) as any,
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
@@ -325,6 +328,8 @@ const AddProductPage = () => {
             <Separator />
 
             {/* Key Features */}
+            <SpecificationsFields value={specs} onChange={setSpecs} />
+            <Separator />
             <div>
               <Label className="mb-2 block">Key Features</Label>
               <p className="text-xs text-muted-foreground mb-2">Add features one per line. These appear independently in the product specifications.</p>
@@ -561,7 +566,7 @@ const AddProductPage = () => {
             <h3 className="font-semibold text-lg">Review your product</h3>
             <p className="text-sm text-muted-foreground">Check everything before publishing. Use Edit to change any section.</p>
             {([
-              { title: "Product Details", to: 1, rows: [["Name", form.name], ["Category", categoryPath.join(" > ")], ["Brand", form.brand], ["Model / MPN", form.mpn], ["Condition", form.condition === "new" ? "New" : "Used"], ["Key features", `${keyFeatures.filter(f => f.trim()).length} listed`], ["What's in the box", `${whatsInBoxItems.filter(f => f.trim()).length} items`]] },
+              { title: "Product Details", to: 1, rows: [["Name", form.name], ["Category", categoryPath.join(" > ")], ["Brand", form.brand], ["Model / MPN", form.mpn], ["Condition", form.condition === "new" ? "New" : "Used"], ["Key features", `${keyFeatures.filter(f => f.trim()).length} listed`], ["What's in the box", `${whatsInBoxItems.filter(f => f.trim()).length} items`], ["Specifications", `${normalizeSpecifications(specs).length} listed`]] },
               { title: "Pricing & Inventory", to: 2, rows: [["Price", form.price ? `CA$${Number(form.price).toFixed(2)}` : ""], ["Compare at", form.compareAtPrice ? `CA$${Number(form.compareAtPrice).toFixed(2)}` : ""], ["SKU", form.sku || "Auto-generated"], ["Barcode", inv.barcode], ["Stock", hasVariants ? `Managed by variants (Total: ${variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0)})` : form.stock], ["Order quantity", `Min ${inv.minQty || 1}${inv.maxQty ? ` · Max ${inv.maxQty}` : ""}`]] },
               { title: "Shipping", to: 2, rows: [["Weight", pkg.weightG ? `${pkg.weightG} g` : ""], ["Package", pkg.lengthCm ? `${pkg.lengthCm} × ${pkg.widthCm} × ${pkg.heightCm} cm` : ""], ...(Object.keys(SHIP_LABELS) as ShipKey[]).filter(k => shipping[k].enabled).map(k => [SHIP_LABELS[k], `${shipDaysLabel(k, shipping[k].days)} · ${shipping[k].price > 0 ? `CA$${shipping[k].price.toFixed(2)}` : "Free"}`])] },
               { title: "Media", to: 3, rows: [["Images", `${images.length} uploaded`], ["Video", videoUrl]] },

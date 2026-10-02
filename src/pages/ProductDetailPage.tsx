@@ -603,11 +603,11 @@ const ProductDetailPage = () => {
               {product.deal_ends_at && new Date(product.deal_ends_at).getTime() > Date.now() ? <CountdownTimer endsAt={product.deal_ends_at} /> : null}
 
                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <p className="text-xl font-extrabold text-primary md:text-3xl">{formatPrice(Number(displayPrice))}</p>
+                <p className="text-3xl font-extrabold tracking-tight text-primary md:text-4xl">{formatPrice(Number(displayPrice))}</p>
                 {discountPct && displayCompare ? (
                   <>
-                    <span className="text-[10px] text-muted-foreground line-through md:text-sm">{formatPrice(Number(displayCompare))}</span>
-                    <Badge variant="destructive" className="h-5 px-1.5 text-[9px] md:text-xs">Save {discountPct}%</Badge>
+                    <span className="text-base font-medium text-muted-foreground line-through md:text-lg">{formatPrice(Number(displayCompare))}</span>
+                    <Badge variant="destructive" className="h-6 px-2 text-xs">Save {discountPct}%</Badge>
                   </>
                 ) : null}
               </div>
@@ -753,6 +753,7 @@ const ProductDetailPage = () => {
               width_cm: product.width_cm,
               height_cm: product.height_cm,
               option_values: optionTypes,
+              specifications: (product as any).specifications ?? [],
               key_features: product.key_features,
               whats_in_box: product.whats_in_box,
             }}

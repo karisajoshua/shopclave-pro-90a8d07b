@@ -144,3 +144,56 @@ export const InventoryExtrasFields = ({ value, onChange }: { value: InventoryExt
     </div>
   );
 };
+
+export type SpecRowInput = { name: string; value: string };
+export const SPEC_SUGGESTIONS = ["Material", "Colour", "Size", "Model", "Warranty", "Country of origin"];
+
+export function normalizeSpecifications(v: unknown): SpecRowInput[] {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>();
+  const out: SpecRowInput[] = [];
+  for (const r of v) {
+    const name = String((r as any)?.name ?? "").trim().slice(0, 60);
+    const value = String((r as any)?.value ?? "").trim().slice(0, 200);
+    if (!name || !value || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push({ name, value });
+    if (out.length >= 30) break;
+  }
+  return out;
+}
+
+export function validateSpecifications(rows: SpecRowInput[]): string | null {
+  for (const r of rows) {
+    const n = r.name.trim(), v = r.value.trim();
+    if (!n && !v) continue;
+    if (!n || !v) return "Each specification needs both a name and a value";
+    if (n.length > 60) return "Specification names must be 60 characters or less";
+    if (v.length > 200) return "Specification values must be 200 characters or less";
+  }
+  if (rows.filter((r) => r.name.trim()).length > 30) return "Up to 30 specifications allowed";
+  return null;
+}
+
+export const SpecificationsFields = ({ value, onChange }: { value: SpecRowInput[]; onChange: (v: SpecRowInput[]) => void }) => {
+  const rows = value.length ? value : [{ name: "", value: "" }];
+  const set = (i: number, p: Partial<SpecRowInput>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
+  return (
+    <div className="space-y-2">
+      <Label>Specifications (Optional)</Label>
+      <p className="text-xs text-muted-foreground">Add details like Material, Colour or Warranty. These show in the product's Specifications table.</p>
+      <datalist id="spec-suggestions">{SPEC_SUGGESTIONS.map((s) => <option key={s} value={s} />)}</datalist>
+      {rows.map((r, i) => (
+        <div key={i} className="grid grid-cols-[1fr_1.4fr_auto] gap-2">
+          <Input list="spec-suggestions" placeholder="Name (e.g. Material)" maxLength={60} value={r.name} onChange={(e) => set(i, { name: e.target.value })} />
+          <Input placeholder="Value (e.g. Cotton)" maxLength={200} value={r.value} onChange={(e) => set(i, { value: e.target.value })} />
+          <button type="button" aria-label="Remove specification" className="h-10 w-10 rounded-md text-destructive hover:bg-destructive/10"
+            onClick={() => onChange(rows.filter((_, j) => j !== i))}>✕</button>
+        </div>
+      ))}
+      {rows.length < 30 && (
+        <button type="button" className="text-sm font-medium text-primary" onClick={() => onChange([...rows, { name: "", value: "" }])}>+ Add specification</button>
+      )}
+    </div>
+  );
+};

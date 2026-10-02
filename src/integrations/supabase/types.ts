@@ -1089,6 +1089,7 @@ export type Database = {
           ships_from_country: string | null
           sku: string | null
           slug: string
+          specifications: Json
           status: string
           stock: number
           tax_category: string
@@ -1132,6 +1133,7 @@ export type Database = {
           ships_from_country?: string | null
           sku?: string | null
           slug: string
+          specifications?: Json
           status?: string
           stock?: number
           tax_category?: string
@@ -1175,6 +1177,7 @@ export type Database = {
           ships_from_country?: string | null
           sku?: string | null
           slug?: string
+          specifications?: Json
           status?: string
           stock?: number
           tax_category?: string
