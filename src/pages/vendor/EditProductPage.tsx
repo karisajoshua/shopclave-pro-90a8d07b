@@ -1,4 +1,5 @@
 import { ShippingOptionsFields, DEFAULT_SHIPPING_OPTIONS, validateShippingOptions, normalizeShippingOptions, SHIP_LABELS, shipDaysLabel, InventoryExtrasFields, emptyInventoryExtras, validateInventoryExtras, inventoryExtrasToColumns, inventoryExtrasFromProduct, type ShippingOptions, type ShipKey, type InventoryExtras } from "@/components/vendor/ProductListingExtras";
+import { SpecificationsFields, normalizeSpecifications, validateSpecifications, type SpecRowInput } from "@/components/vendor/ProductListingExtras";
 import { PackageMeasurementsFields, emptyPackageDims, validatePackageDims, packageDimsToColumns, packageDimsFromProduct, type PackageDims } from "@/components/vendor/PackageMeasurementsFields";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
@@ -68,6 +69,7 @@ const EditProductPage = () => {
   const [inv, setInv] = useState<InventoryExtras>(emptyInventoryExtras);
   const [pkg, setPkg] = useState<PackageDims>(emptyPackageDims);
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
+  const [specs, setSpecs] = useState<SpecRowInput[]>([]);
   const [whatsInBoxItems, setWhatsInBoxItems] = useState<string[]>([""]);
   const [showBulkPrice, setShowBulkPrice] = useState(false);
 
@@ -123,6 +125,7 @@ const EditProductPage = () => {
     setShipping(normalizeShippingOptions(p.shipping_options));
     setInv(inventoryExtrasFromProduct(p));
     setKeyFeatures(p.key_features?.length ? [...p.key_features] : [""]);
+    setSpecs(normalizeSpecifications((p as any).specifications));
     setWhatsInBoxItems(Array.isArray(p.whats_in_box) && p.whats_in_box.length ? [...p.whats_in_box] : [""]);
     setVideoUrl(p.video_url || "");
 
@@ -283,6 +286,7 @@ const EditProductPage = () => {
         video_url: videoUrl.trim() || null,
         sku: form.sku.trim() || undefined,
         key_features: cleanFeatures.length > 0 ? cleanFeatures : null,
+        specifications: normalizeSpecifications(specs) as any,
         condition: form.condition,
         whats_in_box: (() => { const clean = whatsInBoxItems.map(s => s.trim()).filter(Boolean); return clean.length > 0 ? clean : null; })(),
         deal_ends_at: form.dealEndsAt ? new Date(form.dealEndsAt).toISOString() : null,
@@ -446,6 +450,7 @@ const EditProductPage = () => {
 
             <Separator />
 
+            <SpecificationsFields value={specs} onChange={setSpecs} />
             <div>
               <Label className="mb-2 block">Key Features</Label>
               <p className="text-xs text-muted-foreground mb-2">Add features one per line. These appear independently in the product specifications.</p>
@@ -685,7 +690,7 @@ const EditProductPage = () => {
             <h3 className="font-semibold text-lg">Review your product</h3>
             <p className="text-sm text-muted-foreground">Check everything before saving. Use Edit to change any section.</p>
             {([
-              { title: "Product Details", to: 1, rows: [["Name", form.name], ["Category", categoryPath.join(" > ")], ["Brand", form.brand], ["Model / MPN", form.mpn], ["Condition", form.condition === "new" ? "New" : "Used"], ["Key features", `${keyFeatures.filter(f => f.trim()).length} listed`], ["What's in the box", `${whatsInBoxItems.filter(f => f.trim()).length} items`]] },
+              { title: "Product Details", to: 1, rows: [["Name", form.name], ["Category", categoryPath.join(" > ")], ["Brand", form.brand], ["Model / MPN", form.mpn], ["Condition", form.condition === "new" ? "New" : "Used"], ["Key features", `${keyFeatures.filter(f => f.trim()).length} listed`], ["What's in the box", `${whatsInBoxItems.filter(f => f.trim()).length} items`], ["Specifications", `${normalizeSpecifications(specs).length} listed`]] },
               { title: "Pricing & Inventory", to: 2, rows: [["Price", form.price ? `CA$${Number(form.price).toFixed(2)}` : ""], ["Compare at", form.compareAtPrice ? `CA$${Number(form.compareAtPrice).toFixed(2)}` : ""], ["SKU", form.sku || "Auto-generated"], ["Barcode", inv.barcode], ["Stock", hasVariants ? `Managed by variants (Total: ${variantRows.reduce((s, v) => s + (parseInt(v.stock) || 0), 0)})` : form.stock], ["Order quantity", `Min ${inv.minQty || 1}${inv.maxQty ? ` · Max ${inv.maxQty}` : ""}`]] },
               { title: "Shipping", to: 2, rows: [["Weight", pkg.weightG ? `${pkg.weightG} g` : ""], ["Package", pkg.lengthCm ? `${pkg.lengthCm} × ${pkg.widthCm} × ${pkg.heightCm} cm` : ""], ...(Object.keys(SHIP_LABELS) as ShipKey[]).filter(k => shipping[k].enabled).map(k => [SHIP_LABELS[k], `${shipDaysLabel(k, shipping[k].days)} · ${shipping[k].price > 0 ? `CA$${shipping[k].price.toFixed(2)}` : "Free"}`])] },
               { title: "Media", to: 3, rows: [["Images", `${images.length} uploaded`], ["Video", videoUrl]] },
