@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { buildRatingDistribution, buildSampleReviews } from "@/lib/reviewPresentation";
+import { buildRatingDistribution } from "@/lib/reviewPresentation";
 
 interface ProductReviewsProps {
   productId: string;
@@ -152,7 +152,6 @@ const ProductReviews = ({
         pct: (reviews.filter((r: any) => r.rating === star).length / reviews.length) * 100,
       }))
     : buildRatingDistribution(summaryRating, summaryReviewCount);
-  const sampleReviews = buildSampleReviews(productId, Math.max(0, 5 - reviews.length));
 
   return (
     <div id="reviews-section" className={embedded ? "p-4" : "border-t border-border pt-8 mt-8"}>
