@@ -34,4 +34,4 @@
 - [ ] Deploy updated checkout shipping function (awaiting owner go-ahead)
 
 ## Review presentation
-- [ ] Complete the review rating distribution and five-card review presentation without fabricating verified customers.
+- [x] Complete the review rating distribution and five-card review presentation without fabricating verified customers.

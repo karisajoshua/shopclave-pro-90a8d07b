@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { BadgeCheck, Star } from "lucide-react";
+import { BadgeCheck, Info, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { buildRatingDistribution, buildSampleReviews } from "@/lib/reviewPresentation";
 
 interface ProductReviewsProps {
   productId: string;
@@ -118,9 +119,10 @@ const ProductReviews = ({
 
   const submitReview = useMutation({
     mutationFn: async () => {
+      if (!user) throw new Error("Please sign in to submit a review");
       const { error } = await supabase.from("reviews").insert({
         product_id: productId,
-        user_id: user!.id,
+        user_id: user.id,
         rating: newRating,
         comment: newComment || null,
       });
@@ -141,13 +143,16 @@ const ProductReviews = ({
   const avgRating = reviews.length
     ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length
     : 0;
-  const ratingCounts = [5, 4, 3, 2, 1].map((star) => ({
-    star,
-    count: reviews.filter((r: any) => r.rating === star).length,
-    pct: reviews.length ? (reviews.filter((r: any) => r.rating === star).length / reviews.length) * 100 : 0,
-  }));
   const summaryRating = displayRating ?? avgRating;
   const summaryReviewCount = displayReviewCount ?? reviews.length;
+  const ratingCounts = reviews.length
+    ? [5, 4, 3, 2, 1].map((star) => ({
+        star,
+        count: reviews.filter((r: any) => r.rating === star).length,
+        pct: (reviews.filter((r: any) => r.rating === star).length / reviews.length) * 100,
+      }))
+    : buildRatingDistribution(summaryRating, summaryReviewCount);
+  const sampleReviews = buildSampleReviews(productId, Math.max(0, 5 - reviews.length));
 
   return (
     <div id="reviews-section" className={embedded ? "p-4" : "border-t border-border pt-8 mt-8"}>
@@ -199,10 +204,14 @@ const ProductReviews = ({
             </div>
           )}
 
-          {reviews.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-4">No reviews yet. Be the first to review this product!</p>
-          ) : (
-            reviews.map((review: any) => (
+          {reviews.length === 0 && sampleReviews.length > 0 ? (
+            <div className="flex items-start gap-2 border-b border-border pb-3 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <p>Sample reviews are shown for presentation only. No customer review has been submitted yet.</p>
+            </div>
+          ) : null}
+
+          {reviews.map((review: any) => (
               <div key={review.id} className="border-b border-border pb-4 last:border-0">
                 <div className="flex items-center gap-2 mb-1">
                   <StarRating rating={review.rating} />
@@ -225,8 +234,20 @@ const ProductReviews = ({
                   <p className="text-sm text-foreground leading-relaxed">{review.comment}</p>
                 )}
               </div>
-            ))
-          )}
+          ))}
+
+          {sampleReviews.map((review) => (
+            <article key={review.id} className="border-b border-border pb-4 last:border-0" aria-label="Sample review">
+              <StarRating rating={review.rating} />
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-foreground">{review.name}</p>
+                <span className="rounded-sm border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                  Sample review
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/85">{review.comment}</p>
+            </article>
+          ))}
         </div>
       </div>
     </div>

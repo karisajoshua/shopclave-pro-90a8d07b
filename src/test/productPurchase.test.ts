@@ -99,12 +99,28 @@ describe("product page wiring", () => {
     expect(reviews).toContain("Verified buyer");
     expect(reviews).toContain("displayReviewCount");
   });
+  it("fills the displayed rating distribution and clearly labels sample reviews", () => {
+    const reviews = readFileSync("src/components/product/ProductReviews.tsx", "utf8");
+    expect(reviews).toContain("buildRatingDistribution(summaryRating, summaryReviewCount)");
+    expect(reviews).toContain("Math.max(0, 5 - reviews.length)");
+    expect(reviews).toContain("Sample reviews are shown for presentation only");
+    expect(reviews).toContain("Sample review");
+  });
   it("shows saved product specifications and expands long content", () => {
     expect(details).toContain('Package dimensions');
     expect(details).toContain("meta?.option_values");
     expect(details).toContain("Show more");
     expect(src).toContain("option_values: optionTypes");
     expect(src).toContain("weight_g: product.weight_g");
+  });
+});
+
+describe("review presentation", () => {
+  it("keeps the generated distribution aligned with the displayed total and rating", async () => {
+    const { buildRatingDistribution } = await import("@/lib/reviewPresentation");
+    const distribution = buildRatingDistribution(4.7, 31);
+    expect(distribution.reduce((sum, row) => sum + row.count, 0)).toBe(31);
+    expect(distribution.reduce((sum, row) => sum + row.count * row.star, 0)).toBe(Math.round(4.7 * 31));
   });
 });
 
