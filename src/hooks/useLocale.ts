@@ -232,6 +232,11 @@ export function useLocale() {
       }
     }
     const noDecimals = CURRENCIES_NO_DECIMALS.has(target);
+    // CAD always shows an explicit "CA$" prefix so prices read the same in
+    // every browser locale (en-CA would otherwise render a bare "$").
+    if (target === "CAD") {
+      return `CA$${converted.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
     try {
       return new Intl.NumberFormat(undefined, {
         style: "currency",
