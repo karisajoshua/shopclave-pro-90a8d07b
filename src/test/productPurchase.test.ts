@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { normalizeSelection, resolveVariant, isOptionValueAvailable, getPurchaseState, clampQuantity, remainingForCart } from "@/lib/productPurchase";
+import { colorChoiceImageUrl, galleryImageUrls } from "@/lib/productVariantImages";
 
 const variants = [
   { id: "a", stock: 3, variant_options: { Color: "Red", Size: "M" } },
@@ -44,6 +45,35 @@ describe("quantity", () => {
   });
 });
 
+describe("variant images", () => {
+  const imageVariants = [
+    { id: "red-s", variant_options: { Color: "Red", Size: "S" }, image_url: "red-legacy.jpg" },
+    { id: "red-m", variant_options: { Color: "Red", Size: "M" } },
+    { id: "blue-s", variant_options: { Color: "Blue", Size: "S" }, image_url: "blue-legacy.jpg" },
+  ];
+  const images = [
+    { url: "shared.jpg", position: 0, variant_id: null },
+    { url: "red-two.jpg", position: 1, variant_id: "red-m" },
+    { url: "red-one.jpg", position: 0, variant_id: "red-s" },
+    { url: "red-one.jpg", position: 2, variant_id: "red-m" },
+  ];
+
+  it("shows a matching thumbnail for current and legacy colour images", () => {
+    expect(colorChoiceImageUrl("Color", "Red", imageVariants, images)).toBe("red-one.jpg");
+    expect(colorChoiceImageUrl("Color", "Blue", imageVariants, images)).toBe("blue-legacy.jpg");
+    expect(colorChoiceImageUrl("Color", "Green", imageVariants, images)).toBe("shared.jpg");
+  });
+
+  it("combines every distinct colour image with shared product photos", () => {
+    expect(galleryImageUrls({
+      images,
+      variants: imageVariants,
+      colorName: "Color",
+      colorValue: "Red",
+    })).toEqual(["red-one.jpg", "red-two.jpg", "red-legacy.jpg", "shared.jpg"]);
+  });
+});
+
 describe("product page wiring", () => {
   const src = readFileSync("src/pages/ProductDetailPage.tsx", "utf8");
   const gallery = readFileSync("src/components/product/ProductGallery.tsx", "utf8");
@@ -82,7 +112,8 @@ describe("product page wiring", () => {
     expect(gallery).toContain('aria-label="Next product image"');
     expect(gallery).toContain('onTouchStart');
     expect(gallery).toContain('Gallery position');
-    expect(src).toContain("const defaults = general.length ? general : sortedImages");
+    expect(src).toContain("galleryImageUrls");
+    expect(src).toContain("colorChoiceImageUrl");
     expect(gallery).toContain("event.currentTarget.src = barakazIcon");
   });
   it("uses real review totals in the content tabs", () => {
