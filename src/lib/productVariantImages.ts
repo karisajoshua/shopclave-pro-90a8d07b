@@ -7,7 +7,14 @@ export type ProductImageLike = {
 export type ProductVariantImageLike = {
   id: string;
   image_url?: string | null;
-  variant_options?: Record<string, string> | null;
+  variant_options?: unknown;
+};
+
+const variantOptionValue = (variant: ProductVariantImageLike, optionName: string) => {
+  const options = variant.variant_options;
+  if (!options || typeof options !== "object" || Array.isArray(options)) return undefined;
+  const value = (options as Record<string, unknown>)[optionName];
+  return typeof value === "string" ? value : undefined;
 };
 
 const uniqueUrls = (urls: Array<string | null | undefined>) => {
@@ -58,7 +65,7 @@ export const colorChoiceImageUrl = (
   const specific = variantImageUrls(
     variants,
     images,
-    (variant) => variant.variant_options?.[optionName] === value,
+    (variant) => variantOptionValue(variant, optionName) === value,
   );
   return specific[0]
     ?? sharedProductImageUrls(images)[0]
@@ -81,7 +88,7 @@ export const galleryImageUrls = ({
 }) => {
   const shared = sharedProductImageUrls(images);
   const specific = colorName && colorValue
-    ? variantImageUrls(variants, images, (variant) => variant.variant_options?.[colorName] === colorValue)
+    ? variantImageUrls(variants, images, (variant) => variantOptionValue(variant, colorName) === colorValue)
     : selectedVariantId
       ? variantImageUrls(variants, images, (variant) => variant.id === selectedVariantId)
       : [];
