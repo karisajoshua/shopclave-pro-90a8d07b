@@ -39,3 +39,7 @@
 - [x] Seller specifications rows in product form + product page
 - [x] Product page price display like reference (large orange CA$ price, strikethrough compare)
 - [x] Show matching product thumbnails on every colour choice and all corresponding images in the selected-colour gallery.
+
+## Image performance
+- [x] Optimize every new customer-facing image upload as WebP while preserving existing uploads and evidence documents.
+- [x] Confirm and clarify category image upload and replacement in the admin dashboard.

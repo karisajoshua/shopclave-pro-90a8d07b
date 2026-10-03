@@ -75,11 +75,11 @@ const AdminCategories = () => {
 
   const autoSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-  const uploadImage = async (rawFile: File, slug: string): Promise<string | null> => {
-    const file = await convertImageToWebp(rawFile);
+  const uploadImage = async (rawFile: File, slug: string): Promise<string> => {
+    const file = await convertImageToWebp(rawFile, { quality: 0.9, maxDim: 1600 });
     const path = `categories/${slug}-${Date.now()}.webp`;
     const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: true, contentType: file.type });
-    if (error) { toast.error("Image upload failed"); return null; }
+    if (error) throw error;
     const { data } = supabase.storage.from("product-images").getPublicUrl(path);
     return data.publicUrl;
   };
@@ -199,20 +199,29 @@ const AdminCategories = () => {
       />
 
       <div>
-        <Label>Image</Label>
+        <Label>Category image</Label>
         <div
           className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
           onClick={() => fileRef.current?.click()}
         >
           {form.image ? (
-            <p className="text-sm text-primary">{form.image.name}</p>
+            <div className="flex items-center justify-center gap-3">
+              <img src={URL.createObjectURL(form.image)} alt="New category preview" className="h-14 w-14 rounded-md object-cover" />
+              <div className="text-left"><p className="text-sm text-primary">{form.image.name}</p><p className="text-xs text-muted-foreground">Optimized automatically</p></div>
+            </div>
+          ) : isEdit && editCat?.image_url ? (
+            <div className="flex items-center justify-center gap-3">
+              <CategoryImage url={editCat.image_url} />
+              <span className="text-sm text-muted-foreground">Click to replace image</span>
+            </div>
           ) : (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Upload className="h-4 w-4" /> Click to upload image
+              <Upload className="h-4 w-4" /> Upload category image
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setForm((f) => ({ ...f, image: e.target.files?.[0] || null }))} />
         </div>
+        <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, or WebP. Large images are resized and saved in a lighter format.</p>
       </div>
     </div>
   );

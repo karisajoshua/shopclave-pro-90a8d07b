@@ -1,7 +1,7 @@
 /**
- * Convert an image File/Blob to WebP using a canvas. Non-images, SVGs, GIFs and
- * existing WebPs pass through unchanged. Optionally downscales to maxDim on the
- * longest side to keep huge phone photos manageable.
+ * Convert a display image to broadly supported, compact WebP using a canvas.
+ * Non-images, SVGs, animated GIFs and existing WebPs pass through unchanged.
+ * Large phone photos are downscaled while preserving their aspect ratio.
  */
 export interface ToWebpOptions {
   quality?: number; // 0..1
@@ -29,7 +29,7 @@ export async function convertImageToWebp(
   file: File,
   opts: ToWebpOptions = {},
 ): Promise<File> {
-  const { quality = 0.85, maxDim = 2000 } = opts;
+  const { quality = 0.9, maxDim = 2000 } = opts;
 
   // Skip non-images and formats we don't want to re-encode
   if (!file.type.startsWith("image/")) return file;

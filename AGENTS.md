@@ -6,3 +6,4 @@
 - Product-page delivery choices are stored only as per-seller checkout preferences; server-issued shipping quotes remain authoritative for price and availability.
 - Temporary marketplace social-proof fallbacks and rating breakdowns are deterministic presentation-only values that yield to real customer activity and never write fabricated history. The reviews panel shows only the review count and star distribution — no sample or customer review cards.
 - Product colour thumbnails and galleries resolve images across every variant sharing that colour, including legacy variant image fields, while purchase selection remains explicit.
+- New customer-facing raster uploads are normalized through the shared WebP optimizer; evidence documents and existing uploads remain byte-preserved.
