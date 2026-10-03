@@ -673,10 +673,10 @@ const ProductDetailPage = () => {
             </div>
 
              <div className="col-span-2 grid grid-cols-2 gap-2 pt-1">
-              <Button type="button" size="lg" variant="outline" className="border-primary font-bold text-primary hover:bg-primary/5 hover:text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}>
+              <Button type="button" size="lg" variant="outline" className="border-primary font-bold text-primary hover:bg-primary/5 hover:text-primary" onClick={() => handlePurchase("cart")}>
                 <ShoppingCart className="h-5 w-5" /> Add to cart
               </Button>
-              <Button type="button" size="lg" className="font-bold" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>Buy now</Button>
+              <Button type="button" size="lg" className="font-bold" onClick={() => handlePurchase("buy")}>Buy now</Button>
             </div>
 
              <section className="col-span-2 border border-border bg-card" aria-labelledby="delivery-heading">
@@ -761,8 +761,8 @@ const ProductDetailPage = () => {
           <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label={wished ? "Remove from wishlist" : "Add to wishlist"} onClick={() => toggleWishlist.mutate(product.id)}>
             <Heart className={cn("h-5 w-5", wished && "fill-primary text-primary")} />
           </Button>
-           <Button type="button" variant="outline" className="h-11 flex-1 border-primary font-bold text-primary" disabled={!purchase.canBuy} onClick={() => handlePurchase("cart")}><ShoppingCart className="h-4 w-4" /> Add to cart</Button>
-          <Button type="button" className="h-11 flex-1 font-bold" disabled={!purchase.canBuy} onClick={() => handlePurchase("buy")}>Buy now</Button>
+           <Button type="button" variant="outline" className="h-11 flex-1 border-primary font-bold text-primary" onClick={() => handlePurchase("cart")}><ShoppingCart className="h-4 w-4" /> Add to cart</Button>
+          <Button type="button" className="h-11 flex-1 font-bold" onClick={() => handlePurchase("buy")}>Buy now</Button>
         </div>
       </div>
 
