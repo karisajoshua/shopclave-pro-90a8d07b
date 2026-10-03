@@ -38,3 +38,4 @@
 
 - [x] Seller specifications rows in product form + product page
 - [x] Product page price display like reference (large orange CA$ price, strikethrough compare)
+- [x] Show matching product thumbnails on every colour choice and all corresponding images in the selected-colour gallery.

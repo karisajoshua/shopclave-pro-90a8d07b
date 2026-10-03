@@ -38,6 +38,7 @@ import SEO, { SITE_URL } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { colorChoiceImageUrl, galleryImageUrls } from "@/lib/productVariantImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -421,21 +422,14 @@ const ProductDetailPage = () => {
     if (!product) return [barakazIcon];
     const images = product.product_images || [];
     const colorKey = Object.keys(optionTypes).find((key) => /colou?r/i.test(key));
-    if (colorKey && selectedOptions[colorKey]) {
-      const ids = variants
-        .filter((variant: any) => variant.variant_options?.[colorKey] === selectedOptions[colorKey])
-        .map((variant: any) => variant.id);
-      const matches = images.filter((image: any) => ids.includes(image.variant_id)).sort((a: any, b: any) => a.position - b.position);
-      if (matches.length) return matches.map((image: any) => image.url);
-    }
-    if (selectedVariant) {
-      const matches = images.filter((image: any) => image.variant_id === selectedVariant.id).sort((a: any, b: any) => a.position - b.position);
-      if (matches.length) return matches.map((image: any) => image.url);
-    }
-    const sortedImages = images.slice().sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
-    const general = sortedImages.filter((image: any) => !image.variant_id);
-    const defaults = general.length ? general : sortedImages;
-    return defaults.length ? defaults.map((image: any) => image.url) : [barakazIcon];
+    const resolved = galleryImageUrls({
+      images,
+      variants,
+      colorName: colorKey,
+      colorValue: colorKey ? selectedOptions[colorKey] : undefined,
+      selectedVariantId: selectedVariant?.id,
+    });
+    return resolved.length ? resolved : [barakazIcon];
   }, [optionTypes, product, selectedOptions, selectedVariant, variants]);
 
   if (isLoading) {
@@ -511,9 +505,7 @@ const ProductDetailPage = () => {
 
   const optionImage = (optionName: string, value: string) => {
     if (!/colou?r/i.test(optionName)) return null;
-    const variant = variants.find((item: any) => item.variant_options?.[optionName] === value);
-    if (!variant) return null;
-    return product.product_images?.find((image: any) => image.variant_id === variant.id)?.url || null;
+    return colorChoiceImageUrl(optionName, value, variants, product.product_images || []);
   };
 
   const scrollToReviews = () => {
