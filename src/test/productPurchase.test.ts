@@ -82,6 +82,8 @@ describe("product page wiring", () => {
     expect(src.match(/handlePurchase\("cart"\)/g)?.length).toBe(2);
     expect(src.match(/handlePurchase\("buy"\)/g)?.length).toBe(2);
     expect(src).toMatch(/\}, qtyToAdd\);/);
+    expect(src).not.toMatch(/disabled=\{!purchase\.canBuy\} onClick=\{\(\) => handlePurchase/);
+    expect(src).toContain("toast.error(purchaseMessage(purchase))");
   });
   it("removes fabricated social proof and uses CAD schema", () => {
     expect(src).not.toMatch(/seededRandom|getDisplayVendorPerformance|getDisplayProductRating|viewing this right now/);
