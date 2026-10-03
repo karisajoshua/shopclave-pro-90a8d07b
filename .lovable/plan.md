@@ -1,30 +1,35 @@
-# Show every corresponding colour image on product pages
+# Show the correct product image for every colour choice
 
 ## Goal
-When a shopper chooses a colour, show the complete set of images saved for that colour, even when the product also has size or other variation choices.
+Every colour option on a product page will display the actual matching product thumbnail beside its colour name, and selecting it will open all images saved for that colour.
 
 ## Changes
-1. **Build one reliable colour gallery**
-   - Collect images from every variant combination that shares the selected colour, rather than limiting the gallery to one size/combination.
-   - Read both current variant image rows and the older per-variant image field, because the live catalogue contains products stored in both formats.
-   - Sort saved images consistently and remove duplicate URLs so each distinct colour image appears once.
+1. **Match each colour to its real image**
+   - Resolve colour images across every size or other combination sharing that colour.
+   - Support both current image records and the older saved variant-image field, since live products use both formats.
+   - Show the first matching product image as the colour thumbnail beside the colour name.
 
-2. **Keep safe fallback behaviour**
-   - If a selected colour has no saved colour-specific image, keep showing the product’s general images instead of a blank gallery.
-   - If no general image exists, fall back to the first real saved variant image, then the Barakaz placeholder only when no uploaded image exists.
-   - Do not invent or copy an image to a colour that has no corresponding uploaded image.
+2. **Show the complete selected-colour gallery**
+   - When a shopper selects a colour, collect all distinct images attached to that colour across its variant combinations.
+   - Sort them consistently, remove duplicate URLs, and update the main image and thumbnail strip immediately.
+   - Include shared product photos after the colour-specific photos so a colour with only one attached image does not reduce the whole gallery to one photo.
 
-3. **Preserve variation and purchase rules**
-   - Keep colour and size choices explicit; no multi-value variation will be silently selected.
-   - Selecting colour updates the gallery immediately, while selecting the remaining options continues to determine exact price, stock, SKU, and purchase availability.
-   - Preserve cart, Buy Now, stock limits, image zoom, swipe, thumbnails, and broken-image fallback behaviour.
+3. **Use safe fallbacks without mismatching colours**
+   - If a colour has no dedicated uploaded image, use a shared product photo as its thumbnail rather than leaving a text-only option.
+   - If no shared photo exists, use the first real uploaded variant image; use the Barakaz placeholder only when the product has no uploaded images at all.
+   - Do not invent, recolour, or assign an unrelated image as though it were specific to a colour.
+
+4. **Preserve variation and purchase safeguards**
+   - Keep colour and size choices explicit; no multi-value variation will be selected automatically.
+   - Price, stock, SKU, availability, cart, and Buy Now continue to use the fully selected variant.
+   - Preserve image zoom, swipe, thumbnails, and broken-image fallback behaviour.
 
 ## Verification
-- Test products with colour + size combinations where images are spread across several size variants.
-- Test products using current image rows and products that only have the older variant image field.
-- Confirm all distinct images for the selected colour appear, duplicates do not, and changing colour replaces the gallery correctly.
-- Confirm products with partial or missing colour imagery use the safe fallback and never display an empty gallery.
-- Run focused variation/gallery tests and verify mobile and desktop product pages.
+- Check colour buttons on products with colour-only and colour-plus-size variations.
+- Confirm every colour button contains a product thumbnail and its colour name.
+- Confirm selecting each colour shows all distinct matching images and no duplicates.
+- Check products whose images use current records, the older variant field, shared photos only, partial colour imagery, and no uploaded imagery.
+- Verify mobile and desktop layouts, focused tests, and the preview build.
 
 ## Scope
-Product-page image selection only. No product records, uploaded files, checkout logic, database schema, publishing, or deployment changes.
+Product-page colour thumbnails and gallery image selection only. No product records, uploaded files, checkout logic, database schema, publishing, or deployment changes.
