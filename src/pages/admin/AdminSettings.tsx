@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save, Settings, DollarSign, Store, Smartphone } from "lucide-react";
+import { Save, Settings, DollarSign, Store } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const CURRENCIES = ["KES", "USD", "EUR", "GBP", "UGX", "TZS", "NGN", "ZAR"];
