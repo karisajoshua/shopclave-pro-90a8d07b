@@ -39,6 +39,18 @@ const SpecRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
+const SpecTable = ({ rows, limit = 3 }: { rows: [string, string][]; limit?: number }) => {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? rows : rows.slice(0, limit);
+  return (
+    <ShowMore hidden={rows.length > limit} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
+      <div className="overflow-hidden rounded-sm border border-border">
+        {shown.map(([label, value]) => <SpecRow key={label} label={label} value={value} />)}
+      </div>
+    </ShowMore>
+  );
+};
+
 const ShowMore = ({ children, hidden, expanded, onToggle }: { children: ReactNode; hidden: boolean; expanded: boolean; onToggle: () => void }) => (
   <>
     {children}
