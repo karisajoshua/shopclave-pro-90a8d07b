@@ -15,6 +15,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import StoreQRDialog from "@/components/vendor/StoreQRDialog";
 import { SITE_URL } from "@/components/seo/SEO";
 import { QrCode, ExternalLink } from "lucide-react";
+import VendorProfileChecklist from "@/components/vendor/VendorProfileChecklist";
 
 const VendorDashboard = () => {
   const { vendor } = useOutletContext<{ vendor: any }>();
@@ -174,6 +175,8 @@ const VendorDashboard = () => {
         title="Vendor Overview"
         subtitle={`Welcome back to ${vendor?.store_name || "your store"}. Here's what's happening today.`}
       />
+      <VendorProfileChecklist vendor={vendor} />
+
 
       {/* Pending payment banner */}
       {pendingPayment && (
