@@ -375,14 +375,6 @@ const VendorSettings = () => {
         <p className="text-xs text-muted-foreground">Customers will see these payment instructions at checkout.</p>
 
         <div>
-          <Label>M-Pesa Till/Paybill Number</Label>
-          <Input
-            value={String(paymentDetails.mpesa_number || "")}
-            onChange={(e) => setForm({ ...form, payment_details: { ...paymentDetails, mpesa_number: e.target.value } })}
-            placeholder="e.g., Till 123456 or Paybill 654321"
-          />
-        </div>
-        <div>
           <Label>Bank Name</Label>
           <Input
             value={String(paymentDetails.bank_name || "")}

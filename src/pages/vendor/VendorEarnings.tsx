@@ -26,7 +26,7 @@ const VendorEarnings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("mpesa");
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
 
   const updateDetail = (key: keyof PaymentDetails, value: string) =>
@@ -80,9 +80,7 @@ const VendorEarnings = () => {
   })();
 
   const validateDetails = (): string | null => {
-    if (paymentMethod === "mpesa") {
-      if (!paymentDetails.phone?.trim()) return "Enter M-Pesa phone number";
-    } else if (paymentMethod === "bank_transfer") {
+    if (paymentMethod === "bank_transfer") {
       if (!paymentDetails.account_name?.trim()) return "Enter account name";
       if (!paymentDetails.bank_name?.trim()) return "Enter bank name";
       if (!paymentDetails.account_number?.trim()) return "Enter account number";
@@ -168,22 +166,12 @@ const VendorEarnings = () => {
               <Select value={paymentMethod} onValueChange={handleMethodChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="mpesa">M-Pesa</SelectItem>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="paypal">PayPal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
-          {paymentMethod === "mpesa" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Phone Number</Label>
-                <Input placeholder="254..." value={paymentDetails.phone || ""} onChange={(e) => updateDetail("phone", e.target.value)} />
-              </div>
-            </div>
-          )}
 
           {paymentMethod === "bank_transfer" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

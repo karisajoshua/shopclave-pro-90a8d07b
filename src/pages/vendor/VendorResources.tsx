@@ -70,7 +70,7 @@ const VendorResources = () => {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search guides… e.g. 'add product', 'shipping', 'M-Pesa'"
+            placeholder="Search guides… e.g. 'add product', 'shipping', 'payouts'"
             className="pl-9 bg-background"
           />
         </div>
