@@ -73,10 +73,8 @@ const FeatureList = ({ items, limit = 3 }: { items: string[]; limit?: number }) 
 
 const ExpandableDescription = ({ text }: { text: string }) => {
   const [expanded, setExpanded] = useState(false);
-  const isLong = text.length > 420;
-  const shown = !expanded && isLong ? `${text.slice(0, 420).trimEnd()}…` : text;
-  return <ShowMore hidden={isLong} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
-    <p className="whitespace-pre-line break-words text-xs leading-5 text-foreground/85 md:text-sm md:leading-6">{shown}</p>
+  return <ShowMore hidden={true} expanded={expanded} onToggle={() => setExpanded((value) => !value)}>
+    <p className={`whitespace-pre-line break-words text-xs leading-5 text-foreground/85 md:text-sm md:leading-6 ${expanded ? "" : "line-clamp-3"}`}>{text}</p>
   </ShowMore>;
 };
 
@@ -153,9 +151,7 @@ const ProductDescriptionTabs = ({ description, productId, reviewCount = 0, revie
              <h2 className="text-lg font-bold">Specifications</h2>
            </div>
            {specificationRows.length ? (
-             <div className="overflow-hidden rounded-sm border border-border">
-               {specificationRows.map(([label, value]) => <SpecRow key={label} label={label} value={value} />)}
-             </div>
+             <SpecTable rows={specificationRows} />
            ) : <p className="text-sm italic text-muted-foreground">No specifications available.</p>}
            {meta?.whats_in_box?.length ? (
              <section className="mt-5 border-t border-border pt-5" aria-labelledby="box-heading">
