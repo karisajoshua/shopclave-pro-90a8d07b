@@ -164,7 +164,7 @@ const AdminSubscriptions = () => {
                 <th className="text-left p-3 font-medium">Vendor</th>
                 <th className="text-left p-3 font-medium">Plan</th>
                 <th className="text-left p-3 font-medium">Amount</th>
-                <th className="text-left p-3 font-medium">M-Pesa Code</th>
+                <th className="text-left p-3 font-medium">Payment Reference</th>
                 <th className="text-left p-3 font-medium">Phone</th>
                 <th className="text-left p-3 font-medium">Submitted</th>
                 <th className="text-left p-3 font-medium">Action</th>
@@ -322,7 +322,7 @@ const AdminSubscriptions = () => {
                 <p><span className="text-muted-foreground">Vendor:</span> <span className="font-medium">{reviewPayment.store_name}</span></p>
                 <p><span className="text-muted-foreground">Plan:</span> <span className="font-medium capitalize">{reviewPayment.plan_name}</span> ({reviewPayment.max_listings} listings)</p>
                 <p><span className="text-muted-foreground">Amount:</span> <span className="font-medium">${Number(reviewPayment.price).toLocaleString()}</span></p>
-                <p><span className="text-muted-foreground">M-Pesa Code:</span> <span className="font-mono font-medium">{reviewPayment.transaction_code}</span></p>
+                <p><span className="text-muted-foreground">Payment Reference:</span> <span className="font-mono font-medium">{reviewPayment.transaction_code}</span></p>
                 <p><span className="text-muted-foreground">Phone:</span> <span className="font-medium">{reviewPayment.payer_phone}</span></p>
                 {reviewPayment.notes && <p><span className="text-muted-foreground">Notes:</span> {reviewPayment.notes}</p>}
               </div>

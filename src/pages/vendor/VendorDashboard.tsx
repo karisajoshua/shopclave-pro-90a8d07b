@@ -81,18 +81,6 @@ const VendorDashboard = () => {
     enabled: !!vendor,
   });
 
-  const { data: mpesaDetails } = useQuery({
-    queryKey: ["mpesa-payment-details"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "mpesa_payment_details")
-        .maybeSingle();
-      return (data?.value as any) || {};
-    },
-  });
-
   const { data: followerCount = 0 } = useQuery({
     queryKey: ["vendor-followers", vendor?.id],
     queryFn: async () => {
@@ -134,7 +122,7 @@ const VendorDashboard = () => {
   const submitPayment = async () => {
     if (!selectedPlan || !vendor || !user) return;
     if (!transactionCode.trim() || !payerPhone.trim()) {
-      toast.error("M-Pesa code and phone number are required");
+      toast.error("Payment reference and phone number are required");
       return;
     }
     setSubmitting(true);
@@ -145,13 +133,13 @@ const VendorDashboard = () => {
         price: selectedPlan.price,
         max_listings: selectedPlan.listings,
         expires_days: selectedPlan.expires_days,
-        payment_method: "mpesa",
+        payment_method: "manual",
         transaction_code: transactionCode.trim(),
         payer_phone: payerPhone.trim(),
         notes: notes.trim() || null,
       } as any);
       if (error) throw error;
-      toast.success("Payment submitted. Your plan will activate once an admin verifies your M-Pesa code.");
+      toast.success("Payment submitted. Your plan will activate once an admin verifies your payment.");
       setSelectedPlan(null);
       queryClient.invalidateQueries({ queryKey: ["vendor-subscription", vendor.id] });
       queryClient.invalidateQueries({ queryKey: ["vendor-pending-payment", vendor.id] });
@@ -185,7 +173,7 @@ const VendorDashboard = () => {
           <div>
             <p className="font-medium">Payment pending verification</p>
             <p className="text-muted-foreground text-xs mt-0.5">
-              Your <span className="capitalize font-medium text-foreground">{pendingPayment.plan_name}</span> plan is active. M-Pesa code <span className="font-mono">{pendingPayment.transaction_code}</span> awaiting admin review.
+              Your <span className="capitalize font-medium text-foreground">{pendingPayment.plan_name}</span> plan is active. Payment reference <span className="font-mono">{pendingPayment.transaction_code}</span> awaiting admin review.
             </p>
           </div>
         </div>
@@ -377,36 +365,17 @@ const VendorDashboard = () => {
           <DialogHeader>
             <DialogTitle>Upgrade to {selectedPlan?.name}</DialogTitle>
             <DialogDescription>
-              Pay <span className="font-semibold text-foreground">${selectedPlan?.price.toLocaleString()}</span> via M-Pesa, then submit your transaction code.
+              Pay <span className="font-semibold text-foreground">${selectedPlan?.price.toLocaleString()}</span> using the payment details shared by our team, then submit your payment reference.
             </DialogDescription>
           </DialogHeader>
 
-          {/* M-Pesa instructions */}
-          <div className="bg-secondary rounded-lg p-3 space-y-1.5 text-sm">
-            <p className="font-semibold text-foreground">Payment Details</p>
-            {mpesaDetails?.till_number && (
-              <p><span className="text-muted-foreground">Till Number:</span> <span className="font-mono font-medium">{mpesaDetails.till_number}</span></p>
-            )}
-            {mpesaDetails?.paybill && (
-              <p><span className="text-muted-foreground">Paybill:</span> <span className="font-mono font-medium">{mpesaDetails.paybill}</span></p>
-            )}
-            {mpesaDetails?.account_name && (
-              <p><span className="text-muted-foreground">Account:</span> <span className="font-medium">{mpesaDetails.account_name}</span></p>
-            )}
-            {mpesaDetails?.phone && (
-              <p><span className="text-muted-foreground">Phone:</span> <span className="font-mono font-medium">{mpesaDetails.phone}</span></p>
-            )}
-            {!mpesaDetails?.till_number && !mpesaDetails?.paybill && !mpesaDetails?.phone && (
-              <p className="text-xs text-muted-foreground">Admin has not configured payment details yet. Please contact support.</p>
-            )}
-            {mpesaDetails?.instructions && (
-              <p className="text-xs text-muted-foreground pt-1">{mpesaDetails.instructions}</p>
-            )}
+          <div className="bg-secondary rounded-lg p-3 text-sm">
+            <p className="text-xs text-muted-foreground">Contact support at support@barakaz.com for the current payment details before submitting your reference.</p>
           </div>
 
           <div className="space-y-3">
             <div>
-              <Label>M-Pesa Transaction Code *</Label>
+              <Label>Payment Reference / Transaction Code *</Label>
               <Input
                 value={transactionCode}
                 onChange={(e) => setTransactionCode(e.target.value.toUpperCase())}

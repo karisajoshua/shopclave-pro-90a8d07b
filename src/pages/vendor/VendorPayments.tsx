@@ -270,7 +270,7 @@ const VendorPayments = () => {
             for local accounts.
           </p>
           <p>
-            M-Pesa, bank transfer and cash on delivery remain available to buyers and are settled
+            Bank transfer and cash on delivery remain available to buyers and are settled
             directly between buyer and vendor — those don't pass through Paystack.
           </p>
         </CardContent>
