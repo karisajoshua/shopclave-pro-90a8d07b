@@ -240,6 +240,7 @@ const VendorSettings = () => {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Store Settings</h2>
+      <div className="max-w-lg"><VendorProfileChecklist vendor={vendor} showLink={false} /></div>
       <div className="bg-card rounded-lg border border-border p-6 max-w-lg space-y-4">
         <div>
           <Label>Store Name</Label>
