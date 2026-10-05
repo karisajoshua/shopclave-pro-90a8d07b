@@ -43,3 +43,7 @@
 ## Image performance
 - [x] Optimize every new customer-facing image upload as WebP while preserving existing uploads and evidence documents.
 - [x] Confirm and clarify category image upload and replacement in the admin dashboard.
+
+## Homepage product sections
+- [x] Give sponsored products the same price, ratings, sold count, delivery, stock, seller, wishlist, and cart presentation as other product cards.
+- [x] Move Featured Products “View all” to the bottom beside “Load more.”
