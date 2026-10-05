@@ -62,7 +62,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
-  const [cardProvider, setCardProvider] = useState<"paystack" | "stripe">("stripe");
+  const cardProvider = "stripe" as const;
   const [activeStep, setActiveStep] = useState<Step>("address");
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
@@ -445,6 +445,7 @@ const CheckoutPage = () => {
       }
 
       const orderPayload = {
+        idempotency_key: "",
         items: items.map((item) => ({
           product_id: item.productId,
           quantity: item.quantity,
@@ -481,6 +482,13 @@ const CheckoutPage = () => {
       let orderId: string | null = reusablePendingOrder?.orderId ?? null;
 
       if (!orderId) {
+        const requestSignature = JSON.stringify({userId:user.id,...orderPayload, idempotency_key:undefined});
+        const storageKey = "barakaz_checkout_request_v1";
+        let request: { signature: string; key: string } | null = null;
+        try { request = JSON.parse(sessionStorage.getItem(storageKey) || "null"); } catch { /* new request */ }
+        if (request?.signature !== requestSignature) request = { signature: requestSignature, key: crypto.randomUUID() };
+        sessionStorage.setItem(storageKey, JSON.stringify(request));
+        orderPayload.idempotency_key = request.key;
         const { data, error } = await supabase.functions.invoke("create-order", { body: orderPayload });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -492,16 +500,24 @@ const CheckoutPage = () => {
         }
       }
 
-      // Card payments can use Paystack or Stripe. Both are server-authoritative hosted checkouts.
+      // Hosted Stripe checkout uses server-authoritative totals.
       if (paymentMethod === "card") {
         setCheckoutStage("payment");
         const isStripe = cardProvider === "stripe";
-        const functionName = isStripe ? "stripe-initialize" : "paystack-initialize";
+        const functionName = "stripe-initialize";
         const { data: paymentData, error: paymentErr } = await supabase.functions.invoke(
           functionName,
           { body: { order_id: orderId } }
         );
-        if (paymentErr) throw paymentErr;
+        if (paymentErr) {
+          const detail = await (paymentErr as any).context?.json?.().catch(() => null);
+          if (detail?.restart_checkout) {
+            pendingOrderRef.current = null;
+            sessionStorage.removeItem(PENDING_STRIPE_ORDER_KEY);
+            sessionStorage.removeItem("barakaz_checkout_request_v1");
+          }
+          throw new Error(detail?.error || paymentErr.message);
+        }
         if (paymentData?.error) throw new Error(paymentData.error);
         const rawUrl: string | undefined = paymentData?.url;
         const paystackUrl = (() => {

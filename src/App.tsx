@@ -1,3 +1,4 @@
+import AdminLaunchReadiness from "./pages/admin/AdminLaunchReadiness";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -141,6 +142,7 @@ const App = () => (
                   <Route index element={<RequirePermission perm={PERMISSIONS.DASHBOARD_VIEW}><AdminDashboard /></RequirePermission>} />
                   <Route path="vendors" element={<RequirePermission perm={PERMISSIONS.VENDORS_VIEW}><AdminVendors /></RequirePermission>} />
                   <Route path="seller-applications" element={<RequirePermission perm={PERMISSIONS.VENDORS_VIEW}><AdminSellerApplications /></RequirePermission>} />
+                  <Route path="launch-readiness" element={<RequirePermission perm={PERMISSIONS.SETTINGS_MANAGE}><AdminLaunchReadiness /></RequirePermission>} />
                   <Route path="products" element={<RequirePermission perm={PERMISSIONS.PRODUCTS_VIEW}><AdminProducts /></RequirePermission>} />
                   <Route path="orders" element={<RequirePermission perm={PERMISSIONS.ORDERS_VIEW}><AdminOrders /></RequirePermission>} />
                   <Route path="returns" element={<RequirePermission perm={PERMISSIONS.ORDERS_UPDATE}><AdminReturns /></RequirePermission>} />

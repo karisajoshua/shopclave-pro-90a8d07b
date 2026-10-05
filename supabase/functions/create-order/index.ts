@@ -26,6 +26,7 @@ const OrderItemSchema = z.object({
 // The client may only reference server-issued quotes — never prices.
 
 const OrderSchema = z.object({
+  idempotency_key: z.string().uuid(),
   items: z.array(OrderItemSchema).min(1).max(50),
   shipping_address: z.object({
     fullName: z.string().min(1).max(255),
@@ -37,7 +38,7 @@ const OrderSchema = z.object({
     country: z.string().min(1).max(100),
     email: z.string().email().max(255).optional().or(z.literal("")),
   }),
-  payment_method: z.enum(["mpesa", "card", "cod", "vendor_payment"]),
+  payment_method: z.enum(["card"]),
   shipping_quote_ids: z.array(z.string().uuid()).max(50).optional().default([]),
 });
 
@@ -96,6 +97,18 @@ Deno.serve(async (req) => {
     // Use service role client for trusted operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
+    const fingerprintBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify({
+      items: [...items].sort((a,b) => `${a.product_id}:${a.variant_id || ""}`.localeCompare(`${b.product_id}:${b.variant_id || ""}`)),
+      shipping_address, payment_method, shipping_quote_ids: [...shipping_quote_ids].sort(),
+    })));
+    const fingerprint = [...new Uint8Array(fingerprintBytes)].map(b => b.toString(16).padStart(2,"0")).join("");
+    const { data: previous, error: previousError } = await adminClient.from("orders")
+      .select("id,checkout_fingerprint").eq("user_id",user.id).eq("idempotency_key",parsed.data.idempotency_key).maybeSingle();
+    if (previousError) throw previousError;
+    if (previous) {
+      if (previous.checkout_fingerprint !== fingerprint) return new Response(JSON.stringify({error:"Checkout key reused with a different cart."}),{status:409,headers:corsHeaders});
+      return new Response(JSON.stringify({order_id:previous.id}),{headers:corsHeaders});
+    }
     // Fetch product prices server-side
     const productIds = items.map((i) => i.product_id);
     const { data: products, error: prodError } = await adminClient
@@ -114,11 +127,11 @@ Deno.serve(async (req) => {
 
     // Fetch variant prices if needed
     const variantIds = items.filter((i) => i.variant_id).map((i) => i.variant_id!);
-    let variantMap = new Map<string, { price: number | null; stock: number }>();
+    let variantMap = new Map<string, { price: number | null; stock: number; product_id: string }>();
     if (variantIds.length > 0) {
       const { data: variants } = await adminClient
         .from("product_variants")
-        .select("id, price, stock")
+        .select("id, product_id, price, stock")
         .in("id", variantIds);
       if (variants) {
         variantMap = new Map(variants.map((v) => [v.id, v]));
@@ -165,7 +178,7 @@ Deno.serve(async (req) => {
 
       if (item.variant_id) {
         const variant = variantMap.get(item.variant_id);
-        if (!variant) {
+        if (!variant || variant.product_id !== item.product_id) {
           return new Response(
             JSON.stringify({ error: `Variant not found: ${item.variant_id}` }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -273,7 +286,7 @@ Deno.serve(async (req) => {
       })),
       shippingCents: Math.round(shippingTotal * 100),
     };
-    const taxConfig = await loadTaxConfig(adminClient);
+    const taxConfig = await loadTaxConfig(adminClient, Deno.env.get("ALLOW_UNAPPROVED_TAX_TEST_MODE") === "true" && /^(sk|rk)_test_/.test(Deno.env.get("STRIPE_SECRET_KEY") || ""));
     const taxResult = calculateTax(taxRequest, taxConfig);
     if (!taxResult.ok) {
       console.error(`create-order tax rejected: ${taxResult.reason}`);
@@ -284,131 +297,23 @@ Deno.serve(async (req) => {
     }
     const taxTotal = round2(taxResult.totalTaxCents / 100);
 
-    // Insert order
-    const { data: order, error: orderError } = await adminClient
-      .from("orders")
-      .insert({
-        user_id: user.id,
-        total: round2(total + shippingTotal + taxTotal),
-        shipping_total: shippingTotal,
-        tax_amount: taxTotal,
-        tax_province: taxResult.province,
-        tax_breakdown: { components: taxResult.components, shipping: taxResult.shipping },
-        tax_engine_version: TAX_ENGINE_VERSION,
-        shipping_address,
-        payment_method,
-        currency: "CAD",
-        status: "pending",
-        payment_status: "pending",
-      })
-      .select()
-      .single();
-
-    if (orderError || !order) {
-      return new Response(JSON.stringify({ error: "Failed to create order" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Insert order items. Shipping cost is recorded once per vendor (on the
-    // first line) so payment totals stay correct; the shipment lifecycle lives
-    // in public.shipments.
-    const quoteByVendor = new Map(quotes.map((q) => [q.vendor_id, q]));
-    const usedVendor = new Set<string>();
-    const itemsToInsert = orderItems.map((oi, index) => {
-      const lineTax = taxResult.lines[index];
-      const q = quoteByVendor.get(oi.vendor_id);
-      const base: any = {
-        ...oi,
-        order_id: order.id,
-        tax_category: lineTax?.category ?? null,
-        tax_amount: lineTax ? round2(lineTax.taxCents / 100) : null,
-        tax_breakdown: lineTax ? { components: lineTax.components } : null,
-      };
-      if (q && !usedVendor.has(oi.vendor_id)) {
-        base.shipping_rate_id = q.rate_id;
-        base.shipping_amount = Number(q.amount_cad);
-        base.carrier = q.provider ?? null;
-        usedVendor.add(oi.vendor_id);
-      }
-      return base;
+    const { data: orderId, error: orderError } = await adminClient.rpc("create_checkout_order", {
+      p_user: user.id, p_key: parsed.data.idempotency_key, p_fingerprint: fingerprint,
+      p_order: { total: round2(total + shippingTotal + taxTotal), shipping_total: shippingTotal,
+        tax_amount: taxTotal, tax_province: taxResult.province,
+        tax_breakdown: {components: taxResult.components, shipping: taxResult.shipping},
+        tax_engine_version: TAX_ENGINE_VERSION, shipping_address, payment_method },
+      p_items: orderItems.map((oi,index) => ({...oi, tax_category: taxResult.lines[index]?.category,
+        tax_amount: round2((taxResult.lines[index]?.taxCents || 0)/100),
+        tax_breakdown: {components: taxResult.lines[index]?.components || []} })),
+      p_quotes: shipping_quote_ids,
+      p_snapshot: {tax_point:taxPoint, request:taxRequest, result:taxResult},
     });
-    const { data: insertedItems, error: itemsError } = await adminClient
-      .from("order_items")
-      .insert(itemsToInsert)
-      .select("id, vendor_id, quantity");
-
-    if (itemsError || !insertedItems) {
-      return new Response(JSON.stringify({ error: "Failed to create order items" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (orderError || !orderId) {
+      console.error("Atomic checkout failed",orderError?.code);
+      return new Response(JSON.stringify({error:"Your stock, price or delivery selection changed. Refresh checkout and try again."}),{status:409,headers:corsHeaders});
     }
-
-    // Immutable audit snapshot of the exact tax calculation (CRA evidence).
-    const { error: snapshotErr } = await adminClient.from("order_tax_snapshots").insert({
-      order_id: order.id,
-      tax_point: taxPoint,
-      province: taxResult.province,
-      request: taxRequest,
-      result: taxResult,
-      engine_version: TAX_ENGINE_VERSION,
-    });
-    if (snapshotErr) console.error(`[order ${order.id}] tax snapshot failed:`, snapshotErr);
-
-    // One fulfilment/shipment per vendor, with its own items.
-    if (quotes.length > 0) {
-      const { data: shipments, error: shipErr } = await adminClient
-        .from("shipments")
-        .insert(
-          quotes.map((q) => ({
-            order_id: order.id,
-            vendor_id: q.vendor_id,
-            quote_id: q.id,
-            status: "preparing",
-            carrier: q.provider,
-            service: q.service,
-            rate_id: q.rate_id,
-            is_estimate: q.is_estimate,
-            shippo_shipment_id: (q.parcel as any)?.shippo_shipment_id ?? null,
-            shipping_amount_original: q.amount_original,
-            shipping_currency_original: q.currency_original,
-            fx_rate_to_cad: q.fx_rate_to_cad,
-            shipping_amount_cad: q.amount_cad,
-          })),
-        )
-        .select("id, vendor_id");
-
-      if (shipErr) {
-        console.error(`[order ${order.id}] shipment creation failed:`, shipErr);
-      } else if (shipments) {
-        const shipmentItems = insertedItems
-          .map((oi) => {
-            const s = shipments.find((sh) => sh.vendor_id === oi.vendor_id);
-            return s ? { shipment_id: s.id, order_item_id: oi.id, quantity: oi.quantity } : null;
-          })
-          .filter(Boolean) as Array<Record<string, unknown>>;
-        if (shipmentItems.length > 0) {
-          const { error: siErr } = await adminClient.from("shipment_items").insert(shipmentItems);
-          if (siErr) console.error(`[order ${order.id}] shipment_items failed:`, siErr);
-        }
-        for (const s of shipments) {
-          await adminClient.from("tracking_events").insert({
-            shipment_id: s.id,
-            status: "preparing",
-            description: "Order received — vendor is preparing your parcel.",
-            provider_event_key: `created-${s.id}`,
-          });
-        }
-      }
-
-      // Burn the quotes so they cannot be replayed on another order.
-      await adminClient
-        .from("shipping_quotes")
-        .update({ consumed_order_id: order.id })
-        .in("id", quotes.map((q) => q.id));
-    }
+    const order = {id:orderId};
 
     // Emails (best-effort). Online card payments (Stripe/Paystack): NO email
     // here — the customer and sellers are only emailed by the signed webhook

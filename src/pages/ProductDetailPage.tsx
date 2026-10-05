@@ -1,3 +1,4 @@
+import { validComparePrice } from "@/lib/money";
 import { normalizeShippingOptions, SHIP_LABELS, type ShipKey } from "@/components/vendor/ProductListingExtras";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -380,7 +381,7 @@ const ProductDetailPage = () => {
   }, [hasVariants, optionTypes, selectedOptions, variants]);
 
   const displayPrice = selectedVariant?.price ?? product?.price ?? 0;
-  const displayCompare = selectedVariant?.compare_at_price ?? product?.compare_at_price;
+  const displayCompare = validComparePrice(Number(selectedVariant?.price ?? product?.price), selectedVariant?.compare_at_price ?? product?.compare_at_price);
   const displayStock = hasVariants ? selectedVariant?.stock ?? product?.stock : product?.stock;
   const discountPct = displayCompare && Number(displayCompare) > Number(displayPrice)
     ? Math.round(((Number(displayCompare) - Number(displayPrice)) / Number(displayCompare)) * 100)
@@ -681,8 +682,8 @@ const ProductDetailPage = () => {
 
              <section className="col-span-2 border border-border bg-card" aria-labelledby="delivery-heading">
                  <div className="border-b border-border px-3 py-2">
-                  <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery to your address</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Choose a delivery option. The final quote is confirmed at checkout.</p>
+                  <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery within Canada</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Canada delivery only. Availability, tax and the final quote are confirmed at checkout.</p>
                 </div>
                 <RadioGroup
                   value={selectedDelivery}

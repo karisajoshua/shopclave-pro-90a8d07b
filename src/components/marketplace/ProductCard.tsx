@@ -1,3 +1,4 @@
+import { validComparePrice } from "@/lib/money";
 import { Link } from "react-router-dom";
 import { Star, ShoppingCart, Heart, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const ProductCard = ({
   const { data: wishlistIds } = useWishlist();
   const toggleWishlist = useToggleWishlist();
   const inWishlist = wishlistIds?.has(id) ?? false;
+  compareAtPrice = validComparePrice(price, compareAtPrice);
   const discount = compareAtPrice ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
 
   const needsStats = rating === undefined || reviewCount === undefined || soldCount === undefined;
@@ -132,7 +134,7 @@ const ProductCard = ({
         ) : null}
         {deliveryEstimate ? (
           <p className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Truck className="h-3.5 w-3.5 shrink-0 text-success" /> Delivery {deliveryEstimate}
+            <Truck className="h-3.5 w-3.5 shrink-0 text-success" /> Canada delivery estimate: {deliveryEstimate}
           </p>
         ) : null}
         <div className="flex items-end justify-between">

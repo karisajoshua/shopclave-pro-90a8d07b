@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { readFileSync,readdirSync } from 'node:fs';
+const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create role supabase_admin superuser;create schema auth;create schema storage;create schema extensions;create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb);create function auth.uid() returns uuid language sql as $$ select null::uuid $$;create function auth.role() returns text language sql as $$ select 'service_role'::text $$;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid);create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;create publication supabase_realtime;create schema cron;create function cron.schedule(text,text,text) returns bigint language sql as $$select 1::bigint$$;create function cron.unschedule(text) returns boolean language sql as $$select true$$;create schema net;create function net.http_post(url text,headers jsonb,body jsonb) returns bigint language sql as $$select 1::bigint$$;`);
+for(const f of readdirSync('supabase/migrations').filter(x=>x.endsWith('.sql')&&x<'202609').sort()){
+ let sql=readFileSync('supabase/migrations/'+f,'utf8');
+ sql=sql.replace(/CREATE EXTENSION[^;]+;/gi,'').replace(/INSERT INTO public.category_commission_rates[^;]+;/gi,'');
+ try{await db.exec(sql);}catch(e){console.log('FAIL',f,e.message);process.exit(1)}
+}
+for(const f of readdirSync('drizzle/migrations').filter(x=>x.endsWith('.sql')).sort()){try{await db.exec(readFileSync('drizzle/migrations/'+f,'utf8'));}catch(e){console.log('FAIL DRIZZLE',f,e.message);process.exit(1)}}
+const one=async(sql,params=[]) => (await db.query(sql,params)).rows[0];
+const user=randomUUID(),vendor=randomUUID(),product=randomUUID();
+await db.query(`insert into auth.users(id,email) values($1,'fixture@example.invalid')`,[user]);
+await db.query(`insert into user_roles(user_id,role) values($1,'admin') on conflict do nothing`,[user]);
+await db.query(`insert into vendors(id,user_id,store_name,status) values($1,$2,'Fixture seller','approved')`,[vendor,user]);
+await db.query(`insert into products(id,vendor_id,name,slug,price,stock,status) values($1,$2,'Fixture item','fixture',10,5,'active')`,[product,vendor]);
+const quote=async()=>{const id=randomUUID();await db.query(`insert into shipping_quotes(id,user_id,vendor_id,provider,service,amount_original,currency_original,amount_cad,address_fingerprint,items_fingerprint,expires_at,is_estimate) values($1,$2,$3,'manual','standard',5,'CAD',5,'address','items',now()+interval '1 hour',true)`,[id,user,vendor]);return id;};
+const place=async(key,q,qty=2,fingerprint='cart',pid=product,variant=null)=>one(`select create_checkout_order($1,$2,$3,$4,$5,$6,$7) id`,[user,key,fingerprint,JSON.stringify({total:qty*10+5+1.30*qty,shipping_total:5,tax_amount:1.30*qty,tax_province:'ON',tax_breakdown:{},tax_engine_version:'test',shipping_address:{country:'CA'},payment_method:'card'}),JSON.stringify([{product_id:pid,vendor_id:vendor,quantity:qty,price:10,commission_amount:2,variant_id:variant,tax_amount:1.30*qty,tax_category:'taxable'}]),[q],JSON.stringify({tax_point:'2026-10-05',request:{},result:{}})]);
+const q=await quote(),key=randomUUID();
+const {id}=await place(key,q);
+assert.equal((await one('select stock from products where id=$1',[product])).stock,3);
+assert.equal((await place(key,q)).id,id);
+assert.equal((await one('select count(*)::int n from orders')).n,1);
+await assert.rejects(place(key,q,2,'changed'),/different cart/);
+await assert.rejects(place(randomUUID(),q),/already used/);
+const q2=await quote();await assert.rejects(place(randomUUID(),q2,4),/stock changed/);
+assert.equal((await one('select consumed_order_id from shipping_quotes where id=$1',[q2])).consumed_order_id,null);
+assert.equal((await one('select stock from products where id=$1',[product])).stock,3);
+await db.query(`update orders set payment_provider='stripe',stripe_checkout_session_id='cs_fixture',charged_amount=total,charged_currency='CAD' where id=$1`,[id]);
+await assert.rejects(db.query(`select confirm_stripe_checkout($1,'cs_fixture','pi_fixture',1,'cad')`,[id]),/amount mismatch/);
+await db.query(`select confirm_stripe_checkout($1,'cs_fixture','pi_fixture',2760,'cad')`,[id]);
+await db.query(`select confirm_stripe_checkout($1,'cs_fixture','pi_fixture',2760,'cad')`,[id]);
+assert.equal((await one(`select count(*)::int n from vendor_ledger where entry_type='sale'`)).n,1);
+await db.query(`select release_checkout_stock($1,'cs_fixture')`,[id]);
+assert.equal((await one('select stock from products where id=$1',[product])).stock,3);
+const second=await place(randomUUID(),q2,1);
+await db.query('select release_checkout_stock($1,null)',[second.id]);
+await db.query('select release_checkout_stock($1,null)',[second.id]);
+assert.equal((await one('select stock from products where id=$1',[product])).stock,3);
+const item=await one('select * from order_items where order_id=$1',[id]);
+const refund=async()=>{const rid=randomUUID();await db.query(`insert into return_requests(id,order_id,order_item_id,vendor_id,user_id,quantity,reason,status) values($1,$2,$3,$4,$5,1,'Test','approved')`,[rid,id,item.id,vendor,user]);return (await one('select (claim_stripe_refund($1,$2)).*',[rid,user]));};
+const f=await refund();assert.equal(Number(f.provider_amount),11.30);assert.equal(f.refund_quantity,1);
+await db.query(`select complete_stripe_refund($1,'re_fixture','succeeded',1130,'cad','pi_fixture')`,[f.id]);
+await db.query(`select complete_stripe_refund($1,'re_fixture','succeeded',1130,'cad','pi_fixture')`,[f.id]);
+assert.equal(Number((await one('select refunded_amount from order_items where id=$1',[item.id])).refunded_amount),10);
+const f2=await refund();assert.equal(Number(f2.provider_amount),11.30);
+await assert.rejects(refund(),/quantity exceeds/);
+await assert.rejects(db.query('select claim_stripe_transfer($1,$2)',[item.id,user]),/return window/);
+await db.exec('set role authenticated');
+await assert.rejects(db.query(`select release_checkout_stock($1,null)`,[id]),/permission denied/);
+await db.exec('reset role');
+console.log('PASS: historical migrations + launch migration; atomic reservations, rollback, duplicate checkout/payment/refund, tax refund, release, settlement gate and RPC permissions.');
+await db.close();

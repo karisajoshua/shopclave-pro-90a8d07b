@@ -7,12 +7,13 @@ export const TAX_ENGINE_VERSION = "2026.09-ca-1";
 
 type Client = { from: (t: string) => any };
 
-export async function loadTaxConfig(admin: Client): Promise<TaxConfig> {
-  const [{ data: rateRows }, { data: regRows }] = await Promise.all([
+export async function loadTaxConfig(admin: Client, allowUnapproved = false): Promise<TaxConfig> {
+  const [{ data: rateRows, error: rateError }, { data: regRows, error: regError }] = await Promise.all([
     admin.from("tax_rates").select("province,component,rate_ppm,effective_from,effective_to,shipping_taxable"),
-    admin.from("tax_registrations").select("key,effective_from,effective_to"),
+    admin.from("tax_registrations").select("key,effective_from,effective_to,registration_number,approved_at,approved_by"),
   ]);
 
+  if (rateError || regError) throw new Error("Tax configuration unavailable");
   const rates: RateRule[] = (rateRows || []).map((r: any) => ({
     province: r.province as Province,
     component: r.component as TaxComponent,
@@ -26,6 +27,7 @@ export async function loadTaxConfig(admin: Client): Promise<TaxConfig> {
   const registrationEffectiveFrom: Record<string, string> = {};
   const today = new Date().toISOString().slice(0, 10);
   for (const r of regRows || []) {
+    if (!allowUnapproved && (!r.approved_at || !r.approved_by || !String(r.registration_number || "").trim())) continue;
     if (r.effective_to && String(r.effective_to) <= today) continue;
     registrations.add(String(r.key));
     if (r.effective_from) registrationEffectiveFrom[String(r.key)] = String(r.effective_from);

@@ -51,7 +51,7 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "Finance",
     items: [
-      { title: "Withdrawals", url: "/admin/withdrawals", icon: Wallet, permission: PERMISSIONS.WITHDRAWALS_VIEW },
+      { title: "Seller Settlements", url: "/admin/withdrawals", icon: Wallet, permission: PERMISSIONS.WITHDRAWALS_VIEW },
       { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard, permission: PERMISSIONS.SUBSCRIPTIONS_VIEW },
       { title: "Commissions", url: "/admin/commissions", icon: Percent, permission: PERMISSIONS.SETTINGS_MANAGE },
     ],
@@ -75,6 +75,7 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Seller Applications", url: "/admin/seller-applications", icon: Shield, permission: PERMISSIONS.VENDORS_VIEW },
       { title: "Users", url: "/admin/users", icon: Users, permission: PERMISSIONS.USERS_VIEW },
       { title: "Team & Roles", url: "/admin/team", icon: UserCog, permission: PERMISSIONS.TEAM_MANAGE },
+      { title: "Launch Readiness", url: "/admin/launch-readiness", icon: Shield, permission: PERMISSIONS.SETTINGS_MANAGE },
       { title: "Settings", url: "/admin/settings", icon: Settings, permission: PERMISSIONS.SETTINGS_MANAGE },
       { title: "Documentation", url: "/admin/documentation", icon: BookOpen, permission: PERMISSIONS.DOCUMENTATION_VIEW },
     ],

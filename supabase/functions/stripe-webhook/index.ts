@@ -1,3 +1,4 @@
+import { stripeRequest } from "../_shared/stripe.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendOrderEmails } from "../_shared/order-emails.ts";
 const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{"Content-Type":"application/json"}});
@@ -23,11 +24,8 @@ Deno.serve(async(req)=>{
    if(!order)throw new Error("Order not found");
    if(order.payment_provider!=="stripe"||order.stripe_checkout_session_id!==s.id)throw new Error("Session is not bound to this Stripe order");
    if(Math.abs(Number(order.charged_amount)-amount)>0.01 || String(order.charged_currency).toUpperCase()!==currency)throw new Error("Amount or currency mismatch");
-   const {error:paidError}=await admin.from("orders").update({payment_provider:"stripe",payment_status:"paid",status:"processing",stripe_checkout_session_id:s.id,stripe_payment_intent_id:typeof s.payment_intent==="string"?s.payment_intent:null,updated_at:new Date().toISOString()}).eq("id",orderId).neq("payment_status","paid");
+   const {error:paidError}=await admin.rpc("confirm_stripe_checkout",{p_order:orderId,p_session:s.id,p_intent:typeof s.payment_intent==="string"?s.payment_intent:null,p_cents:s.amount_total,p_currency:s.currency});
    if(paidError)throw paidError;
-   const {data:items,error:itemsError}=await admin.from("order_items").select("id,vendor_id,vendor_payout,shipping_amount").eq("order_id",orderId);
-   if(itemsError||!items?.length)throw new Error("Order items unavailable");
-   for(const item of items||[]){const payout=Number(item.vendor_payout||0)+Number(item.shipping_amount||0);if(payout>0){const {error:ledgerError}=await admin.from("vendor_ledger").upsert({vendor_id:item.vendor_id,order_item_id:item.id,entry_type:"sale",amount:payout,currency:"CAD",status:"available",stripe_reference:s.payment_intent||s.id,notes:"Platform-collected via Stripe"},{onConflict:"order_item_id,entry_type",ignoreDuplicates:true});if(ledgerError)throw ledgerError;}}
    // Shipment fulfilment needs its own durable retry/outbox; do not mark an
    // event processed when downstream processing fails.
     // Sandbox guard: never buy real Shippo labels for Stripe test-mode events
@@ -43,10 +41,23 @@ Deno.serve(async(req)=>{
     if(markerError)throw markerError;
    }
     // Verified, signed, amount-reconciled payment: send paid confirmation + seller emails (stable idempotency keys).
-    try{await sendOrderEmails(admin,orderId,"paid",{notifyVendors:true});}catch(e){console.error("paid emails failed",e);}
+    await sendOrderEmails(admin,orderId,"paid",{notifyVendors:true});
   }
  }
- if(event.type==="checkout.session.async_payment_failed"){const s=event.data?.object,orderId=s?.metadata?.order_id||s?.client_reference_id;if(orderId){const {error:failedError}=await admin.from("orders").update({payment_status:"failed"}).eq("id",orderId).eq("payment_provider","stripe").neq("payment_status","paid");if(failedError)throw failedError;}}
+ if(event.type==="checkout.session.async_payment_failed" || event.type==="checkout.session.expired") {
+  const s=event.data?.object, orderId=s?.metadata?.order_id||s?.client_reference_id;
+  if(orderId){const {error}=await admin.rpc("release_checkout_stock",{p_order:orderId,p_session:s.id});if(error)throw error;}
+ }
+
+ if(["refund.created","refund.updated","refund.failed"].includes(event.type)) {
+  const object=event.data?.object;
+  const current=await stripeRequest(`v1/refunds/${encodeURIComponent(object.id)}`);
+  const refundId=current.metadata?.barakaz_refund_id;
+  if(refundId){
+   const {error}=await admin.rpc("complete_stripe_refund",{p_id:refundId,p_provider_id:current.id,p_status:current.status,p_cents:current.amount,p_currency:current.currency,p_intent:current.payment_intent});
+   if(error)throw error;
+  }
+ }
  const {error:markError}=await admin.from("webhook_events").upsert({provider:"stripe",event_key:event.id,payload:event},{onConflict:"provider,event_key",ignoreDuplicates:true});
  if(markError)throw markError;
  return json({received:true});

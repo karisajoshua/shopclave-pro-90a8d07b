@@ -102,7 +102,7 @@ export async function sendOrderEmails(
         },
       },
     });
-    if (error) console.error(`[order ${orderId}] ${stage} customer email failed`, error);
+    if (error) throw error;
     else console.log(`[order ${orderId}] ${stage} customer email enqueued`);
   }
 
@@ -142,6 +142,6 @@ export async function sendOrderEmails(
         },
       },
     });
-    if (error) console.error(`[order ${orderId}] vendor email failed`, error);
+    if (error) throw error;
   }
 }

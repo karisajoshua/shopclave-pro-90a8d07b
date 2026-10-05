@@ -61,3 +61,9 @@ verify_jwt = true
 
 [functions.seller-notification-worker]
 verify_jwt = false
+
+[functions.stripe-refund]
+verify_jwt = true
+
+[functions.stripe-transfer]
+verify_jwt = true
