@@ -175,11 +175,6 @@ const Index = () => {
         <section className="container py-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-xl md:text-2xl font-bold text-foreground">{t("home.featured")}</h2>
-            <Link to="/search">
-              <Button variant="ghost" size="sm" className="gap-1 text-primary">
-                {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
           </div>
           {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
@@ -194,11 +189,11 @@ const Index = () => {
                   <ProductCard key={product.id} {...product} />
                 ))}
               </div>
-              {!isFirstRunDemo && displayProducts.length > visibleCount && (
-                isMobile ? (
-                  <div ref={sentinelRef} className="h-10 w-full" aria-hidden />
-                ) : (
-                  <div className="flex justify-center mt-6">
+              <div className="mt-6 flex items-center justify-center gap-2">
+                {!isFirstRunDemo && displayProducts.length > visibleCount && (
+                  isMobile ? (
+                    <div ref={sentinelRef} className="h-10 w-4" aria-hidden />
+                  ) : (
                     <Button
                       variant="outline"
                       size="lg"
@@ -207,9 +202,14 @@ const Index = () => {
                     >
                       {t("home.loadMore")}
                     </Button>
-                  </div>
-                )
-              )}
+                  )
+                )}
+                <Button asChild variant="ghost" size="lg" className="gap-1 text-primary">
+                  <Link to="/search">
+                    {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
             </>
           )}
         </section>
