@@ -203,7 +203,7 @@ const Index = () => {
                       {t("home.loadMore")}
                     </Button>
                   )
-                )
+                )}
                 <Button asChild variant="ghost" size="lg" className="gap-1 text-primary">
                   <Link to="/search">
                     {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
