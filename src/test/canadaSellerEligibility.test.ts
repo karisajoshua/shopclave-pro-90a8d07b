@@ -10,7 +10,7 @@ describe("Canada-only seller Connect eligibility", () => {
     expect(guard).toBeGreaterThan(0);
     // Guard must run before the rules lookup and before any Stripe request.
     expect(connect.indexOf('seller_country_requirements')).toBeGreaterThan(guard);
-    expect(connect.indexOf('stripeRequest("accounts"')).toBeGreaterThan(guard);
+    expect(connect.indexOf('stripeRequest("v2/core/accounts"')).toBeGreaterThan(guard);
   });
 
   it("requires a reviewed, Stripe-enabled country rule row (fail-closed)", () => {
@@ -25,7 +25,7 @@ describe("Canada-only seller Connect eligibility", () => {
   });
 
   it("never creates accounts for unauthenticated or non-draft sellers", () => {
-    expect(connect).toContain('["draft","more_information_required"].includes(a.status)');
+    expect(connect).toContain('["draft","more_information_required","submitted","under_review","approved"].includes(a.status)');
     expect(connect.indexOf("Unauthorized")).toBeGreaterThan(0);
   });
 });

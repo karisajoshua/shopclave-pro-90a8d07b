@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
     const productMap = new Map((products || []).map((p) => [p.id, p]));
 
     const variantIds = items.filter((i) => i.variant_id).map((i) => i.variant_id!);
-    const variantMap = new Map<string, { price: number | null }>();
+    const variantMap = new Map<string, { price: number | null; product_id: string }>();
     if (variantIds.length) {
-      const { data: variants } = await admin.from("product_variants").select("id, price").in("id", variantIds);
+      const { data: variants } = await admin.from("product_variants").select("id, product_id, price").in("id", variantIds);
       for (const v of variants || []) variantMap.set(v.id, v);
     }
 
@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
       const p = productMap.get(i.product_id);
       if (!p) return null;
       const variant = i.variant_id ? variantMap.get(i.variant_id) : null;
+      if (i.variant_id && (!variant || variant.product_id !== i.product_id)) return null;
       const unit = variant?.price != null ? Number(variant.price) : Number(p.price);
       return {
         id: `${i.product_id}:${i.variant_id ?? ""}`,
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const cfg = await loadTaxConfig(admin);
+    const cfg = await loadTaxConfig(admin, Deno.env.get("ALLOW_UNAPPROVED_TAX_TEST_MODE") === "true" && /^(sk|rk)_test_/.test(Deno.env.get("STRIPE_SECRET_KEY") || ""));
     const result = calculateTax({
       province, country,
       date: new Date().toISOString().slice(0, 10),

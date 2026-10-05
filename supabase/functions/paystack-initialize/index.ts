@@ -16,6 +16,8 @@ const BodySchema = z.object({
 });
 
 Deno.serve(async (req) => {
+  if (req.method !== "OPTIONS") return new Response(JSON.stringify({error:"This payment operation is retired. Use Stripe for current orders; reconcile historical Paystack transactions with support."}), {status:410,headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}});
+
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {

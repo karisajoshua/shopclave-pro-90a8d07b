@@ -25,7 +25,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - run: npm ci
       - run: npx vitest run src/test/seller-onboarding-sql.test.ts
       - run: npx tsc --noEmit -p tsconfig.app.json

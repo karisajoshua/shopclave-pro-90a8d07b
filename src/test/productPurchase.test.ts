@@ -98,16 +98,16 @@ describe("product page wiring", () => {
   it("offers both dated delivery choices and carries the preference to checkout", () => {
     const checkout = readFileSync("src/pages/CheckoutPage.tsx", "utf8");
     expect(src).toContain('normalizeShippingOptions');
-    expect(src).toContain("Delivery to your address");
+    expect(src).toContain("Delivery within Canada");
     expect(src).not.toContain("Delivery in Canada");
     expect(src).toContain("Estimated delivery {option.arrival}");
     expect(src).toContain("saveDeliveryPreference(product.vendor_id, selectedDelivery)");
     expect(checkout).toContain("readDeliveryPreference(v.vendor_id)");
   });
-  it("shows catalogue prices in CAD until the visitor country is known", () => {
+  it("keeps catalogue prices in CAD for every browsing country", () => {
     const locale = readFileSync("src/hooks/useLocale.ts", "utf8");
     expect(locale).toContain('FALLBACK_LOCALE: CountryInfo = { code: "CA", name: "Canada", currency: "CAD"');
-    expect(locale).toContain('target === "CAD" ? amountInCAD : convertFromCAD');
+    expect(locale).toContain('const formatPrice = formatCAD;');
   });
   it("provides accessible gallery controls and mobile swipe", () => {
     expect(gallery).toContain('aria-label="Previous product image"');

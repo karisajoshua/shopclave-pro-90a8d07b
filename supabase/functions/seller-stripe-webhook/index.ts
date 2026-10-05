@@ -1,3 +1,4 @@
+import { stripeRequest, transfersActive } from "../_shared/stripe.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const encode=(bytes:Uint8Array)=>Array.from(bytes).map(x=>x.toString(16).padStart(2,"0")).join("");
 Deno.serve(async req=>{
@@ -21,17 +22,19 @@ Deno.serve(async req=>{
  if(!valid) return new Response("Invalid signature",{status:400});
  let event:any;
  try { event=JSON.parse(body); } catch {return new Response("Invalid payload",{status:400});}
- if(event.type!=="account.updated") return new Response("Ignored",{status:200});
- const a=event.data?.object;
- if(typeof event.id!=="string"||typeof event.created!=="number"||typeof a?.id!=="string"
- ||typeof a.charges_enabled!=="boolean"||typeof a.payouts_enabled!=="boolean"
- ||typeof a.details_submitted!=="boolean")
-  return new Response("Invalid account event",{status:400});
+ if(event.type!=="account.updated" && !String(event.type).startsWith("v2.core.account"))return new Response("Ignored",{status:200});
+ const accountId=event.related_object?.id||event.data?.object?.id;
+ if(typeof accountId!=="string"||!accountId.startsWith("acct_"))return new Response("Invalid account event",{status:400});
  const admin=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
- const {error}=await admin.rpc("record_seller_stripe_account_event",{
-  p_event_id:event.id,p_account_id:a.id,p_created_at:new Date(event.created*1000).toISOString(),
-  p_charges_enabled:a.charges_enabled,p_payouts_enabled:a.payouts_enabled,p_details_submitted:a.details_submitted
- });
- if(error){console.error("Connect webhook database update failed",error.code);return new Response("Retry later",{status:500});}
- return new Response("OK",{status:200});
+ try {
+  const {data:known,error:lookup}=await admin.from("seller_payout_accounts").select("id").eq("provider","stripe").eq("provider_account_id",accountId).maybeSingle();
+  if(lookup)throw lookup;if(!known)return new Response("Ignored",{status:200});
+  // Fetch current capability state rather than applying an out-of-order event snapshot.
+  const a=await stripeRequest(`v2/core/accounts/${encodeURIComponent(accountId)}?include[0]=configuration.recipient`);
+  const active=transfersActive(a);
+  const {error}=await admin.from("seller_payout_accounts").update({transfers_enabled:active,
+   payouts_enabled:a.configuration?.recipient?.capabilities?.stripe_balance?.payouts?.status==="active",
+   verification_status:active?"verified":"pending"}).eq("id",known.id);
+  if(error)throw error;return new Response("OK",{status:200});
+ }catch{ return new Response("Retry later",{status:500}); }
 });

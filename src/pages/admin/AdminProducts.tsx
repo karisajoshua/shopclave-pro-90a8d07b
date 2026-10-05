@@ -16,6 +16,7 @@ interface EditProduct {
   id: string;
   name: string;
   video_url: string | null;
+  price: number; compare_at_price: number | null; weight_g: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null;
   images: { id: string; url: string; position: number }[];
 }
 
@@ -59,6 +60,7 @@ const AdminProducts = () => {
       id: p.id,
       name: p.name,
       video_url: p.video_url,
+      price:p.price, compare_at_price:p.compare_at_price, weight_g:p.weight_g, length_cm:p.length_cm, width_cm:p.width_cm, height_cm:p.height_cm,
       images: (p.product_images || []).sort((a: any, b: any) => a.position - b.position),
     });
     setEditVideoUrl(p.video_url || "");
@@ -88,8 +90,12 @@ const AdminProducts = () => {
     if (!editProduct) return;
     setSaving(true);
     try {
-      // Update video_url
-      await supabase.from("products").update({ video_url: editVideoUrl.trim() || null }).eq("id", editProduct.id);
+      const {price,compare_at_price,weight_g,length_cm,width_cm,height_cm}=editProduct;
+      if(!Number.isFinite(price)||price<=0)throw new Error("Enter a positive CAD price");
+      if(compare_at_price!=null&&compare_at_price<=price)throw new Error("Compare-at price must exceed the selling price");
+      if([weight_g,length_cm,width_cm,height_cm].some(v=>v!=null&&(!Number.isFinite(v)||v<=0)))throw new Error("Parcel measurements must be positive");
+      const {error:updateError}=await supabase.from("products").update({price,compare_at_price,weight_g,length_cm,width_cm,height_cm,video_url:editVideoUrl.trim()||null}).eq("id",editProduct.id);
+      if(updateError)throw updateError;
 
       // Upload new files
       if (newFiles.length > 0) {
@@ -228,6 +234,8 @@ const AdminProducts = () => {
             <DialogTitle>Edit: {editProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">{([['price','Price (CAD)'],['compare_at_price','Compare-at price (CAD)'],['weight_g','Packed weight (g)'],['length_cm','Packed length (cm)'],['width_cm','Packed width (cm)'],['height_cm','Packed height (cm)']] as const).map(([key,label])=><div key={key}><Label htmlFor={key}>{label}</Label><Input id={key} type="number" min="0" step="any" value={editProduct?.[key]??""} onChange={e=>setEditProduct(p=>p?{...p,[key]:e.target.value===""?null:Number(e.target.value)}:p)}/></div>)}</div>
+            <p className="text-xs text-muted-foreground">Use actual packed measurements. Very low prices require a manual catalog check. Variant prices are maintained in the seller product editor.</p>
             <div>
               <Label className="font-semibold mb-2 block">Images</Label>
               <div className="flex flex-wrap gap-3 mb-3">

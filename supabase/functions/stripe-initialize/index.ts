@@ -28,12 +28,13 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: order } = await admin.from("orders")
-      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id,tax_amount,tax_province")
+      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id,tax_amount,tax_province,inventory_managed,created_at")
       .eq("id", parsed.data.order_id).maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
     if (order.user_id !== user.id) return json({ error: "Forbidden" }, 403);
     if (order.payment_status === "paid") return json({ error: "Order already paid" }, 400);
 
+    if (!order.inventory_managed || order.payment_status === "failed") return json({error:"Please start a fresh checkout to reserve stock.",restart_checkout:true},409);
     // Retry: reuse a still-open Stripe session rather than creating a new one.
     const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!liveCheckoutAllowed(secretKey, Deno.env.get("STRIPE_LIVE_CHECKOUT_ENABLED"))) {
@@ -48,6 +49,9 @@ Deno.serve(async (req) => {
         return json({ url: existing.url, session_id: existing.id, currency: "CAD", amount: Number(existing.amount_total) / 100 });
       }
     }
+
+    if (order.stripe_checkout_session_id) return json({error:"This checkout is completed or expired. Check your order status before starting again."},409);
+    if (Date.now() - Date.parse(order.created_at) > 23 * 60 * 60 * 1000) return json({error:"This checkout reservation is too old. Start a fresh checkout.",restart_checkout:true},409);
 
     const { data: items, error: itemsErr } = await admin.from("order_items")
       .select("price,quantity,shipping_amount").eq("order_id", order.id);
@@ -119,7 +123,7 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Bearer ${secret}`,
         "Content-Type": "application/x-www-form-urlencoded",
-        "Idempotency-Key": `barakaz-checkout-${order.id}-${Math.floor(Date.now() / 600000)}`,
+        "Idempotency-Key": `barakaz-checkout-${order.id}`,
       },
       body: params.toString(),
     });
@@ -129,7 +133,7 @@ Deno.serve(async (req) => {
       return json({ error: "Could not start Stripe checkout" }, 502);
     }
 
-    await admin.from("orders").update({
+    const { error: saveError } = await admin.from("orders").update({
       payment_provider: "stripe",
       stripe_checkout_session_id: session.id,
       charged_currency: "CAD",
@@ -137,6 +141,7 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }).eq("id", order.id);
 
+    if (saveError) throw saveError;
     return json({ url: session.url, session_id: session.id, currency: "CAD", amount: totalCad });
   } catch (error) {
     console.error("stripe-initialize", error);

@@ -1,5 +1,5 @@
+import { formatCAD } from "@/lib/money";
 import { useState, useEffect } from "react";
-import { getFxRates, convertFromCAD } from "@/lib/fx";
 
 interface CountryInfo {
   code: string;
@@ -145,7 +145,6 @@ export function useLocale() {
   });
 
   const [language, setLanguageState] = useState(() => localStorage.getItem("barakaz_lang") || "EN");
-  const [rates, setRates] = useState<Record<string, number> | null>(null);
 
   // Geo detection
   useEffect(() => {
@@ -180,13 +179,6 @@ export function useLocale() {
     return () => controller.abort();
   }, [manualOverride]);
 
-  // FX rates
-  useEffect(() => {
-    let cancelled = false;
-    getFxRates().then((c) => { if (!cancelled && c) setRates(c.rates); });
-    return () => { cancelled = true; };
-  }, []);
-
   const country: CountryInfo = manualOverride || detected || FALLBACK_LOCALE;
   // While detecting and no manual override, surface a friendly placeholder name.
   const displayCountryName = manualOverride
@@ -214,41 +206,7 @@ export function useLocale() {
     try { localStorage.removeItem(MANUAL_KEY); } catch {}
   };
 
-  const formatPrice = (amountInCAD: number) => {
-    const target = country.currency;
-    // All product prices are stored in CAD. Convert to the visitor's currency.
-    const converted = target === "CAD" ? amountInCAD : convertFromCAD(amountInCAD, target, rates);
-    if (converted == null) {
-      // FX not ready or target rate missing — fall back to CAD so the number is never wrong.
-      try {
-        return new Intl.NumberFormat("en-CA", {
-          style: "currency",
-          currency: "CAD",
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(amountInCAD);
-      } catch {
-        return `CA$${amountInCAD.toFixed(2)}`;
-      }
-    }
-    const noDecimals = CURRENCIES_NO_DECIMALS.has(target);
-    // CAD always shows an explicit "CA$" prefix so prices read the same in
-    // every browser locale (en-CA would otherwise render a bare "$").
-    if (target === "CAD") {
-      return `CA$${converted.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: target,
-        minimumFractionDigits: noDecimals ? 0 : 2,
-        maximumFractionDigits: noDecimals ? 0 : 2,
-      }).format(converted);
-    } catch {
-      const rounded = noDecimals ? Math.round(converted) : Math.round(converted * 100) / 100;
-      return `${country.currencySymbol} ${rounded.toLocaleString()}`;
-    }
-  };
+  const formatPrice = formatCAD;
 
   const supportedCountries = Object.entries(COUNTRY_CODE_MAP).map(([code, info]) => ({ code, ...info }));
 

@@ -115,7 +115,7 @@ const Navbar = () => {
                 <button className="flex items-center gap-1 text-xs shrink-0 hover:outline hover:outline-1 hover:outline-primary-foreground/50 rounded px-1 py-1">
                   <MapPin className="h-4 w-4 text-primary-foreground/70" />
                   <div className="leading-tight text-left">
-                    <span className="text-primary-foreground/70 block">{t("nav.deliverTo")}</span>
+                    <span className="text-primary-foreground/70 block">{"Browsing from"}</span>
                     <span className="font-bold text-sm">{country.name}</span>
                   </div>
                 </button>
@@ -127,7 +127,7 @@ const Navbar = () => {
                     onClick={() => setCountryByCode(c.code)}
                     className={country.code === c.code ? "font-bold" : ""}
                   >
-                    {c.name} ({c.currency})
+                    {c.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -228,7 +228,7 @@ const Navbar = () => {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 px-3 h-9 text-xs text-foreground w-full">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{t("nav.deliverTo")}</span>
+                <span className="text-muted-foreground">{"Browsing from"}</span>
                 <span className="font-bold text-sm">{country.name}</span>
               </button>
             </DropdownMenuTrigger>
@@ -239,7 +239,7 @@ const Navbar = () => {
                   onClick={() => setCountryByCode(c.code)}
                   className={country.code === c.code ? "font-bold" : ""}
                 >
-                  {c.name} ({c.currency})
+                  {c.name}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

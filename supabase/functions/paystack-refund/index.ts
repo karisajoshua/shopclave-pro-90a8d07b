@@ -6,6 +6,8 @@ import { planRefund } from "../_shared/refunds.ts";
 const Schema = z.object({ return_request_id: z.string().uuid() });
 
 Deno.serve(async (req) => {
+  if (req.method !== "OPTIONS") return new Response(JSON.stringify({error:"This payment operation is retired. Use Stripe for current orders; reconcile historical Paystack transactions with support."}), {status:410,headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}});
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
