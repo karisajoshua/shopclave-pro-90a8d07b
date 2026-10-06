@@ -13,7 +13,7 @@ AS $$
 DECLARE a public.seller_applications;
 BEGIN
  IF (SELECT auth.uid()) IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF p_current_step NOT BETWEEN 1 AND 6 OR
+ IF p_current_step NOT BETWEEN 1 AND 7 OR
     (p_country IS NOT NULL AND p_country !~ '^[A-Z]{2}$') OR
     (p_business_type IS NOT NULL AND p_business_type NOT IN ('individual','sole_proprietor','company')) OR
     jsonb_typeof(p_business_info) IS DISTINCT FROM 'object' OR
