@@ -1,7 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import StaticPage from "./StaticPage";
 
 type Section = { heading: string; paragraphs: string[] };
 type Policy = { title: string; code: string; version: string; sections: Section[] };
@@ -69,31 +67,20 @@ export default function SellerPolicyPage() {
   if (!policy) return <Navigate to="/vendor/register" replace />;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Helmet>
-        <title>{policy.title} | Barakaz</title>
-        <meta name="description" content={`Barakaz ${policy.title}, version ${policy.version}.`} />
-      </Helmet>
-      <Header />
-      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-14">
-        <Link to="/vendor/register" className="text-sm text-primary hover:underline">← Back to seller registration</Link>
-        <div className="mt-6 rounded-xl border bg-card p-6 shadow-sm sm:p-10">
-          <p className="text-sm font-medium text-muted-foreground">Seller policy · {policy.version}</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{policy.title}</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Policy code: {policy.code}</p>
-          <div className="mt-8 space-y-8">
-            {policy.sections.map(section => (
-              <section key={section.heading}>
-                <h2 className="text-xl font-semibold">{section.heading}</h2>
-                <div className="mt-3 space-y-3 text-sm leading-7 text-muted-foreground sm:text-base">
-                  {section.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-                </div>
-              </section>
-            ))}
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+    <StaticPage
+      title={policy.title}
+      description={`Barakaz ${policy.title}, version ${policy.version}.`}
+      canonicalPath={`/seller/policies/${policySlug}`}
+    >
+      <Link to="/vendor/register" className="text-sm text-primary hover:underline">← Back to seller registration</Link>
+      <p className="text-sm text-muted-foreground"><strong>Seller policy version:</strong> {policy.version}</p>
+      <p className="text-sm text-muted-foreground"><strong>Policy code:</strong> {policy.code}</p>
+      {policy.sections.map(section => (
+        <section key={section.heading}>
+          <h2 className="text-lg font-semibold text-foreground mt-6">{section.heading}</h2>
+          {section.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        </section>
+      ))}
+    </StaticPage>
   );
 }
