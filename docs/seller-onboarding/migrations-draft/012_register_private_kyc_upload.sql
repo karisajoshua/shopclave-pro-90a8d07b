@@ -28,10 +28,22 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM storage.objects o WHERE o.bucket_id='seller-kyc-private'
  AND o.name=p_storage_path)
  THEN RAISE EXCEPTION 'Private upload does not exist'; END IF;
- INSERT INTO public.seller_verification_documents
- (application_id,requirement_code,private_storage_path,verification_status)
- VALUES(a.id,p_requirement_code,p_storage_path,'pending')
- RETURNING * INTO d;
+ -- Keep one active document per requirement. A replacement supersedes the
+ -- previous private object reference and resets review state to pending.
+ SELECT * INTO d FROM public.seller_verification_documents
+ WHERE application_id=a.id AND requirement_code=p_requirement_code
+ ORDER BY uploaded_at DESC LIMIT 1 FOR UPDATE;
+ IF d.id IS NULL THEN
+  INSERT INTO public.seller_verification_documents
+  (application_id,requirement_code,private_storage_path,verification_status)
+  VALUES(a.id,p_requirement_code,p_storage_path,'pending')
+  RETURNING * INTO d;
+ ELSE
+  UPDATE public.seller_verification_documents
+  SET private_storage_path=p_storage_path,verification_status='pending',
+      uploaded_at=now(),reviewed_at=NULL
+  WHERE id=d.id RETURNING * INTO d;
+ END IF;
  RETURN d;
 END $$;
 REVOKE ALL ON FUNCTION public.register_seller_kyc_upload(text,text) FROM PUBLIC,anon;
