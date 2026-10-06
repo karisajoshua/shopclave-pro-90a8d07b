@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.seller_applications (
  user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
  vendor_id uuid UNIQUE REFERENCES public.vendors(id),
  status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','submitted','under_review','more_information_required','approved','rejected')),
- current_step smallint NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 6),
+ current_step smallint NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 7),
  country text CHECK(country IS NULL OR country ~ '^[A-Z]{2}$'),
  business_type text CHECK(business_type IS NULL OR business_type IN ('individual','sole_proprietor','company')),
  business_info jsonb NOT NULL DEFAULT '{}'::jsonb,
