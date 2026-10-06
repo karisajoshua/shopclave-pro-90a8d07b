@@ -97,4 +97,14 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("published_at IS NOT NULL");
   expect(s).toContain("policy_version=r.rules_version");
  });
+ it("keeps conditional seller requirements fail-closed and server-evaluable", () => {
+  const s=sql("018_conditional_country_requirements.sql");
+  expect(s).toContain("conditional_requirements jsonb NOT NULL");
+  expect(s).toContain("seller_conditional_requirements");
+  expect(s).toContain("is_business_registered");
+  expect(s).toContain("business_registration");
+  expect(s).toContain("incorporation_or_registration_document");
+  expect(s).toContain("stripe_connect_enabled=false");
+  expect(s).toContain("REVOKE ALL ON FUNCTION");
+ });
 });
