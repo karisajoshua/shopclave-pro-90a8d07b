@@ -31,6 +31,7 @@ import FAQPage from "./pages/FAQPage";
 import ContactPage from "./pages/ContactPage";
 import DeliveryPage from "./pages/DeliveryPage";
 import ReturnPolicyPage from "./pages/ReturnPolicyPage";
+import SellerPolicyPage from "./pages/SellerPolicyPage";
 
 // Admin
 import AdminLayout from "./components/admin/AdminLayout";
@@ -135,6 +136,7 @@ const App = () => (
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/delivery" element={<DeliveryPage />} />
                 <Route path="/return-policy" element={<ReturnPolicyPage />} />
+                <Route path="/seller/policies/:policySlug" element={<SellerPolicyPage />} />
 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminLayout />}>
