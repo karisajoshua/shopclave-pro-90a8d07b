@@ -43,3 +43,19 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.seller_conditional_requirements(jsonb,jsonb) FROM PUBLIC;
+
+-- Deployment patch must also update submit_seller_application() so the server,
+-- not the browser, enforces activated requirements. This helper is designed
+-- to be called after loading the matching seller_country_requirements row:
+--
+-- conditional := public.seller_conditional_requirements(a.business_info, r.conditional_requirements);
+-- FOREACH code IN ARRAY r.required_fields || ARRAY(SELECT jsonb_array_elements_text(conditional->'required_fields')) LOOP ...
+-- FOREACH code IN ARRAY r.required_documents || ARRAY(SELECT jsonb_array_elements_text(conditional->'required_documents')) LOOP ...
+--
+-- CA ca-v1 intended configuration (keep stripe_connect_enabled=false until E2E):
+-- individual: required_documents={}
+-- sole_proprietor:
+--   conditional_requirements=[{"when_field":"is_business_registered","equals":true,
+--     "required_fields":["registration_number"],"required_documents":["business_registration"]}]
+-- company: required_fields={registration_number},
+--          required_documents={incorporation_or_registration_document}
