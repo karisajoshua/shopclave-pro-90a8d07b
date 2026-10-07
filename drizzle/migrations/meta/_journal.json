@@ -141,6 +141,13 @@
       "when": 1790947930834,
       "tag": "0019_product_specifications",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791360439558,
+      "tag": "0020_seller_conditional_country_requirements",
+      "breakpoints": true
     }
   ]
 }
