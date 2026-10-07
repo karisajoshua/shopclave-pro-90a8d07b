@@ -14,6 +14,7 @@ on:
       - 'src/test/seller-onboarding-sql.test.ts'
       - 'src/test/seller-onboarding-validation.test.ts'
       - 'docs/seller-onboarding/**'
+      - 'drizzle/migrations/**'
       - 'supabase/functions/seller-stripe-connect/**'
       - 'supabase/functions/seller-stripe-webhook/**'
       - '.github/workflows/seller-onboarding.yml'
