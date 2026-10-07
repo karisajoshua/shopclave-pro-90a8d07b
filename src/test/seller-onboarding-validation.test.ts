@@ -29,28 +29,18 @@ describe("Canadian seller onboarding validation matrix", () => {
   });
 
   it("allows an unregistered sole proprietor without a registration number", () => {
-    const soleProp = {
-      ...complete,
-      business_type: "sole_proprietor" as const,
-      is_business_registered: false,
-      registration_number: "",
-    };
+    const soleProp = { ...complete, business_type: "sole_proprietor" as const, is_business_registered: false, registration_number: "" };
     expect(validateSellerStep(2, soleProp)).toBeNull();
   });
 
   it("requires a registration number for a registered sole proprietor", () => {
-    const soleProp = {
-      ...complete,
-      business_type: "sole_proprietor" as const,
-      is_business_registered: true,
-      registration_number: "",
-    };
+    const soleProp = { ...complete, business_type: "sole_proprietor" as const, is_business_registered: true, registration_number: "" };
     expect(validateSellerStep(2, soleProp)).toContain("registered");
     expect(validateSellerStep(2, { ...soleProp, registration_number: "SP-123" })).toBeNull();
   });
 
   it("requires a registration number for a company", () => {
-    expect(validateSellerStep(2, { ...complete, registration_number: "" })).toContain("registered");
+    expect(validateSellerStep(2, { ...complete, registration_number: "" })).toContain("registration");
     expect(validateSellerStep(2, complete)).toBeNull();
   });
 
