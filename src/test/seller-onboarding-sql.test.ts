@@ -109,7 +109,7 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("REVOKE ALL ON FUNCTION");
  });
  it("requires verified Stripe evidence for every conditional KYC approval path", () => {
-  const s=drizzleSql("0020_seller_conditional_country_requirements.sql");
+  const s=drizzleSql("0021_require_stripe_for_all_seller_kyc.sql");
   const stripeCheck=s.indexOf("Verified Stripe payout account required as identity evidence");
   const documentCheck=s.indexOf("Required documents not independently verified");
   expect(stripeCheck).toBeGreaterThan(-1);
