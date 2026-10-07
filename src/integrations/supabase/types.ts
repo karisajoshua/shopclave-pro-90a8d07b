@@ -1792,6 +1792,7 @@ export type Database = {
       seller_country_requirements: {
         Row: {
           business_type: string
+          conditional_requirements: Json
           country: string
           required_documents: string[]
           required_fields: string[]
@@ -1801,6 +1802,7 @@ export type Database = {
         }
         Insert: {
           business_type: string
+          conditional_requirements?: Json
           country: string
           required_documents?: string[]
           required_fields?: string[]
@@ -1810,6 +1812,7 @@ export type Database = {
         }
         Update: {
           business_type?: string
+          conditional_requirements?: Json
           country?: string
           required_documents?: string[]
           required_fields?: string[]
@@ -3661,6 +3664,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      seller_conditional_requirements: {
+        Args: { p_business_info: Json; p_rules: Json }
+        Returns: Json
       }
       slugify: { Args: { _input: string }; Returns: string }
       submit_seller_application: {
