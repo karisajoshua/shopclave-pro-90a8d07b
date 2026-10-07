@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const sql = (name: string) => readFileSync(resolve(process.cwd(), "docs/seller-onboarding/migrations-draft", name), "utf8");
+const drizzleSql = (name: string) => readFileSync(resolve(process.cwd(), "drizzle/migrations", name), "utf8");
 describe("seller onboarding draft SQL safety", () => {
  it("separates approval from payout status and enables RLS", () => {
   const s=sql("001_seller_applications.sql");
@@ -106,5 +107,16 @@ describe("seller onboarding draft SQL safety", () => {
   expect(s).toContain("incorporation_or_registration_document");
   expect(s).toContain("stripe_connect_enabled=false");
   expect(s).toContain("REVOKE ALL ON FUNCTION");
+ });
+ it("requires verified Stripe evidence for every conditional KYC approval path", () => {
+  const s=drizzleSql("0020_seller_conditional_country_requirements.sql");
+  const stripeCheck=s.indexOf("Verified Stripe payout account required as identity evidence");
+  const documentCheck=s.indexOf("Required documents not independently verified");
+  expect(stripeCheck).toBeGreaterThan(-1);
+  expect(documentCheck).toBeGreaterThan(stripeCheck);
+  expect(s).not.toContain("ELSE\n   IF NOT EXISTS (SELECT 1 FROM public.seller_payout_accounts");
+  expect(s).toContain("p.verification_status='verified'");
+  expect(s).toContain("p.payouts_enabled=true");
+  expect(s).toContain("p.last_webhook_at IS NOT NULL");
  });
 });
