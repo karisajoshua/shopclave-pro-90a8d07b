@@ -1793,6 +1793,7 @@ export type Database = {
         Row: {
           business_type: string
           country: string
+          conditional_requirements: Json
           required_documents: string[]
           required_fields: string[]
           reviewed_at: string | null
@@ -1802,6 +1803,7 @@ export type Database = {
         Insert: {
           business_type: string
           country: string
+          conditional_requirements?: Json
           required_documents?: string[]
           required_fields?: string[]
           reviewed_at?: string | null
@@ -1811,6 +1813,7 @@ export type Database = {
         Update: {
           business_type?: string
           country?: string
+          conditional_requirements?: Json
           required_documents?: string[]
           required_fields?: string[]
           reviewed_at?: string | null
