@@ -69,11 +69,8 @@ BEGIN
   IF r.country IS NULL THEN RAISE EXCEPTION 'Approved country rules required'; END IF;
   cond := public.seller_conditional_requirements(a.business_info, r.conditional_requirements);
   eff_docs := ARRAY(SELECT DISTINCT x FROM unnest(r.required_documents || ARRAY(SELECT jsonb_array_elements_text(cond->'required_documents'))) x);
-  IF cardinality(eff_docs) > 0 THEN
-   IF EXISTS (SELECT 1 FROM unnest(eff_docs) req(code) WHERE NOT EXISTS (SELECT 1 FROM public.seller_verification_documents d WHERE d.application_id=a.id AND d.requirement_code=req.code AND d.verification_status='verified')) THEN RAISE EXCEPTION 'Required documents not independently verified'; END IF;
-  ELSE
-   IF NOT EXISTS (SELECT 1 FROM public.seller_payout_accounts p WHERE p.application_id=a.id AND p.provider='stripe' AND p.verification_status='verified' AND p.payouts_enabled=true AND nullif(btrim(p.provider_account_id),'') IS NOT NULL AND p.last_webhook_at IS NOT NULL) THEN RAISE EXCEPTION 'Verified Stripe payout account required as identity evidence'; END IF;
-  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.seller_payout_accounts p WHERE p.application_id=a.id AND p.provider='stripe' AND p.verification_status='verified' AND p.payouts_enabled=true AND nullif(btrim(p.provider_account_id),'') IS NOT NULL AND p.last_webhook_at IS NOT NULL) THEN RAISE EXCEPTION 'Verified Stripe payout account required as identity evidence'; END IF;
+  IF cardinality(eff_docs) > 0 AND EXISTS (SELECT 1 FROM unnest(eff_docs) req(code) WHERE NOT EXISTS (SELECT 1 FROM public.seller_verification_documents d WHERE d.application_id=a.id AND d.requirement_code=req.code AND d.verification_status='verified')) THEN RAISE EXCEPTION 'Required documents not independently verified'; END IF;
  END IF;
  previous_kyc:=a.kyc_status;
  UPDATE public.seller_applications SET kyc_status=p_result,reviewed_by=(SELECT auth.uid()),review_reason=left(btrim(p_reason),500),reviewed_at=now(),updated_at=now() WHERE id=a.id RETURNING * INTO a;
