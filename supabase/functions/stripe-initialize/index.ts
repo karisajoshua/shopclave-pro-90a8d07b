@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: order } = await admin.from("orders")
-      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id,tax_amount,tax_province")
+      .select("id,user_id,payment_status,shipping_address,stripe_checkout_session_id,tax_amount,tax_province,tax_breakdown,shipping_total,total")
       .eq("id", parsed.data.order_id).maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
     if (order.user_id !== user.id) return json({ error: "Forbidden" }, 403);
@@ -54,8 +54,11 @@ Deno.serve(async (req) => {
     if (itemsErr || !items?.length) return json({ error: "No order items" }, 400);
 
     // Barakaz catalogue/order totals are CAD. Stripe accepts CAD directly.
-    const goodsCad = items.reduce((sum, item) =>
-      sum + Number(item.price) * Number(item.quantity) + Number(item.shipping_amount || 0), 0);
+    const subtotalCents = items.reduce((sum, item) => sum + Math.round(Number(item.price) * 100) * Number(item.quantity), 0);
+    const shippingCents = Math.round(Number(order.shipping_total ?? 0) * 100);
+    const itemShippingCents = items.reduce((sum, item) => sum + Math.round(Number(item.shipping_amount || 0) * 100), 0);
+    if (shippingCents < 0 || shippingCents !== itemShippingCents) return json({ error: "Shipping total mismatch. Please retry checkout." }, 409);
+    const goodsCad = (subtotalCents + shippingCents) / 100;
     // Tax is computed server-side at order creation and must never come from the client.
     if (order.tax_amount === null || order.tax_amount === undefined) {
       return json({ error: "Sales tax has not been calculated for this order. You have not been charged." }, 422);
@@ -64,7 +67,7 @@ Deno.serve(async (req) => {
     const taxCents = Math.round(taxCad * 100);
     const totalCad = Math.round((goodsCad + taxCad) * 100) / 100;
     const amount = Math.round(goodsCad * 100);
-    if (amount <= 0 || taxCents < 0) return json({ error: "Invalid order total" }, 400);
+    if (amount <= 0 || taxCents < 0 || Math.round(Number(order.total) * 100) !== subtotalCents + shippingCents + taxCents) return json({ error: "Order total mismatch. Please retry checkout." }, 409);
 
     const secret = Deno.env.get("STRIPE_SECRET_KEY");
     if (!secret) return json({ error: "Stripe is not configured" }, 503);
@@ -102,16 +105,33 @@ Deno.serve(async (req) => {
     params.set("metadata[order_id]", order.id);
     params.set("metadata[user_id]", user.id);
     params.set("payment_intent_data[metadata][order_id]", order.id);
-    params.set("line_items[0][price_data][currency]", "cad");
-    params.set("line_items[0][price_data][product_data][name]", `Barakaz order ${order.id.slice(0, 8).toUpperCase()}`);
-    params.set("line_items[0][price_data][unit_amount]", String(amount));
-    params.set("line_items[0][quantity]", "1");
-    if (taxCents > 0) {
-      const label = order.tax_province ? `Sales tax (${order.tax_province})` : "Sales tax";
-      params.set("line_items[1][price_data][currency]", "cad");
-      params.set("line_items[1][price_data][product_data][name]", label);
-      params.set("line_items[1][price_data][unit_amount]", String(taxCents));
-      params.set("line_items[1][quantity]", "1");
+    const addLine = (index: number, name: string, cents: number) => {
+      params.set(`line_items[${index}][price_data][currency]`, "cad");
+      params.set(`line_items[${index}][price_data][product_data][name]`, name);
+      params.set(`line_items[${index}][price_data][unit_amount]`, String(cents));
+      params.set(`line_items[${index}][quantity]`, "1");
+    };
+    let lineIndex = 0;
+    addLine(lineIndex++, "Subtotal — Barakaz products", subtotalCents);
+    if (shippingCents > 0) {
+      const { data: shipmentRows } = await admin.from("shipments").select("service").eq("order_id", order.id);
+      const services = [...new Set((shipmentRows ?? []).map((row) => String(row.service ?? "").toLowerCase()))];
+      const shippingLabel = services.length === 1 && services[0].includes("express") ? "Express" : services.length === 1 && services[0].includes("standard") ? "Standard" : "Selected delivery";
+      addLine(lineIndex++, `Shipping (${shippingLabel})`, shippingCents);
+    }
+    const provinceNames: Record<string, string> = { AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick", NL: "Newfoundland and Labrador", NS: "Nova Scotia", NT: "Northwest Territories", NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan", YT: "Yukon" };
+    const breakdown = order.tax_breakdown as { components?: Array<{ component?: string; ratePpm?: number; taxCents?: number }> } | null;
+    const components = breakdown?.components ?? [];
+    const componentTotal = components.reduce((sum, component) => sum + Number(component.taxCents ?? 0), 0);
+    if (taxCents > 0 && (!components.length || componentTotal !== taxCents)) return json({ error: "Tax breakdown mismatch. Please retry checkout." }, 409);
+    for (const component of components) {
+      const cents = Number(component.taxCents ?? 0);
+      if (!Number.isSafeInteger(cents) || cents < 0) return json({ error: "Invalid tax breakdown" }, 409);
+      if (!cents) continue;
+      const rate = Number(component.ratePpm ?? 0) / 10000;
+      const province = String(order.tax_province ?? "").toUpperCase();
+      const label = `${component.component ?? "Tax"} (${rate}%)${provinceNames[province] ? ` – ${provinceNames[province]}` : ""}`;
+      addLine(lineIndex++, label, cents);
     }
 
     const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
