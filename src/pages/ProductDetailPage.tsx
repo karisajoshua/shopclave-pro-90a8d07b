@@ -561,7 +561,7 @@ const ProductDetailPage = () => {
 
        <main className="bg-card pb-8 md:bg-muted/30 md:pt-4">
          <div className="container space-y-2 px-2 md:space-y-3 md:px-4">
-           <section className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] gap-2 bg-card p-2 md:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] md:gap-6 md:p-4" aria-label="Product purchase information">
+           <section className="grid grid-cols-1 gap-3 bg-card p-2 md:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] md:gap-6 md:p-4" aria-label="Product purchase information">
             <ProductGallery
               images={galleryImages}
               videoUrl={product.video_url}
@@ -672,14 +672,14 @@ const ProductDetailPage = () => {
               </div>
             </div>
 
-             <div className="col-span-2 grid grid-cols-2 gap-2 pt-1">
+             <div className="grid grid-cols-2 gap-2 pt-1 md:col-span-2">
               <Button type="button" size="lg" variant="outline" className="border-primary font-bold text-primary hover:bg-primary/5 hover:text-primary" onClick={() => handlePurchase("cart")}>
                 <ShoppingCart className="h-5 w-5" /> Add to cart
               </Button>
               <Button type="button" size="lg" className="font-bold" onClick={() => handlePurchase("buy")}>Buy now</Button>
             </div>
 
-             <section className="col-span-2 border border-border bg-card" aria-labelledby="delivery-heading">
+             <section className="border border-border bg-card md:col-span-2" aria-labelledby="delivery-heading">
                  <div className="border-b border-border px-3 py-2">
                   <h2 id="delivery-heading" className="flex items-center gap-2 text-sm font-bold"><Truck className="h-4 w-4 text-primary" /> Delivery to your address</h2>
                   <p className="mt-1 text-xs text-muted-foreground">Choose a delivery option. The final quote is confirmed at checkout.</p>

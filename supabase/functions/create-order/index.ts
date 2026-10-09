@@ -340,6 +340,7 @@ Deno.serve(async (req) => {
       .select("id, vendor_id, quantity");
 
     if (itemsError || !insertedItems) {
+      console.error("order item insertion failed", { orderId: order.id, errorCode: itemsError?.code, errorMessage: itemsError?.message, errorDetails: itemsError?.details });
       return new Response(JSON.stringify({ error: "Failed to create order items" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
