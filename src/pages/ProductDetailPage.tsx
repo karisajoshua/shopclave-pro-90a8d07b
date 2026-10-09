@@ -429,7 +429,8 @@ const ProductDetailPage = () => {
       colorValue: colorKey ? selectedOptions[colorKey] : undefined,
       selectedVariantId: selectedVariant?.id,
     });
-    return resolved.length ? resolved : [barakazIcon];
+    const primaryImage = typeof product.image_url === "string" && product.image_url.trim() ? product.image_url.trim() : null;
+    return resolved.length ? (primaryImage && !resolved.includes(primaryImage) ? [...resolved, primaryImage] : resolved) : primaryImage ? [primaryImage] : [barakazIcon];
   }, [optionTypes, product, selectedOptions, selectedVariant, variants]);
 
   if (isLoading) {
