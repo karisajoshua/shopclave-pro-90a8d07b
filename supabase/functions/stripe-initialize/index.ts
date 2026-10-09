@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     if (itemsErr || !items?.length) return json({ error: "No order items" }, 400);
 
     // Barakaz catalogue/order totals are CAD. Stripe accepts CAD directly.
-    const subtotalCents = items.reduce((sum, item) => sum + Math.round(Number(item.price) * 100) * Number(item.quantity), 0);
+    const subtotalCents = items.reduce((sum, item) => sum + Math.round(Number(item.price) * Number(item.quantity) * 100), 0);
     const shippingCents = Math.round(Number(order.shipping_total ?? 0) * 100);
     const itemShippingCents = items.reduce((sum, item) => sum + Math.round(Number(item.shipping_amount || 0) * 100), 0);
     if (shippingCents < 0 || shippingCents !== itemShippingCents) return json({ error: "Shipping total mismatch. Please retry checkout." }, 409);
