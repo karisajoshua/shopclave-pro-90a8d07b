@@ -33,7 +33,7 @@ const CountdownTimer = ({ endsAt, variant = "banner" }: CountdownTimerProps) => 
     parts.push(`${timeLeft.h}h`);
     parts.push(`${timeLeft.m}m`);
     return (
-      <span className="inline-flex items-center gap-1 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
+      <span className="inline-flex max-w-full flex-wrap items-center gap-1 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
         <Clock className="h-2.5 w-2.5" />
         {parts.join(" ")}
       </span>
@@ -41,10 +41,10 @@ const CountdownTimer = ({ endsAt, variant = "banner" }: CountdownTimerProps) => 
   }
 
   return (
-    <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
       <Clock className="h-4 w-4 text-destructive shrink-0" />
-      <span className="text-sm font-semibold text-destructive">Deal ends in:</span>
-      <div className="flex gap-1.5">
+      <span className="min-w-0 text-xs font-semibold text-destructive sm:text-sm">Deal ends in:</span>
+      <div className="flex min-w-0 flex-wrap gap-1.5">
         {timeLeft.d > 0 && (
           <span className="bg-destructive text-destructive-foreground text-xs font-bold px-1.5 py-0.5 rounded">{timeLeft.d}d</span>
         )}
