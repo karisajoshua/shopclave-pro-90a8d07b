@@ -562,7 +562,7 @@ const ProductDetailPage = () => {
 
        <main className="bg-card pb-8 md:bg-muted/30 md:pt-4">
          <div className="container space-y-2 px-2 md:space-y-3 md:px-4">
-           <section className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] items-start gap-2 bg-card p-2 md:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] md:gap-6 md:p-4" aria-label="Product purchase information">
+           <section className="grid grid-cols-1 items-start gap-3 bg-card p-2 sm:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] sm:gap-4 md:grid-cols-[minmax(0,1.04fr)_minmax(400px,.96fr)] md:gap-6 md:p-4" aria-label="Product purchase information">
             <ProductGallery
               images={galleryImages}
               videoUrl={product.video_url}
