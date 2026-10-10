@@ -1,4 +1,3 @@
-import { CHECKOUT_MODE_LABEL } from "@/lib/orderTracking";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import MarketplaceLayout from "@/components/layout/MarketplaceLayout";
@@ -634,9 +633,6 @@ const CheckoutPage = () => {
           <Link to="/cart" className="text-sm text-primary hover:underline flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Go back & continue shopping
           </Link>
-        </div>
-        <div role="note" className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
-          {CHECKOUT_MODE_LABEL}
         </div>
 
         <div className={activeStep === "review" ? "grid grid-cols-1 gap-6" : "grid lg:grid-cols-[1fr_320px] gap-6"}>
