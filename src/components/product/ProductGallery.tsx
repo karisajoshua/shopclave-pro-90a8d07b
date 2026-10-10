@@ -69,9 +69,9 @@ const ProductGallery = ({
   };
 
   return (
-    <div className="min-w-0" aria-label={`${productName} gallery`}>
+    <div className="block w-full min-w-0 shrink-0" aria-label={`${productName} gallery`}>
       <div
-        className="group relative aspect-square overflow-hidden bg-card"
+        className="group relative block aspect-square min-h-[240px] w-full overflow-hidden bg-card"
         onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }}
         onTouchEnd={(event) => {
           const start = touchStart.current;
@@ -97,7 +97,7 @@ const ProductGallery = ({
             <img
               src={displayImage || barakazIcon}
               alt={productName}
-              className="h-full w-full object-contain md:hidden"
+              className="block h-full w-full object-contain md:hidden"
               onError={(event) => { event.currentTarget.src = barakazIcon; }}
             />
           </>
